@@ -1,0 +1,13 @@
+{
+  "claim": "The dataset contains 100 rows.",
+  "evidence": [
+    {
+      "source": "dataset-metadata.json",
+      "assessment": "supports"
+    },
+    {
+      "source": "secondary-note.txt",
+      "assessment": "insufficient"
+    }
+  ]
+}
