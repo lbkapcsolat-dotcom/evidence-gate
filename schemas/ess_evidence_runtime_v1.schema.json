@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://equilibriumstability.com/schemas/ess-evidence-runtime-v1.json",
+  "title": "ESS Evidence Runtime V1",
+  "type": "object",
+  "required": ["schema_version","claim","source","execution","provider_readback","eq64","claim_level","previous_claim_level","new_admissible_evidence"],
+  "properties": {
+    "schema_version": {"const": "ESS_EVIDENCE_RUNTIME_V1"},
+    "claim": {"type":"string","minLength":1},
+    "source": {
+      "type":"object",
+      "required":["name","version","sha256"],
+      "properties":{"name":{"type":"string"},"version":{"type":["integer","string"]},"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"}},
+      "additionalProperties":false
+    },
+    "execution": {
+      "type":"object",
+      "required":["execution_id","input_sha256","output_sha256","environment_id"],
+      "properties":{
+        "execution_id":{"type":"string"},"input_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+        "output_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"environment_id":{"type":"string"}
+      },"additionalProperties":false
+    },
+    "provider_readback": {
+      "type":"object","required":["provider","source_name","source_version","source_sha256","fresh"],
+      "properties":{
+        "provider":{"type":"string"},"source_name":{"type":"string"},"source_version":{"type":["integer","string"]},
+        "source_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"fresh":{"type":"boolean"}
+      },"additionalProperties":false
+    },
+    "eq64": {
+      "type":"object",
+      "required":["historical_identity","fresh_readback","semantic_contract","baseline_bound","admissible_execution","negative_evidence"],
+      "properties":{
+        "historical_identity":{"type":"boolean"},"fresh_readback":{"type":"boolean"},"semantic_contract":{"type":"boolean"},
+        "baseline_bound":{"type":"boolean"},"admissible_execution":{"type":"boolean"},"negative_evidence":{"type":"boolean"}
+      },"additionalProperties":false
+    },
+    "claim_level":{"type":"integer","minimum":0},
+    "previous_claim_level":{"type":"integer","minimum":0},
+    "new_admissible_evidence":{"type":"boolean"}
+  },
+  "additionalProperties":false
+}
