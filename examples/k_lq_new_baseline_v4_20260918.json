@@ -1,0 +1,33 @@
+{
+  "claim": "K_LQ_NEW_BASELINE_V4_20260918 is admissible as the current NEW_BASELINE.",
+  "claim_level": 1,
+  "eq64": {
+    "admissible_execution": true,
+    "baseline_bound": true,
+    "fresh_readback": true,
+    "historical_identity": false,
+    "negative_evidence": false,
+    "semantic_contract": true
+  },
+  "execution": {
+    "environment_id": "supabase:vuzphrlgkgxswjnexszw",
+    "execution_id": "K_LQ_NEW_BASELINE_V4_20260918",
+    "input_sha256": "0fc5c5fb7ca750fc3e21c1009f35fdddd894af99353cc13cc01cf138487c6e48",
+    "output_sha256": "0fc5c5fb7ca750fc3e21c1009f35fdddd894af99353cc13cc01cf138487c6e48"
+  },
+  "new_admissible_evidence": true,
+  "previous_claim_level": 0,
+  "provider_readback": {
+    "fresh": true,
+    "provider": "supabase",
+    "source_name": "choice-space-lq-shadow-v1",
+    "source_sha256": "100ff50b72087f24e1b2a133391e79f49070f8c416b2f6e738ed04802d0c6fc7",
+    "source_version": 4
+  },
+  "schema_version": "ESS_EVIDENCE_RUNTIME_V1",
+  "source": {
+    "name": "choice-space-lq-shadow-v1",
+    "sha256": "100ff50b72087f24e1b2a133391e79f49070f8c416b2f6e738ed04802d0c6fc7",
+    "version": 4
+  }
+}
