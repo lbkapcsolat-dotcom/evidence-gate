@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - formal/equilibrium-bridge-kernel-v1
+  pull_request:
+    paths:
+      - "EquilibriumBridge.lean"
+      - "EquilibriumBridgeHarness.lean"
+      - "lakefile.toml"
+      - "lake-manifest.json"
+      - "lean-toolchain"
+      - ".github/workflows/equilibrium-bridge-lean.yml"
+      - "KERNEL_RUN_TRIGGER_V2.txt"
   workflow_dispatch:
 
 permissions:
@@ -14,19 +23,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: leanprover/lean-action@v1
-        with:
-          build: true
+      - name: Lean 4.33.1 kernel build
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install leanprover/lean4:v4.33.1
+          lean --version
+          lake --version
+          lake build
       - name: Proof escape scan
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -n -E '\\bsorry\\b|\\badmit\\b' --include='*.lean' EquilibriumBridge.lean EquilibriumBridgeHarness.lean; then
+          if grep -n -E '\bsorry\b|\badmit\b' EquilibriumBridge.lean EquilibriumBridgeHarness.lean; then
             echo "proof escape token found"
             exit 1
           fi
       - name: Theorem surface
-        run: lake env lean EquilibriumBridgeHarness.lean
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          lake env lean EquilibriumBridgeHarness.lean
       - name: SHA256
         shell: bash
         run: sha256sum EquilibriumBridge.lean EquilibriumBridgeHarness.lean lakefile.toml lean-toolchain
