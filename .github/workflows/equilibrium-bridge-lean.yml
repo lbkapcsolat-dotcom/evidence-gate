@@ -1,0 +1,37 @@
+name: Equilibrium Bridge Lean Kernel
+
+on:
+  pull_request:
+    paths:
+      - "EquilibriumBridge.lean"
+      - "EquilibriumBridgeHarness.lean"
+      - "lakefile.toml"
+      - "lean-toolchain"
+      - ".github/workflows/equilibrium-bridge-lean.yml"
+      - "KERNEL_RUN_TRIGGER_V1.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          build: true
+      - name: Proof escape scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -n -E '\bsorry\b|\badmit\b' EquilibriumBridge.lean EquilibriumBridgeHarness.lean; then
+            echo "proof escape token found"
+            exit 1
+          fi
+      - name: Theorem surface
+        run: lake env lean EquilibriumBridgeHarness.lean
+      - name: SHA256
+        shell: bash
+        run: sha256sum EquilibriumBridge.lean EquilibriumBridgeHarness.lean lakefile.toml lean-toolchain
