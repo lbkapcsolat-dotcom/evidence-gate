@@ -1,0 +1,3 @@
+EQUILIBRIUM_BRIDGE_LEAN_KERNEL_V1
+Purpose: trigger branch push CI after workflow installation.
+Non-actuating: true
