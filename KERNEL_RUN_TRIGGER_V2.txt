@@ -1,0 +1,4 @@
+EQUILIBRIUM_BRIDGE_LEAN_KERNEL_V1
+Trigger: post-main-workflow-registration
+Expected toolchain: leanprover/lean4:v4.33.1
+Non-actuating: true
