@@ -1,0 +1,37 @@
+name: Cognitive Oversight Runtime
+
+on:
+  pull_request:
+    paths:
+      - "cognitive_oversight_runtime.py"
+      - "cognitive_oversight_runtime_cli.py"
+      - "cognitive_oversight_runtime_api.py"
+      - "test_cognitive_oversight_runtime.py"
+      - ".github/workflows/cognitive-oversight-runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: \${{ matrix.python-version }}
+      - name: Run Cognitive Oversight runtime tests
+        run: python -m unittest -v test_cognitive_oversight_runtime.py
+      - name: SHA256
+        shell: bash
+        run: |
+          sha256sum \
+            cognitive_oversight_runtime.py \
+            cognitive_oversight_runtime_cli.py \
+            cognitive_oversight_runtime_api.py \
+            test_cognitive_oversight_runtime.py
