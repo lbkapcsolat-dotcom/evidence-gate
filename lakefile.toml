@@ -1,11 +1,6 @@
 name = "equilibrium_bridge_kernel"
-version = "0.2.0"
-defaultTargets = ["EquilibriumBridge", "EquilibriumBridgeHarness", "ReconstructedOrderComplex", "ReconstructedHarness"]
-
-[[require]]
-name = "mathlib"
-git = "https://github.com/leanprover-community/mathlib4.git"
-rev = "db00fb3901b1bb4954f8a2373285959a5930bbfa"
+version = "0.1.0"
+defaultTargets = ["EquilibriumBridge", "EquilibriumBridgeHarness"]
 
 [[lean_lib]]
 name = "EquilibriumBridge"
@@ -13,10 +8,3 @@ name = "EquilibriumBridge"
 [[lean_exe]]
 name = "EquilibriumBridgeHarness"
 root = "EquilibriumBridgeHarness"
-
-[[lean_lib]]
-name = "ReconstructedOrderComplex"
-
-[[lean_exe]]
-name = "ReconstructedHarness"
-root = "ReconstructedHarness"
