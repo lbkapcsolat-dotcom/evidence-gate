@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           cd reproof
-          python -m pytest -q
+          python -m unittest -v test_reconstructed_model.py
 
       - name: Install elan
         shell: bash
