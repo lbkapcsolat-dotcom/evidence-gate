@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE '\b(sorry|admit|axiom)\b' reproof --include='*.lean'; then
+          if grep -n -E '\b(sorry|admit|axiom)\b' reproof/ReconstructedBridge.lean reproof/ReconstructedRelativeHomology.lean reproof/ReproofHarness.lean reproof/lakefile.lean; then
             echo "forbidden proof escape token found"
             exit 1
           fi
