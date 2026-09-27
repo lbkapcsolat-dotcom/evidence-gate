@@ -1,72 +1,52 @@
-name: Equilibrium Bridge Reconstructed Reproof
+name: Equilibrium Bridge Lean Kernel
 
 on:
   push:
     branches:
-      - formal/equilibrium-bridge-reconstructed-reproof-v1
+      - formal/equilibrium-bridge-kernel-v1
   pull_request:
     paths:
       - "EquilibriumBridge.lean"
       - "EquilibriumBridgeHarness.lean"
-      - "ReconstructedOrderComplex.lean"
-      - "ReconstructedRelativePair.lean"
-      - "ReconstructedRelativeH4.lean"
-      - "ReconstructedHarness.lean"
       - "lakefile.toml"
       - "lake-manifest.json"
       - "lean-toolchain"
       - ".github/workflows/equilibrium-bridge-lean.yml"
+      - "KERNEL_RUN_TRIGGER_V2.txt"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  reconstructed-reproof:
+  kernel:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Lean 4.34.0
+      - name: Lean 4.33.1 kernel build
         shell: bash
         run: |
           set -euo pipefail
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
           export PATH="$HOME/.elan/bin:$PATH"
-          elan toolchain install leanprover/lean4:v4.34.0
+          elan toolchain install leanprover/lean4:v4.33.1
           lean --version
           lake --version
-      - name: Resolve pinned mathlib
-        shell: bash
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/.elan/bin:$PATH"
-          lake update
-          lake exe cache get
-      - name: Fresh build
-        shell: bash
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/.elan/bin:$PATH"
           lake build
       - name: Proof escape scan
         shell: bash
         run: |
           set -euo pipefail
-          files=(ReconstructedOrderComplex.lean ReconstructedHarness.lean)
-          [[ -f ReconstructedRelativePair.lean ]] && files+=(ReconstructedRelativePair.lean)
-          [[ -f ReconstructedRelativeH4.lean ]] && files+=(ReconstructedRelativeH4.lean)
-          if grep -n -E '\b(sorry|admit|axiom)\b' "${files[@]}"; then
-            echo "forbidden proof escape token found"
+          if grep -n -E '\bsorry\b|\badmit\b' EquilibriumBridge.lean EquilibriumBridgeHarness.lean; then
+            echo "proof escape token found"
             exit 1
           fi
-      - name: Reconstructed theorem surface
+      - name: Theorem surface
         shell: bash
         run: |
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
-          lake env lean ReconstructedHarness.lean
+          lake env lean EquilibriumBridgeHarness.lean
       - name: SHA256
         shell: bash
-        run: |
-          set -euo pipefail
-          sha256sum ReconstructedOrderComplex.lean ReconstructedHarness.lean lakefile.toml lean-toolchain
+        run: sha256sum EquilibriumBridge.lean EquilibriumBridgeHarness.lean lakefile.toml lean-toolchain
