@@ -40,13 +40,15 @@ jobs:
           lake update
           lake exe cache get
 
-      - name: Lean bridge kernel
+      - name: Lean reconstructed proofs
         shell: bash
         run: |
           set -euo pipefail
           cd reproof
           lean --version
           lake env lean ReconstructedBridge.lean
+          lake env lean ReconstructedRelativeHomology.lean
+          lake env lean ReproofHarness.lean
 
       - name: Proof escape scan
         shell: bash
@@ -57,8 +59,17 @@ jobs:
             exit 1
           fi
 
+      - name: Historical SHA impersonation guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed=$(sha256sum reproof/ReconstructedBridge.lean reproof/ReconstructedRelativeHomology.lean)
+          echo "$observed"
+          ! echo "$observed" | grep -qi 'e6bc11199bd5f0be517a6e62b603884deafce53de4761c2610059d5ee4179c6e'
+          ! echo "$observed" | grep -qi '60b1909e5864de8bc8ea007711fd45b7e56f5af790659d2a3368853f0e2db6de'
+
       - name: Source SHA256
         shell: bash
         run: |
           set -euo pipefail
-          sha256sum reproof/reconstructed_model.py reproof/test_reconstructed_model.py reproof/ReconstructedBridge.lean reproof/lakefile.lean reproof/lean-toolchain
+          sha256sum             reproof/reconstructed_model.py             reproof/test_reconstructed_model.py             reproof/ReconstructedBridge.lean             reproof/ReconstructedRelativeHomology.lean             reproof/ReproofHarness.lean             reproof/lakefile.lean             reproof/lean-toolchain
