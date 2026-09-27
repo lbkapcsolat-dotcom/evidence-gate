@@ -1,0 +1,180 @@
+{
+  "schema_version": "ESS_RECONSTRUCTED_REPROOF_SECOND_RUNTIME_RECEIPT_1.0",
+  "project": "ESS__LEAN4_MATHLIB__RECONSTRUCTED_REPROOF_INDEPENDENT_CLEAN_RUNTIME_REPLAY",
+  "branch": "formal/equilibrium-bridge-reconstructed-reproof-v1",
+  "start_authority": "A3666_BOOT2287",
+  "verified_proof_commit": "9e794edc51725ea5dde66d485993787992667db1",
+  "replay_workflow_definition_commit": "2b1877fcf4a6a43c4ad9448007bf8aa849c0ede6",
+  "second_runtime": {
+    "workflow_name": "Equilibrium Bridge Independent Clean Runtime Replay",
+    "run_id": 36344641289,
+    "job_id": 108691273275,
+    "status": "completed",
+    "conclusion": "success",
+    "runner_os": "Ubuntu",
+    "runner_image": "ubuntu-22.04",
+    "runner_image_release": "ubuntu22/20260920.303",
+    "run_started_at": "2026-09-27T19:31:11Z",
+    "run_updated_at": "2026-09-27T19:46:30Z",
+    "proof_checkout_mode": "DETACHED_HEAD_EXACT_COMMIT"
+  },
+  "first_runtime_reference": {
+    "run_id": 36335636959,
+    "job_id": 108665835344,
+    "runner_image": "ubuntu-24.04",
+    "runner_image_release": "ubuntu24/20260920.314",
+    "conclusion": "success"
+  },
+  "environment_diversity": {
+    "first_runtime_os_image": "ubuntu-24.04",
+    "second_runtime_os_image": "ubuntu-22.04",
+    "same_proof_commit": true,
+    "independent_fresh_vm": true
+  },
+  "toolchain": {
+    "reproof_local_pin": "leanprover/lean4:v4.34.0",
+    "reproof_toolchain_sha256": "8733782dc070a99b312039cda424f601b80f3be6f6f512627da5ba25adc27632",
+    "mathlib_commit": "db00fb3901b1bb4954f8a2373285959a5930bbfa",
+    "build_working_directory": "reproof",
+    "root_repo_toolchain_note": "Repository root is pinned to Lean 4.33.1; replay build commands execute after cd reproof and therefore bind the reproof-local Lean 4.34.0 pin."
+  },
+  "replay_steps": {
+    "exact_verified_commit_checkout": "PASS",
+    "exact_source_sha256_precheck": "PASS_7_OF_7",
+    "python_reference_replay": "PASS",
+    "fresh_toolchain_install": "PASS",
+    "fresh_dependency_resolution": "PASS",
+    "fresh_independent_lean_build": "PASS",
+    "zero_proof_escape_scan": "PASS",
+    "exact_theorem_surface_replay": "PASS_22_OF_22",
+    "exact_6_of_192_and_bounded_h4_replay": "PASS",
+    "historical_sha_impersonation_guard": "PASS",
+    "final_source_sha256_readback": "PASS_7_OF_7"
+  },
+  "reconstructed_artifacts_sha256": {
+    "reproof/reconstructed_model.py": "4cf844e23723df8a3de6e5abcd25787f4f80dd761d0ff33247e489eb43705b23",
+    "reproof/test_reconstructed_model.py": "c1b02dc9b47670a42ced0f4a27cfcf8b34832dd46072efb5e897a02310ad4855",
+    "reproof/ReconstructedBridge.lean": "20fa1e08e47912e12eb58c0f30cf4511f6a3241c3985c4884794300bbe67c9d9",
+    "reproof/ReconstructedRelativeHomology.lean": "a65f5eb4255fe53f9ceb209ef5ebbc5eafcb464710039d175cb75858cb6d8f11",
+    "reproof/ReproofHarness.lean": "58435f3e1e7f3cb1d725f5c4283be9158bb1c2001688e618a08365f1a9faab9c",
+    "reproof/lakefile.lean": "7fb679219a79b8c40a9b1d1b196133db4484c4ebe36f85c5a7ea8c7b390c4021",
+    "reproof/lean-toolchain": "8733782dc070a99b312039cda424f601b80f3be6f6f512627da5ba25adc27632"
+  },
+  "cross_runtime_comparison": {
+    "source_sha256_equal": true,
+    "source_sha256_equal_count": "7_OF_7",
+    "theorem_surface_equal": true,
+    "theorem_surface_equal_count": "22_OF_22",
+    "theorem_names": [
+      "L_monotone",
+      "counit",
+      "counit_naturality",
+      "cubical_edge_count",
+      "cubical_negative_regression_exact",
+      "fiber_semantic_safety",
+      "galois_adjunction",
+      "induced_H4_generator_image_support",
+      "induced_H4_isomorphism_bounded",
+      "induced_H4_rank_one",
+      "order_complex_chain_counts",
+      "order_complex_normalized_degenerate_images",
+      "order_complex_strict_chain_count",
+      "pair_cardinalities",
+      "phi_monotone",
+      "relative_H4_G",
+      "relative_H4_S",
+      "relative_boundary_ranks",
+      "relative_chain_dimensions",
+      "relative_chain_map_commutes_dim_1_to_5",
+      "unit",
+      "unit_naturality"
+    ]
+  },
+  "exact_negative_regression": {
+    "cubical_edge_count": 192,
+    "counterexample_count": 6,
+    "exact_counterexamples": [
+      [
+        31,
+        63,
+        15,
+        63,
+        2
+      ],
+      [
+        47,
+        63,
+        27,
+        63,
+        2
+      ],
+      [
+        55,
+        63,
+        29,
+        63,
+        2
+      ],
+      [
+        59,
+        63,
+        23,
+        63,
+        2
+      ],
+      [
+        61,
+        63,
+        30,
+        63,
+        2
+      ],
+      [
+        62,
+        63,
+        30,
+        63,
+        2
+      ]
+    ],
+    "verdict": "REJECT_STRICT_CUBICAL_LIFT_6_OF_192",
+    "second_runtime_compile_check": "PASS"
+  },
+  "bounded_h4": {
+    "H4_G": 1,
+    "H4_S": 1,
+    "induced_H4_rank": 1,
+    "second_runtime_compile_check": "PASS"
+  },
+  "proof_escape": {
+    "own_reconstructed_sources_only": true,
+    "sorry": 0,
+    "admit": 0,
+    "axiom_declaration_token": 0,
+    "scan": "PASS"
+  },
+  "historical_source_policy": {
+    "exact_historical_source_custody": "HOLD_0_OF_2",
+    "role": "NON_BLOCKING_PROVENANCE_NOTE",
+    "historical_sha_impersonation": false
+  },
+  "zero_spend": {
+    "status": true,
+    "repository_visibility": "public",
+    "runner_class": "standard_github_hosted",
+    "larger_runner_used": false,
+    "artifact_upload_used": false,
+    "basis": "GitHub standard hosted runners are free for public repositories."
+  },
+  "guards": {
+    "global_bind": false,
+    "runtime_admission": false,
+    "model_admission": false,
+    "production_promotion": false,
+    "pointer_write": false,
+    "master_write": false,
+    "boot_write": false
+  },
+  "claim_ceiling": "INDEPENDENT_CLEAN_RUNTIME_REPLAY_CONFIRMED_FOR_BOUNDED_RECONSTRUCTED_REPROOF__NOT_HISTORICAL_SOURCE_RECOVERY__NO_GLOBAL_BIND__NO_RUNTIME_ADMISSION",
+  "verdict": "PASS_INDEPENDENT_CLEAN_RUNTIME_REPLAY__SECOND_RUNTIME__SOURCE_7_OF_7_EQUAL__THEOREM_SURFACE_22_OF_22_EQUAL__EXACT_6_OF_192_PRESERVED__BOUNDED_H4_REPLAY_PASS"
+}
