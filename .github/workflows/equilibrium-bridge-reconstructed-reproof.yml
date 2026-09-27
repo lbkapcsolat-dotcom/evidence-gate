@@ -1,0 +1,64 @@
+name: Equilibrium Bridge Reconstructed Reproof
+
+on:
+  push:
+    branches:
+      - formal/equilibrium-bridge-reconstructed-reproof-v1
+    paths:
+      - "reproof/**"
+      - ".github/workflows/equilibrium-bridge-reconstructed-reproof.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reproof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python reconstructed reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd reproof
+          python -m pytest -q
+
+      - name: Install elan
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Resolve pinned mathlib and cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd reproof
+          lake update
+          lake exe cache get
+
+      - name: Lean bridge kernel
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd reproof
+          lean --version
+          lake env lean ReconstructedBridge.lean
+
+      - name: Proof escape scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE '\b(sorry|admit|axiom)\b' reproof --include='*.lean'; then
+            echo "forbidden proof escape token found"
+            exit 1
+          fi
+
+      - name: Source SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum reproof/reconstructed_model.py reproof/test_reconstructed_model.py reproof/ReconstructedBridge.lean reproof/lakefile.lean reproof/lean-toolchain
