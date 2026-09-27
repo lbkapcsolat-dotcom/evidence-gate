@@ -1,0 +1,170 @@
+name: Equilibrium Bridge Independent Clean Runtime Replay
+
+on:
+  push:
+    branches:
+      - formal/equilibrium-bridge-reconstructed-reproof-v1
+    paths:
+      - ".github/workflows/equilibrium-bridge-independent-clean-replay.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independent-clean-replay:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout workflow host revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin verified proof commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach 9e794edc51725ea5dde66d485993787992667db1
+          test "$(git rev-parse HEAD)" = "9e794edc51725ea5dde66d485993787992667db1"
+          git status --porcelain=v1
+          echo "VERIFIED_COMMIT=$(git rev-parse HEAD)"
+
+      - name: Exact reconstructed source SHA256 precheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/reproof.sha256 <<'EOF'
+          4cf844e23723df8a3de6e5abcd25787f4f80dd761d0ff33247e489eb43705b23  reproof/reconstructed_model.py
+          c1b02dc9b47670a42ced0f4a27cfcf8b34832dd46072efb5e897a02310ad4855  reproof/test_reconstructed_model.py
+          20fa1e08e47912e12eb58c0f30cf4511f6a3241c3985c4884794300bbe67c9d9  reproof/ReconstructedBridge.lean
+          a65f5eb4255fe53f9ceb209ef5ebbc5eafcb464710039d175cb75858cb6d8f11  reproof/ReconstructedRelativeHomology.lean
+          58435f3e1e7f3cb1d725f5c4283be9158bb1c2001688e618a08365f1a9faab9c  reproof/ReproofHarness.lean
+          7fb679219a79b8c40a9b1d1b196133db4484c4ebe36f85c5a7ea8c7b390c4021  reproof/lakefile.lean
+          8733782dc070a99b312039cda424f601b80f3be6f6f512627da5ba25adc27632  reproof/lean-toolchain
+          EOF
+          sha256sum -c /tmp/reproof.sha256
+
+      - name: Python independent reference replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd reproof
+          python -m unittest -v test_reconstructed_model.py
+
+      - name: Install fresh Lean toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install leanprover/lean4:v4.34.0
+          lean --version
+          lake --version
+
+      - name: Fresh independent dependency resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          rm -rf reproof/.lake
+          cd reproof
+          lake update
+          lake exe cache get
+
+      - name: Fresh independent Lean build
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          cd reproof
+          lake build EquilibriumReproof
+
+      - name: Zero proof escape in reconstructed sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -n -E '\b(sorry|admit|axiom)\b'             reproof/ReconstructedBridge.lean             reproof/ReconstructedRelativeHomology.lean             reproof/ReproofHarness.lean             reproof/lakefile.lean; then
+            echo "forbidden proof escape token found"
+            exit 1
+          fi
+
+      - name: Exact theorem surface replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          cd reproof
+          lake env lean ReproofHarness.lean 2>&1 | tee /tmp/theorem-surface.txt
+          sed -n 's/^EquilibriumReproof\.\([^ ]*\) :.*/\1/p' /tmp/theorem-surface.txt | sort > /tmp/observed-theorems.txt
+          cat > /tmp/expected-theorems.txt <<'EOF'
+          L_monotone
+          counit
+          counit_naturality
+          cubical_edge_count
+          cubical_negative_regression_exact
+          fiber_semantic_safety
+          galois_adjunction
+          induced_H4_generator_image_support
+          induced_H4_isomorphism_bounded
+          induced_H4_rank_one
+          order_complex_chain_counts
+          order_complex_normalized_degenerate_images
+          order_complex_strict_chain_count
+          pair_cardinalities
+          phi_monotone
+          relative_H4_G
+          relative_H4_S
+          relative_boundary_ranks
+          relative_chain_dimensions
+          relative_chain_map_commutes_dim_1_to_5
+          unit
+          unit_naturality
+          EOF
+          sort -o /tmp/expected-theorems.txt /tmp/expected-theorems.txt
+          diff -u /tmp/expected-theorems.txt /tmp/observed-theorems.txt
+
+      - name: Exact 6-of-192 and bounded H4 replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          cat > reproof/IndependentReplayCheck.lean <<'EOF'
+          import ReconstructedBridge
+          import ReconstructedRelativeHomology
+
+          open EquilibriumReproof
+
+          example : cubicalEdges.length = 192 := cubical_edge_count
+
+          example :
+              diagonalCounterexamples =
+                [(31, 63, 15, 63, 2),
+                 (47, 63, 27, 63, 2),
+                 (55, 63, 29, 63, 2),
+                 (59, 63, 23, 63, 2),
+                 (61, 63, 30, 63, 2),
+                 (62, 63, 30, 63, 2)] :=
+            cubical_negative_regression_exact
+
+          example : H4dim K_G A_G = 1 := relative_H4_G
+          example : H4dim K_S A_S = 1 := relative_H4_S
+          example : inducedH4Rank = 1 := induced_H4_rank_one
+          EOF
+          cd reproof
+          lake env lean IndependentReplayCheck.lean
+
+      - name: Historical SHA impersonation guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed="$(sha256sum reproof/ReconstructedBridge.lean reproof/ReconstructedRelativeHomology.lean)"
+          echo "$observed"
+          ! echo "$observed" | grep -qi 'e6bc11199bd5f0be517a6e62b603884deafce53de4761c2610059d5ee4179c6e'
+          ! echo "$observed" | grep -qi '60b1909e5864de8bc8ea007711fd45b7e56f5af790659d2a3368853f0e2db6de'
+
+      - name: Final source SHA256 readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum             reproof/reconstructed_model.py             reproof/test_reconstructed_model.py             reproof/ReconstructedBridge.lean             reproof/ReconstructedRelativeHomology.lean             reproof/ReproofHarness.lean             reproof/lakefile.lean             reproof/lean-toolchain
