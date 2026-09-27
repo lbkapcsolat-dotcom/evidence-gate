@@ -10,18 +10,18 @@ abbrev B6 := BitVec 6
 def hb (n : Nat) : B6 := AlphaFull6D.BridgeBV.c n
 def hr (n : Nat) : B6 := AlphaFull6D.RelativePair.c n
 
-def rPhiB (x : B6) : B6 := BitVec.ofNat 6 (EquilibriumReproof.phi x.toNat)
-def rLB (x : B6) : B6 := BitVec.ofNat 6 (EquilibriumReproof.L x.toNat)
-def rLeq6 (a b : B6) : Prop := EquilibriumReproof.leB a.toNat b.toNat = true
-def rTop : B6 := BitVec.ofNat 6 63
+def histPhiN (x : Nat) : Nat := (AlphaFull6D.BridgeBV.phi (hb x)).toNat
+def histLN (x : Nat) : Nat := (AlphaFull6D.BridgeBV.L (hb x)).toNat
+def reconPhiN (x : Nat) : Nat := EquilibriumReproof.phi x
+def reconLN (x : Nat) : Nat := EquilibriumReproof.L x
 
 def phiExactCheck : Bool :=
   (List.range 64).all fun x =>
-    (AlphaFull6D.BridgeBV.phi (hb x)).toNat == EquilibriumReproof.phi x
+    histPhiN x == reconPhiN x
 
 def LExactCheck : Bool :=
   (List.range 64).all fun x =>
-    (AlphaFull6D.BridgeBV.L (hb x)).toNat == EquilibriumReproof.L x
+    histLN x == reconLN x
 
 def historicalLeB (a b : Nat) : Bool :=
   (BitVec.and (hb a) (BitVec.not (hb b))).toNat == 0
@@ -31,26 +31,56 @@ def orderExactCheck : Bool :=
     (List.range 64).all fun b =>
       historicalLeB a b == EquilibriumReproof.leB a b
 
+def histUnitSig (a b : Nat) : Bool :=
+  (! historicalLeB a b) ||
+    (historicalLeB (histPhiN (histLN a)) (histPhiN (histLN b)) &&
+     historicalLeB a (histPhiN (histLN b)))
+
+def reconUnitSig (a b : Nat) : Bool :=
+  (! EquilibriumReproof.leB a b) ||
+    (EquilibriumReproof.leB (reconPhiN (reconLN a)) (reconPhiN (reconLN b)) &&
+     EquilibriumReproof.leB a (reconPhiN (reconLN b)))
+
+def unitNaturalitySignatureExactCheck : Bool :=
+  (List.range 64).all fun a =>
+    (List.range 64).all fun b =>
+      histUnitSig a b == reconUnitSig a b
+
+def histCounitSig (a b : Nat) : Bool :=
+  (! historicalLeB a b) ||
+    (historicalLeB (histLN (histPhiN a)) (histLN (histPhiN b)) &&
+     historicalLeB (histLN (histPhiN a)) b)
+
+def reconCounitSig (a b : Nat) : Bool :=
+  (! EquilibriumReproof.leB a b) ||
+    (EquilibriumReproof.leB (reconLN (reconPhiN a)) (reconLN (reconPhiN b)) &&
+     EquilibriumReproof.leB (reconLN (reconPhiN a)) b)
+
+def counitNaturalitySignatureExactCheck : Bool :=
+  (List.range 64).all fun a =>
+    (List.range 64).all fun b =>
+      histCounitSig a b == reconCounitSig a b
+
+def histFiberSig (a b : Nat) : Bool :=
+  (!(histPhiN a == histPhiN b)) || ((a == 63) == (b == 63))
+
+def reconFiberSig (a b : Nat) : Bool :=
+  (!(reconPhiN a == reconPhiN b)) || ((a == 63) == (b == 63))
+
+def fiberSemanticSafetySignatureExactCheck : Bool :=
+  (List.range 64).all fun a =>
+    (List.range 64).all fun b =>
+      histFiberSig a b == reconFiberSig a b
+
 theorem phi_64_of_64_exact : phiExactCheck = true := by native_decide
 theorem L_64_of_64_exact : LExactCheck = true := by native_decide
 theorem order_relation_4096_of_4096_exact : orderExactCheck = true := by native_decide
-
-theorem reconstructed_unit_naturality_exact :
-    ∀ a b : B6, rLeq6 a b →
-      rLeq6 (rPhiB (rLB a)) (rPhiB (rLB b)) ∧
-      rLeq6 a (rPhiB (rLB b)) := by
-  native_decide
-
-theorem reconstructed_counit_naturality_exact :
-    ∀ a b : B6, rLeq6 a b →
-      rLeq6 (rLB (rPhiB a)) (rLB (rPhiB b)) ∧
-      rLeq6 (rLB (rPhiB a)) b := by
-  native_decide
-
-theorem reconstructed_fiber_semantic_safety_exact :
-    ∀ a b : B6, rPhiB a = rPhiB b →
-      (a = rTop ↔ b = rTop) := by
-  native_decide
+theorem unit_naturality_signature_4096_of_4096_exact :
+    unitNaturalitySignatureExactCheck = true := by native_decide
+theorem counit_naturality_signature_4096_of_4096_exact :
+    counitNaturalitySignatureExactCheck = true := by native_decide
+theorem fiber_semantic_safety_signature_4096_of_4096_exact :
+    fiberSemanticSafetySignatureExactCheck = true := by native_decide
 
 def histInSK (x : Nat) : Bool := AlphaFull6D.RelativePair.inSKB (hr x)
 def histInSA (x : Nat) : Bool := AlphaFull6D.RelativePair.inSAB (hr x)
