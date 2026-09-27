@@ -46,9 +46,7 @@ jobs:
           set -euo pipefail
           cd reproof
           lean --version
-          lake env lean ReconstructedBridge.lean
-          lake env lean ReconstructedRelativeHomology.lean
-          lake env lean ReproofHarness.lean
+          lake build EquilibriumReproof
 
       - name: Proof escape scan
         shell: bash
