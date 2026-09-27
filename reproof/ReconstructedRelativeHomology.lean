@@ -138,31 +138,55 @@ def supportSize120 (x : Nat) : Nat :=
 def nonzeroGeneratorImageSupports : List Nat :=
   ((inducedH4Images.filter (fun x => x != 0)).map supportSize120).eraseDups
 
+theorem relative_certificate :
+    (A_S.length = 30 ∧ K_S.length = 31 ∧ A_G.length = 60 ∧ K_G.length = 61) ∧
+    (relativeDims K_G A_G = [1, 60, 480, 1260, 1320, 480] ∧
+      relativeDims K_S A_S = [1, 30, 150, 240, 120, 0]) ∧
+    (boundaryRanks K_G A_G = [0, 1, 59, 421, 839, 480] ∧
+      boundaryRanks K_S A_S = [0, 1, 29, 121, 119, 0]) ∧
+    ((List.range 5).all (fun i => boundaryCommutesAt (i + 1)) = true) ∧
+    (H4dim K_G A_G = 1) ∧
+    (H4dim K_S A_S = 1) ∧
+    (inducedH4Rank = 1) ∧
+    (nonzeroGeneratorImageSupports = [120]) := by
+  native_decide
+
 theorem pair_cardinalities :
     A_S.length = 30 ∧ K_S.length = 31 ∧
-    A_G.length = 60 ∧ K_G.length = 61 := by native_decide
+    A_G.length = 60 ∧ K_G.length = 61 :=
+  relative_certificate.1
 
 theorem relative_chain_dimensions :
     relativeDims K_G A_G = [1, 60, 480, 1260, 1320, 480] ∧
-    relativeDims K_S A_S = [1, 30, 150, 240, 120, 0] := by native_decide
+    relativeDims K_S A_S = [1, 30, 150, 240, 120, 0] :=
+  relative_certificate.2.1
 
 theorem relative_boundary_ranks :
     boundaryRanks K_G A_G = [0, 1, 59, 421, 839, 480] ∧
-    boundaryRanks K_S A_S = [0, 1, 29, 121, 119, 0] := by native_decide
+    boundaryRanks K_S A_S = [0, 1, 29, 121, 119, 0] :=
+  relative_certificate.2.2.1
 
 theorem relative_chain_map_commutes_dim_1_to_5 :
-    (List.range 5).all (fun i => boundaryCommutesAt (i + 1)) = true := by native_decide
+    (List.range 5).all (fun i => boundaryCommutesAt (i + 1)) = true :=
+  relative_certificate.2.2.2.1
 
-theorem relative_H4_G : H4dim K_G A_G = 1 := by native_decide
-theorem relative_H4_S : H4dim K_S A_S = 1 := by native_decide
-theorem induced_H4_rank_one : inducedH4Rank = 1 := by native_decide
+theorem relative_H4_G : H4dim K_G A_G = 1 :=
+  relative_certificate.2.2.2.2.1
+
+theorem relative_H4_S : H4dim K_S A_S = 1 :=
+  relative_certificate.2.2.2.2.2.1
+
+theorem induced_H4_rank_one : inducedH4Rank = 1 :=
+  relative_certificate.2.2.2.2.2.2.1
 
 theorem induced_H4_isomorphism_bounded :
     H4dim K_G A_G = 1 ∧
     H4dim K_S A_S = 1 ∧
-    inducedH4Rank = 1 := by native_decide
+    inducedH4Rank = 1 :=
+  ⟨relative_H4_G, relative_H4_S, induced_H4_rank_one⟩
 
 theorem induced_H4_generator_image_support :
-    nonzeroGeneratorImageSupports = [120] := by native_decide
+    nonzeroGeneratorImageSupports = [120] :=
+  relative_certificate.2.2.2.2.2.2.2
 
 end EquilibriumReproof
