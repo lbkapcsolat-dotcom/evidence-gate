@@ -1,0 +1,143 @@
+{
+  "schema_version": "ESS_RECONSTRUCTED_REPROOF_V1_RECEIPT_1.0",
+  "project": "ESS__LEAN4_MATHLIB__RECONSTRUCTED_REPROOF_V1",
+  "branch": "formal/equilibrium-bridge-reconstructed-reproof-v1",
+  "verified_commit": "9e794edc51725ea5dde66d485993787992667db1",
+  "ci": {
+    "workflow": "Equilibrium Bridge Reconstructed Reproof",
+    "run_id": 36335636959,
+    "job_id": 108665835344,
+    "conclusion": "success",
+    "python_reference": "PASS",
+    "pinned_mathlib_cache": "PASS",
+    "lean_reconstructed_proofs": "PASS",
+    "proof_escape_scan": "PASS",
+    "historical_sha_impersonation_guard": "PASS",
+    "source_sha256_step": "PASS"
+  },
+  "toolchain": {
+    "lean": "4.34.0",
+    "lean_commit": "293d5d0c0c3f3dded4688b3ccd6a33939ac5102b",
+    "mathlib_commit": "db00fb3901b1bb4954f8a2373285959a5930bbfa"
+  },
+  "reconstructed_artifacts": {
+    "reproof/reconstructed_model.py": {
+      "sha256": "4cf844e23723df8a3de6e5abcd25787f4f80dd761d0ff33247e489eb43705b23"
+    },
+    "reproof/test_reconstructed_model.py": {
+      "sha256": "c1b02dc9b47670a42ced0f4a27cfcf8b34832dd46072efb5e897a02310ad4855"
+    },
+    "reproof/ReconstructedBridge.lean": {
+      "bytes": 4430,
+      "sha256": "20fa1e08e47912e12eb58c0f30cf4511f6a3241c3985c4884794300bbe67c9d9"
+    },
+    "reproof/ReconstructedRelativeHomology.lean": {
+      "bytes": 6255,
+      "sha256": "a65f5eb4255fe53f9ceb209ef5ebbc5eafcb464710039d175cb75858cb6d8f11"
+    },
+    "reproof/ReproofHarness.lean": {
+      "bytes": 732,
+      "sha256": "58435f3e1e7f3cb1d725f5c4283be9158bb1c2001688e618a08365f1a9faab9c"
+    },
+    "reproof/lakefile.lean": {
+      "bytes": 331,
+      "sha256": "7fb679219a79b8c40a9b1d1b196133db4484c4ebe36f85c5a7ea8c7b390c4021"
+    },
+    "reproof/lean-toolchain": {
+      "bytes": 25,
+      "sha256": "8733782dc070a99b312039cda424f601b80f3be6f6f512627da5ba25adc27632"
+    }
+  },
+  "proof_surface": {
+    "galois_adjunction": "PASS",
+    "phi_monotone": "PASS",
+    "L_monotone": "PASS",
+    "unit": "PASS",
+    "counit": "PASS",
+    "unit_naturality": "PASS",
+    "counit_naturality": "PASS",
+    "fiber_semantic_safety": "PASS__FIBER_COUNT_32__MAX_FIBER_SIZE_3",
+    "order_complex_chain_counts": "PASS__[64,665,2702,5460,5880,3240,720]",
+    "order_complex_strict_chain_count": "PASS__18731",
+    "order_complex_normalized_degenerate_images": "PASS__8284",
+    "cubical_edge_count": "PASS__192",
+    "pair_cardinalities": "PASS__A_S_30__K_S_31__A_G_60__K_G_61",
+    "relative_H4_G": "PASS__1",
+    "relative_H4_S": "PASS__1",
+    "induced_H4_rank_one": "PASS__1",
+    "induced_H4_isomorphism_bounded": "PASS",
+    "induced_H4_generator_image_support": "PASS__[120]"
+  },
+  "preserved_negative_regression": {
+    "total_cubical_edges": 192,
+    "counterexample_count": 6,
+    "exact_counterexamples": [
+      [
+        31,
+        63,
+        15,
+        63,
+        2
+      ],
+      [
+        47,
+        63,
+        27,
+        63,
+        2
+      ],
+      [
+        55,
+        63,
+        29,
+        63,
+        2
+      ],
+      [
+        59,
+        63,
+        23,
+        63,
+        2
+      ],
+      [
+        61,
+        63,
+        30,
+        63,
+        2
+      ],
+      [
+        62,
+        63,
+        30,
+        63,
+        2
+      ]
+    ],
+    "verdict": "REJECT_STRICT_CUBICAL_LIFT_6_OF_192"
+  },
+  "proof_escape": {
+    "own_reconstructed_sources_only": true,
+    "sorry": 0,
+    "admit": 0,
+    "axiom": 0
+  },
+  "historical_source_policy": {
+    "order_complex_historical_sha256": "e6bc11199bd5f0be517a6e62b603884deafce53de4761c2610059d5ee4179c6e",
+    "relative_homology_historical_sha256": "60b1909e5864de8bc8ea007711fd45b7e56f5af790659d2a3368853f0e2db6de",
+    "historical_sha_impersonation": false,
+    "exact_historical_source_custody": "HOLD_0_OF_2",
+    "reconstructed_sources_have_new_identity": true
+  },
+  "guards": {
+    "global_bind": false,
+    "runtime_admission": false,
+    "model_admission": false,
+    "production_promotion": false,
+    "historical_source_sha_reuse": false,
+    "zero_spend": true
+  },
+  "claim_ceiling": "BOUNDED_RECONSTRUCTED_REPROOF_CLOSED__NOT_HISTORICAL_SOURCE_RECOVERY__NO_GLOBAL_BIND__NO_RUNTIME_ADMISSION",
+  "verdict": "PASS_BOUNDED_RECONSTRUCTED_REPROOF_CLOSED"
+}
