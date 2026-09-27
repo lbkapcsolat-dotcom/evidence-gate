@@ -70,4 +70,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sha256sum             reproof/reconstructed_model.py             reproof/test_reconstructed_model.py             reproof/ReconstructedBridge.lean             reproof/ReconstructedRelativeHomology.lean             reproof/ReproofHarness.lean             reproof/lakefile.lean             reproof/lean-toolchain
+          sha256sum \
+            reproof/reconstructed_model.py \
+            reproof/test_reconstructed_model.py \
+            reproof/ReconstructedBridge.lean \
+            reproof/ReconstructedRelativeHomology.lean \
+            reproof/ReproofHarness.lean \
+            reproof/lakefile.lean \
+            reproof/lean-toolchain
