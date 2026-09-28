@@ -40,8 +40,7 @@ theorem missing_required_holds (s : EvidenceState)
 theorem lock_implies_pass (s : EvidenceState)
     (h : readOnlyLock s = true) : admission s = .pass := by
   simp [readOnlyLock] at h
-  rcases h with ⟨hc, hb, hm, hf, hr, hn, hmiss⟩
-  simp [admission, hc, hb, hm, hf, hr, hn, hmiss]
+  simp_all [admission]
 
 theorem no_silent_promotion :
     canPromote false = false := by
