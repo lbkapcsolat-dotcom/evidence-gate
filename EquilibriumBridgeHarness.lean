@@ -19,3 +19,5 @@ example : canPromote false = false := no_silent_promotion
 #check lock_implies_pass
 #check promotion_requires_new_admissible_evidence
 #check replay_deterministic
+
+def main : IO Unit := pure ()
