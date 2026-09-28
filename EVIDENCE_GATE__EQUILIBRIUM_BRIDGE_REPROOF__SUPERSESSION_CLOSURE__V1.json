@@ -1,0 +1,50 @@
+{
+  "schema_version": "EVIDENCE_GATE_REPROOF_SUPERSESSION_CLOSURE_V1",
+  "gate": "EVIDENCE_GATE__EQUILIBRIUM_BRIDGE_REPROOF__SUPERSESSION_CLOSURE__PIN_COMMIT_25C714B3B58DB542B5E608E98EAEA1C9AE78F8AB__PIN_RUN_36392466553__PRESERVE_CANONICAL_COMMIT_9E794EDC51725EA5DDE66D485993787992667DB1__NO_GLOBAL_BIND__NO_RUNTIME_ADMISSION__V1",
+  "repository": "lbkapcsolat-dotcom/evidence-gate",
+  "branch": "formal/equilibrium-bridge-reproof-v1",
+  "closure_scope": "STALE_ROOT_REPROOF_HARNESS_SUPERSESSION_TO_PINNED_CANONICAL_RECONSTRUCTED_REPROOF",
+  "pinned_repair": {
+    "commit": "25c714b3b58db542b5e608e98eaea1c9ae78f8ab",
+    "workflow": "Equilibrium Bridge Lean Kernel",
+    "run_id": 36392466553,
+    "job_id": 108831159336,
+    "conclusion": "success"
+  },
+  "preserved_canonical_reproof": {
+    "commit": "9e794edc51725ea5dde66d485993787992667db1",
+    "prior_verified_run_id": 36335636959,
+    "source_identity_policy": "PRESERVE_CANONICAL_SOURCE_IDENTITIES",
+    "facade_created": false,
+    "stub_created": false,
+    "historical_sha_impersonation": false
+  },
+  "fresh_verification": {
+    "root_build": "PASS_7_JOBS",
+    "root_proof_escape_scan": "PASS",
+    "existing_theorem_surface": "PASS",
+    "canonical_checkout_exact_commit": "PASS",
+    "canonical_python_reference": "PASS",
+    "pinned_mathlib_cache": "PASS",
+    "canonical_lean_build": "PASS_8928_JOBS",
+    "canonical_proof_escape_scan": "PASS",
+    "historical_sha_impersonation_guard": "PASS",
+    "canonical_source_identity_readback": "PASS_7_OF_7",
+    "root_sha256_step": "PASS"
+  },
+  "supersession": {
+    "stale_root_harness": "SUPERSEDED_NONAUTHORITY",
+    "active_reproof_authority": "PINNED_CANONICAL_RECONSTRUCTED_ARTIFACT_SET",
+    "missing_EquilibriumBridgeReproof_module": "NOT_RECONSTRUCTED_AS_FACADE_OR_STUB"
+  },
+  "guards": {
+    "global_bind": false,
+    "runtime_admission": false,
+    "model_admission": false,
+    "production_promotion": false,
+    "external_actuation": false
+  },
+  "evidence_set_sha256": "2521577913b37336b3821842492b45c19354b1c67ae8ed4dbfdf2981a0d973fa",
+  "claim_ceiling": "SUPERSESSION_CLOSURE_ONLY__CANONICAL_REPROOF_PRESERVED__NO_GLOBAL_BIND__NO_RUNTIME_ADMISSION",
+  "verdict": "PASS_STALE_ROOT_HARNESS_SUPERSEDED__CANONICAL_REPROOF_REBOUND__FRESH_FULL_CI_PASS"
+}
