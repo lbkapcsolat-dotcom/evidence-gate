@@ -1,0 +1,27 @@
+{
+  "branch": "formal/historical-vs-reconstructed-equivalence-v1",
+  "gate": "ESS__HISTORICAL_EQUIVALENCE__POST_CLOSE_IDLE__PRESERVE_TERMINAL_EVIDENCE_READ_ONLY__NO_REOPEN_WITHOUT_NEW_CONTRADICTORY_EVIDENCE__NO_CLAIM_ESCALATION__NO_GLOBAL_BIND__ZERO_SPEND__V1",
+  "new_proof_work": false,
+  "policy": {
+    "authority_pointer_promotion": false,
+    "claim_escalation": false,
+    "external_actuation": false,
+    "global_bind": false,
+    "preserve_terminal_evidence_read_only": true,
+    "production_promotion": false,
+    "production_readiness": false,
+    "reopen_condition": "NEW_CONTRADICTORY_EVIDENCE_ONLY",
+    "runtime_admission": false,
+    "zero_spend": true
+  },
+  "proof_source_mutation": false,
+  "schema_version": "ESS_POST_CLOSE_IDLE_V1",
+  "state": "POST_CLOSE_IDLE",
+  "status": "PASS_POST_CLOSE_IDLE",
+  "terminal_closure": {
+    "evidence_commit": "00d60f64fc44343b96d45a91a072f9c3545cb753",
+    "path": "reproof/closures/HISTORICAL_VS_RECONSTRUCTED_PROOF_EQUIVALENCE_AUDIT__TERMINAL_READ_ONLY_CLOSURE__V1.json",
+    "sha256": "f8bbc9812093a6c18a8a39bcdb2340e0cc5db86e85800a5d16705602cd63c3c4",
+    "verdict": "PASS"
+  }
+}
