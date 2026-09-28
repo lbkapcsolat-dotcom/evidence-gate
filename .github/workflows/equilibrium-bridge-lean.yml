@@ -9,7 +9,6 @@ on:
     paths:
       - "EquilibriumBridge.lean"
       - "EquilibriumBridgeHarness.lean"
-      - "EquilibriumBridgeReproof.lean"
       - "EquilibriumBridgeReproofHarness.lean"
       - "lakefile.toml"
       - "lake-manifest.json"
@@ -26,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install pinned Lean toolchain
         shell: bash
         run: |
@@ -36,41 +36,106 @@ jobs:
           elan toolchain install "$TOOLCHAIN"
           lean --version
           lake --version
+
       - name: Build configured targets
         shell: bash
         run: |
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
           lake build
-      - name: Proof escape scan
+
+      - name: Root proof escape scan
         shell: bash
         run: |
           set -euo pipefail
-          files=(EquilibriumBridge.lean EquilibriumBridgeHarness.lean EquilibriumBridgeReproof.lean EquilibriumBridgeReproofHarness.lean)
-          present=()
-          for f in "${files[@]}"; do
-            [[ -f "$f" ]] && present+=("$f")
-          done
-          if grep -n -E '\bsorry\b|\badmit\b|\baxiom\b' "${present[@]}"; then
+          if grep -n -E '\b(sorry|admit|axiom)\b' EquilibriumBridge.lean EquilibriumBridgeHarness.lean; then
             echo "proof escape token found"
             exit 1
           fi
+
       - name: Existing theorem surface
         shell: bash
         run: |
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
           lake env lean EquilibriumBridgeHarness.lean
-      - name: Reconstructed reproof harness
+
+      - name: Checkout pinned canonical reconstructed reproof
+        uses: actions/checkout@v4
+        with:
+          ref: 9e794edc51725ea5dde66d485993787992667db1
+          path: canonical-reproof
+          fetch-depth: 1
+
+      - name: Verify canonical reconstructed commit identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed="$(git -C canonical-reproof rev-parse HEAD)"
+          test "$observed" = "9e794edc51725ea5dde66d485993787992667db1"
+          echo "$observed"
+
+      - name: Install canonical reconstructed toolchain
         shell: bash
         run: |
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
-          lake env lean EquilibriumBridgeReproofHarness.lean
-      - name: SHA256
+          TOOLCHAIN="$(tr -d '\r\n' < canonical-reproof/reproof/lean-toolchain)"
+          test "$TOOLCHAIN" = "leanprover/lean4:v4.34.0"
+          elan toolchain install "$TOOLCHAIN"
+
+      - name: Canonical reconstructed Python reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd canonical-reproof/reproof
+          python -m unittest -v test_reconstructed_model.py
+
+      - name: Resolve pinned canonical mathlib and cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          cd canonical-reproof/reproof
+          lake update
+          lake exe cache get
+
+      - name: Canonical reconstructed Lean proofs
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          cd canonical-reproof/reproof
+          lean --version
+          lake build EquilibriumReproof
+
+      - name: Canonical reconstructed proof escape scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -n -E '\b(sorry|admit|axiom)\b'               canonical-reproof/reproof/ReconstructedBridge.lean               canonical-reproof/reproof/ReconstructedRelativeHomology.lean               canonical-reproof/reproof/ReproofHarness.lean               canonical-reproof/reproof/lakefile.lean; then
+            echo "forbidden proof escape token found"
+            exit 1
+          fi
+
+      - name: Canonical historical SHA impersonation guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed="$(sha256sum             canonical-reproof/reproof/ReconstructedBridge.lean             canonical-reproof/reproof/ReconstructedRelativeHomology.lean)"
+          echo "$observed"
+          ! echo "$observed" | grep -qi 'e6bc11199bd5f0be517a6e62b603884deafce53de4761c2610059d5ee4179c6e'
+          ! echo "$observed" | grep -qi '60b1909e5864de8bc8ea007711fd45b7e56f5af790659d2a3368853f0e2db6de'
+
+      - name: Verify canonical reconstructed source identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd canonical-reproof
+          printf '%s  %s\n'             '4cf844e23723df8a3de6e5abcd25787f4f80dd761d0ff33247e489eb43705b23' 'reproof/reconstructed_model.py'             'c1b02dc9b47670a42ced0f4a27cfcf8b34832dd46072efb5e897a02310ad4855' 'reproof/test_reconstructed_model.py'             '20fa1e08e47912e12eb58c0f30cf4511f6a3241c3985c4884794300bbe67c9d9' 'reproof/ReconstructedBridge.lean'             'a65f5eb4255fe53f9ceb209ef5ebbc5eafcb464710039d175cb75858cb6d8f11' 'reproof/ReconstructedRelativeHomology.lean'             '58435f3e1e7f3cb1d725f5c4283be9158bb1c2001688e618a08365f1a9faab9c' 'reproof/ReproofHarness.lean'             '7fb679219a79b8c40a9b1d1b196133db4484c4ebe36f85c5a7ea8c7b390c4021' 'reproof/lakefile.lean'             '8733782dc070a99b312039cda424f601b80f3be6f6f512627da5ba25adc27632' 'reproof/lean-toolchain'             | sha256sum -c -
+
+      - name: Root SHA256
         shell: bash
         run: |
           set -euo pipefail
           sha256sum EquilibriumBridge.lean EquilibriumBridgeHarness.lean lakefile.toml lean-toolchain
-          [[ -f EquilibriumBridgeReproof.lean ]] && sha256sum EquilibriumBridgeReproof.lean
-          sha256sum EquilibriumBridgeReproofHarness.lean
