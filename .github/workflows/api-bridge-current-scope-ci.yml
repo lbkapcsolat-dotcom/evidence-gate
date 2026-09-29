@@ -20,10 +20,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify exact preserved runtime package
+      - name: Reassemble and verify exact preserved runtime package
         shell: bash
         run: |
           set -euo pipefail
+          base64 -d ci/api-bridge/runtime.zip.b64 > ci/api-bridge/runtime.zip
+          test "$(wc -c < ci/api-bridge/runtime.zip)" -eq 27954
           echo "1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df  ci/api-bridge/runtime.zip" | sha256sum -c -
           unzip -t ci/api-bridge/runtime.zip
           unzip -q ci/api-bridge/runtime.zip -d ci/api-bridge/runtime
