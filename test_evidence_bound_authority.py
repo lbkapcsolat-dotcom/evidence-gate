@@ -138,13 +138,13 @@ class EvidenceBoundAuthorityTests(unittest.TestCase):
         self.assertFalse(receipt["external_actuation"])
 
     def test_two_concurrent_consumers_exactly_one_wins(self):
-        barrier = threading.Barrier(2)
+        barrier = threading.Barrier(2, timeout=5.0)
         results = []
         lock = threading.Lock()
 
         def worker():
             store = SQLiteSingleUseStore(self.db)
-            barrier.wait()
+            barrier.wait(timeout=5.0)
             status = self.validate(store=store).status
             with lock:
                 results.append(status)
