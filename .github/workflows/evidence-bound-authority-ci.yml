@@ -3,16 +3,22 @@ name: Evidence Bound Authority CI
 on:
   push:
     branches:
-      - feature/evidence-bound-single-use-auth-v5
+      - "feature/evidence-bound-*"
     paths:
       - evidence_bound_authority.py
+      - evidence_bound_hardening.py
+      - evidence_bound_hardening_worker.py
       - test_evidence_bound_authority.py
+      - test_evidence_bound_hardening.py
       - requirements-evidence-bound-authority.txt
       - .github/workflows/evidence-bound-authority-ci.yml
   pull_request:
     paths:
       - evidence_bound_authority.py
+      - evidence_bound_hardening.py
+      - evidence_bound_hardening_worker.py
       - test_evidence_bound_authority.py
+      - test_evidence_bound_hardening.py
       - requirements-evidence-bound-authority.txt
       - .github/workflows/evidence-bound-authority-ci.yml
 
@@ -33,7 +39,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install isolated reference dependency
         run: python -m pip install -r requirements-evidence-bound-authority.txt
-      - name: Compile reference module
-        run: python -m compileall -q evidence_bound_authority.py test_evidence_bound_authority.py
-      - name: V5 contract + V6 durability fixtures
-        run: python -m unittest -v test_evidence_bound_authority.py
+      - name: Compile reference modules
+        run: python -m compileall -q evidence_bound_authority.py evidence_bound_hardening.py evidence_bound_hardening_worker.py test_evidence_bound_authority.py test_evidence_bound_hardening.py
+      - name: V5 authority + V6-V8 hardening fixtures
+        run: python -m unittest -v test_evidence_bound_authority.py test_evidence_bound_hardening.py
