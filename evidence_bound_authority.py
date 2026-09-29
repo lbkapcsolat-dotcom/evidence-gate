@@ -187,7 +187,6 @@ class SQLiteSingleUseStore:
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.path, timeout=10.0, isolation_level=None)
         conn.execute("PRAGMA busy_timeout=10000")
-        conn.execute("PRAGMA journal_mode=WAL")
         return conn
 
     @staticmethod
@@ -534,7 +533,6 @@ class SimulatedExternalAdapter:
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.path, timeout=10.0, isolation_level=None)
         conn.execute("PRAGMA busy_timeout=10000")
-        conn.execute("PRAGMA journal_mode=WAL")
         return conn
 
     def apply_effect(
