@@ -235,10 +235,10 @@ struct BalanceInput {
     std::vector<QValue> demand;
     std::vector<QValue> loss;
     std::vector<QValue> internal_flow;
-    std::vector<BoundaryEdge> boundary_edges;
-    std::vector<QValue> boundary_flow;
-    NodeMap storage_net;
-    NodeMap process_contribution;
+    std::vector<BoundaryEdge> boundary_edges{};
+    std::vector<QValue> boundary_flow{};
+    NodeMap storage_net{};
+    NodeMap process_contribution{};
 };
 
 static NodeMap resource_balance_residual(const BalanceInput& in) {
