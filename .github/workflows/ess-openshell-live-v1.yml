@@ -375,10 +375,21 @@ jobs:
           printf '%s\n' "$SUPERVISOR_CONTAINER" > "$WORKDIR/supervisor-container-id.txt"
 
           if [ -n "$SUPERVISOR_CONTAINER" ]; then
-            docker exec "$SUPERVISOR_CONTAINER" sh -lc \
-              'cat /var/log/openshell-ocsf.*.log 2>/dev/null || true' \
-              >"$WORKDIR/ocsf.jsonl" 2>"$WORKDIR/ocsf-read.err"
-            OCSF_READ_RC=$?
+            # Supervisor image is intentionally minimal/distroless and has no shell.
+            # docker cp uses the daemon archive API and does not require an in-container shell.
+            rm -rf "$WORKDIR/supervisor-var-log"
+            mkdir -p "$WORKDIR/supervisor-var-log"
+            docker cp "$SUPERVISOR_CONTAINER:/var/log/." "$WORKDIR/supervisor-var-log/" \
+              2>"$WORKDIR/ocsf-read.err"
+            OCSF_COPY_RC=$?
+            cat "$WORKDIR"/supervisor-var-log/openshell-ocsf.*.log \
+              >"$WORKDIR/ocsf.jsonl" 2>>"$WORKDIR/ocsf-read.err"
+            OCSF_CAT_RC=$?
+            if [ "$OCSF_COPY_RC" -eq 0 ] && [ "$OCSF_CAT_RC" -eq 0 ]; then
+              OCSF_READ_RC=0
+            else
+              OCSF_READ_RC=45
+            fi
           else
             : >"$WORKDIR/ocsf.jsonl"
             echo "SUPERVISOR_CONTAINER_NOT_FOUND" >"$WORKDIR/ocsf-read.err"
