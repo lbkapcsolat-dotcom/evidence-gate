@@ -55,7 +55,7 @@ struct planetary_resource_validation_graph
 
     static Port<TS<Str>> compose(Wiring &w, Port<TS<Int>> case_id)
     {
-        return wire<planetary_resource_validation_case>(w, case_id);
+        return wire<planetary_resource_validation_case, TS<Str>>(w, case_id);
     }
 };
 
