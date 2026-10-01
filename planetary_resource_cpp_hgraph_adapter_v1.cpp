@@ -12,9 +12,16 @@
 #include <string>
 #include <vector>
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #define main eqprs_standalone_main_disabled_for_hgraph_adapter
 #include "planetary_resource_cpp_kernel_v1.cpp"
 #undef main
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 namespace eqprs_hgraph_adapter {
 
