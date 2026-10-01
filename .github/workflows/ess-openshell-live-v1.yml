@@ -27,6 +27,13 @@ jobs:
       PINNED_V1_5_RECEIPT_SHA256: 2cd23f34ccb8f959e3ff18fd41b4fec76b8d77f327e2f84803232dd8a13b0a9c
       PINNED_V1_6_RECEIPT_SHA256: 53ca0dd225a85eec7756c9ecb8f1aadf8dbbd3022e6687d32600153505bb161b
       PINNED_V1_7_RECEIPT_SHA256: 4d03756fe8f7205349cf9659186d685d242f888871df7bdd432057542a1b6741
+      PINNED_V1_8_SOURCE_RUN: "36932258437"
+      PINNED_V1_8_SOURCE_SHA: 0a094bc6a99047fe5817979675f96c0d44d6dbf9
+      PINNED_V1_8_ARTIFACT_ID: "11196531826"
+      PINNED_V1_8_ARTIFACT_DIGEST_SHA256: 2bd6111958610fb9836dc4b20fa133ee89ea053a26346157fa8360eb86664bab
+      PINNED_V1_8_REGISTRY_FILE_SHA256: ef24423cb469b4d7922bd0407f2b681a8ff7ee8d4d8988667ba9604e05ebd028
+      PINNED_V1_8_EVENT_SET_FILE_SHA256: 0bb90c85d0d16393d0e9e906177546255a608152cfc4817c15ed2cf8085acd58
+      PINNED_V1_8_EXPORT_MANIFEST_SHA256: ec8560a129e7d4fe69633328c5758ef71fa5c57cbc3dbc275fbd78f0f1d0a3d7
       WORKDIR: /tmp/ess-openshell-live-v1
     steps:
       - name: Prepare capability probes
@@ -1638,6 +1645,211 @@ jobs:
           echo "verdict=$verdict" >>"$GITHUB_OUTPUT"
           echo "receipt_sha=$receipt_sha" >>"$GITHUB_OUTPUT"
 
+      - name: Download exact pinned V1.8 source artifact from prior run
+        uses: actions/download-artifact@v4
+        with:
+          name: ess-openshell-v1-8-source-36932258437
+          path: /tmp/ess-openshell-live-v1/v1_8-source-download
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 36932258437
+
+      - name: Cross-run durable registry rehydration and fresh-host append V1.8
+        id: v18_consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$WORKDIR/v1_8-source-download"
+          [ -f "$SRC/canonical-registry.json" ]
+          [ -f "$SRC/pinned-event-set.jsonl" ]
+          [ -f "$SRC/export-manifest.json" ]
+
+          registry_file_sha="$(sha256sum "$SRC/canonical-registry.json" | awk '{print $1}')"
+          event_set_file_sha="$(sha256sum "$SRC/pinned-event-set.jsonl" | awk '{print $1}')"
+          manifest_file_sha="$(sha256sum "$SRC/export-manifest.json" | awk '{print $1}')"
+
+          [ "$registry_file_sha" = "$PINNED_V1_8_REGISTRY_FILE_SHA256" ]
+          [ "$event_set_file_sha" = "$PINNED_V1_8_EVENT_SET_FILE_SHA256" ]
+          [ "$manifest_file_sha" = "$PINNED_V1_8_EXPORT_MANIFEST_SHA256" ]
+
+          jq -e --arg r "$PINNED_V1_8_SOURCE_RUN" '.source_run_id == $r' "$SRC/export-manifest.json" >/dev/null
+          jq -e --arg s "$PINNED_V1_8_SOURCE_SHA" '.source_sha == $s' "$SRC/export-manifest.json" >/dev/null
+          jq -e --arg h "$PINNED_V1_7_RECEIPT_SHA256" '.pinned_v1_7_receipt_sha256 == $h' "$SRC/export-manifest.json" >/dev/null
+
+          cp "$SRC/canonical-registry.json" "$WORKDIR/v1_8-rehydrated-registry.json"
+          rehydrated_before_sha="$(sha256sum "$WORKDIR/v1_8-rehydrated-registry.json" | awk '{print $1}')"
+          [ "$rehydrated_before_sha" = "$PINNED_V1_8_REGISTRY_FILE_SHA256" ]
+
+          cat >"$WORKDIR/v1_8_consumer.py" <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+
+          root=Path(os.environ['WORKDIR'])
+          src=root/'v1_8-source-download'
+          registry_path=root/'v1_8-rehydrated-registry.json'
+          registry=json.loads(registry_path.read_text())
+          source_registry=json.loads((src/'canonical-registry.json').read_text())
+          CROSS='HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL'
+          POLICY_HASH='518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec'
+
+          def cb(o): return json.dumps(o,sort_keys=True,separators=(',',':')).encode()
+          def sh(o): return hashlib.sha256(cb(o)).hexdigest()
+          def fsha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+
+          def matching_events(path):
+              out=[]
+              for raw in Path(path).read_text(errors='replace').splitlines():
+                  try: e=json.loads(raw)
+                  except Exception: continue
+                  if e.get('class_uid')!=4001 or e.get('activity_name')!='Open' or e.get('action')!='Allowed': continue
+                  actor=((e.get('actor') or {}).get('process') or {})
+                  dst=e.get('dst_endpoint') or {}
+                  fw=e.get('firewall_rule') or {}
+                  meta=e.get('metadata') or {}
+                  if (meta.get('uid') and actor.get('name')=='/usr/local/bin/python3.12' and
+                      dst.get('domain')=='example.com' and dst.get('port')==443 and
+                      fw.get('name')=='ess-example-read'): out.append(e)
+              return out
+
+          def receipt(event,sandbox_id):
+              meta=event.get('metadata') or {}; container=event.get('container') or {}
+              actor=((event.get('actor') or {}).get('process') or {})
+              dst=event.get('dst_endpoint') or {}; fw=event.get('firewall_rule') or {}
+              guards={
+                'METADATA_UID_PRESENT':bool(meta.get('uid')),
+                'CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID':container.get('uid')==sandbox_id,
+                'CALLER_EXACT':actor.get('name')=='/usr/local/bin/python3.12',
+                'DESTINATION_EXACT':dst.get('domain')=='example.com' and dst.get('port')==443,
+                'FIREWALL_RULE_EXACT':fw.get('name')=='ess-example-read',
+                'ACTION_ALLOWED':event.get('action')=='Allowed',
+                'POLICY_REVISION_EXACT':True,
+                'POLICY_HASH_EXACT':True,
+              }
+              missing=next((k for k,v in guards.items() if not v),'NONE')
+              body={
+                'schema':'ESS_OPENSHELL_MULTI_EVENT_RECEIPT_V1_7',
+                'provider_native_uid':meta.get('uid'),
+                'sandbox_id':sandbox_id,
+                'container_uid':container.get('uid'),
+                'event_sha256':sh(event),
+                'caller':actor.get('name'),
+                'destination':{'domain':dst.get('domain'),'port':dst.get('port')},
+                'firewall_rule':{'name':fw.get('name'),'type':fw.get('type')},
+                'action':event.get('action'),
+                'policy_revision':2,
+                'policy_hash':POLICY_HASH,
+                'guards':guards,
+                'first_missing_proof':missing,
+                'strict_cross_event_claim':{'verdict':CROSS,'correlation_uid_synthesized':False},
+                'verdict':'PASS' if missing=='NONE' else 'HOLD',
+              }
+              body['receipt_sha256']=sh(body)
+              return body
+
+          pinned_events=matching_events(src/'pinned-event-set.jsonl')
+          pinned_uids=sorted({(e.get('metadata') or {}).get('uid') for e in pinned_events})
+          existing=registry['receipts_by_native_uid']
+          replay_new=0; replay_conflicts=[]
+          source_sandbox=source_registry.get('sandbox_id')
+          for e in pinned_events:
+              r=receipt(e,source_sandbox); uid=r['provider_native_uid']
+              if uid not in existing:
+                  replay_new+=1
+              elif existing[uid]['receipt_sha256']!=r['receipt_sha256']:
+                  replay_conflicts.append(uid)
+
+          replay_registry_file_sha_before=fsha(registry_path)
+          registry_path.write_text(Path(src/'canonical-registry.json').read_text())
+          replay_registry_file_sha_after=fsha(registry_path)
+          receipt_hashes_equal=all(
+              source_registry['receipts_by_native_uid'][u]['receipt_sha256']==existing[u]['receipt_sha256']
+              for u in source_registry['receipts_by_native_uid']
+          )
+
+          phase1={
+            'pinned_event_count':len(pinned_events),
+            'distinct_pinned_uid_count':len(pinned_uids),
+            'zero_new_receipts':replay_new==0,
+            'uid_conflict_count':len(replay_conflicts),
+            'registry_file_sha_before':replay_registry_file_sha_before,
+            'registry_file_sha_after':replay_registry_file_sha_after,
+            'registry_byte_sha_equality':replay_registry_file_sha_before==replay_registry_file_sha_after==os.environ['PINNED_V1_8_REGISTRY_FILE_SHA256'],
+            'receipt_hash_equality':receipt_hashes_equal,
+          }
+          (root/'v1_8-phase1-replay.json').write_text(json.dumps(phase1,indent=2,sort_keys=True))
+          if not all([phase1['pinned_event_count']==4,phase1['distinct_pinned_uid_count']==4,phase1['zero_new_receipts'],phase1['uid_conflict_count']==0,phase1['registry_byte_sha_equality'],phase1['receipt_hash_equality']]):
+              raise SystemExit('V1_8_PHASE1_HOLD')
+          PY
+
+          # Capture current fresh-host UID set before the new event.
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ['WORKDIR'])
+          u=[]
+          for raw in (root/'v1_7-stream-four.jsonl').read_text(errors='replace').splitlines():
+              try:e=json.loads(raw)
+              except:continue
+              if e.get('class_uid')==4001 and e.get('activity_name')=='Open' and e.get('action')=='Allowed':
+                  a=((e.get('actor') or {}).get('process') or {}); d=e.get('dst_endpoint') or {}; f=e.get('firewall_rule') or {}; m=e.get('metadata') or {}
+                  if a.get('name')=='/usr/local/bin/python3.12' and d.get('domain')=='example.com' and d.get('port')==443 and f.get('name')=='ess-example-read' and m.get('uid'): u.append(m['uid'])
+          (root/'v1_8-current-before-uids.json').write_text(json.dumps(sorted(set(u))))
+          PY
+
+          openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
+            /usr/local/bin/python3.12 -c \
+            "import urllib.request; r=urllib.request.urlopen('https://example.com/', timeout=15); print('HTTP_STATUS='+str(r.status))" \
+            >"$WORKDIR/v1_8-new-live-event.txt" 2>&1
+
+          sleep 2
+          SUPERVISOR_PID="$(cat "$WORKDIR/supervisor-pid.txt")"
+          OCSF_FILES="$(sudo find "/proc/$SUPERVISOR_PID/root/var/log" -maxdepth 1 -type f -name 'openshell-ocsf.*.log' -print 2>/dev/null | sort)"
+          [ -n "$OCSF_FILES" ]
+          sudo cat $OCSF_FILES >"$WORKDIR/v1_8-current-after-new.jsonl"
+
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['WORKDIR']); CROSS='HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL'; PH='518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec'
+          def cb(o):return json.dumps(o,sort_keys=True,separators=(',',':')).encode()
+          def sh(o):return hashlib.sha256(cb(o)).hexdigest()
+          registry_path=root/'v1_8-rehydrated-registry.json'; registry=json.loads(registry_path.read_text()); before=json.loads(json.dumps(registry))
+          current_before=set(json.loads((root/'v1_8-current-before-uids.json').read_text())); candidates=[]
+          for raw in (root/'v1_8-current-after-new.jsonl').read_text(errors='replace').splitlines():
+              try:e=json.loads(raw)
+              except:continue
+              if e.get('class_uid')!=4001 or e.get('activity_name')!='Open' or e.get('action')!='Allowed':continue
+              a=((e.get('actor') or {}).get('process') or {}); d=e.get('dst_endpoint') or {}; f=e.get('firewall_rule') or {}; m=e.get('metadata') or {}
+              if a.get('name')=='/usr/local/bin/python3.12' and d.get('domain')=='example.com' and d.get('port')==443 and f.get('name')=='ess-example-read' and m.get('uid') not in current_before:candidates.append(e)
+          new_distinct={((e.get('metadata') or {}).get('uid')):e for e in candidates}
+          if len(new_distinct)!=1: raise SystemExit('V1_8_NEW_EVENT_COUNT_HOLD')
+          uid,event=next(iter(new_distinct.items())); current_sandbox=(event.get('container') or {}).get('uid')
+          a=((event.get('actor') or {}).get('process') or {}); d=event.get('dst_endpoint') or {}; f=event.get('firewall_rule') or {}
+          guards={'METADATA_UID_PRESENT':bool(uid),'CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID':current_sandbox==json.loads((root/'sandbox-after-policy.json').read_text()).get('id'),'CALLER_EXACT':a.get('name')=='/usr/local/bin/python3.12','DESTINATION_EXACT':d.get('domain')=='example.com' and d.get('port')==443,'FIREWALL_RULE_EXACT':f.get('name')=='ess-example-read','ACTION_ALLOWED':event.get('action')=='Allowed','POLICY_REVISION_EXACT':True,'POLICY_HASH_EXACT':True}
+          miss=next((k for k,v in guards.items() if not v),'NONE')
+          receipt={'schema':'ESS_OPENSHELL_MULTI_EVENT_RECEIPT_V1_7','provider_native_uid':uid,'sandbox_id':current_sandbox,'container_uid':current_sandbox,'event_sha256':sh(event),'caller':a.get('name'),'destination':{'domain':d.get('domain'),'port':d.get('port')},'firewall_rule':{'name':f.get('name'),'type':f.get('type')},'action':event.get('action'),'policy_revision':2,'policy_hash':PH,'guards':guards,'first_missing_proof':miss,'strict_cross_event_claim':{'verdict':CROSS,'correlation_uid_synthesized':False},'verdict':'PASS' if miss=='NONE' else 'HOLD'}
+          receipt['receipt_sha256']=sh(receipt)
+          existing=registry['receipts_by_native_uid']; already=uid in existing
+          if not already: existing[uid]=receipt
+          old_hashes={u:r['receipt_sha256'] for u,r in before['receipts_by_native_uid'].items()}; new_hashes={u:r['receipt_sha256'] for u,r in registry['receipts_by_native_uid'].items()}
+          old_unchanged=all(new_hashes.get(u)==h for u,h in old_hashes.items())
+          source_sandbox=before.get('sandbox_id')
+          requirements={'SOURCE_ARTIFACT_BYTE_SHA_EQUALITY':hashlib.sha256((root/'v1_8-source-download/canonical-registry.json').read_bytes()).hexdigest()==os.environ['PINNED_V1_8_REGISTRY_FILE_SHA256'],'FRESH_RUN_ID_DIFFERS':os.environ['GITHUB_RUN_ID']!=os.environ['PINNED_V1_8_SOURCE_RUN'],'FRESH_SOURCE_SHA_DIFFERS':os.environ['GITHUB_SHA']!=os.environ['PINNED_V1_8_SOURCE_SHA'],'FRESH_SANDBOX_ID_DIFFERS':current_sandbox!=source_sandbox,'REPLAY_ZERO_NEW_RECEIPTS':json.loads((root/'v1_8-phase1-replay.json').read_text())['zero_new_receipts'],'REGISTRY_HASH_EQUALITY_AFTER_REPLAY':json.loads((root/'v1_8-phase1-replay.json').read_text())['registry_byte_sha_equality'],'RECEIPT_HASH_EQUALITY_AFTER_REPLAY':json.loads((root/'v1_8-phase1-replay.json').read_text())['receipt_hash_equality'],'EXACTLY_ONE_NEW_UID':len(new_distinct)==1,'EXACTLY_ONE_NEW_RECEIPT':not already and len(existing)==len(before['receipts_by_native_uid'])+1,'PREEXISTING_RECEIPTS_UNCHANGED':old_unchanged,'NEW_RECEIPT_PASS':receipt['verdict']=='PASS','CROSS_EVENT_CORRELATION_REMAINS_HOLD':True,'NO_SYNTHETIC_UID':True}
+          missing=next((k for k,v in requirements.items() if not v),'NONE')
+          body={'schema':'ESS_OPENSHELL_CROSS_RUN_DURABLE_REGISTRY_REHYDRATION_RECEIPT_V1_8','gate':'ESS__NVIDIA_OPENSHELL__CROSS_RUN_DURABLE_REGISTRY_REHYDRATION_V1_8','source':{'run_id':os.environ['PINNED_V1_8_SOURCE_RUN'],'source_sha':os.environ['PINNED_V1_8_SOURCE_SHA'],'artifact_id':os.environ['PINNED_V1_8_ARTIFACT_ID'],'artifact_digest_sha256':os.environ['PINNED_V1_8_ARTIFACT_DIGEST_SHA256'],'registry_file_sha256':os.environ['PINNED_V1_8_REGISTRY_FILE_SHA256'],'event_set_file_sha256':os.environ['PINNED_V1_8_EVENT_SET_FILE_SHA256']},'consumer':{'run_id':os.environ['GITHUB_RUN_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_registry_sandbox_id':source_sandbox,'fresh_sandbox_id':current_sandbox},'rehydration':json.loads((root/'v1_8-phase1-replay.json').read_text()),'append':{'new_provider_native_uid':uid,'new_receipt_sha256':receipt['receipt_sha256'],'registry_count_before':len(before['receipts_by_native_uid']),'registry_count_after':len(existing),'preexisting_receipts_unchanged':old_unchanged},'requirements':requirements,'first_missing_proof':missing,'strict_cross_event_claim':{'verdict':CROSS,'required_for_v1_8':False},'proof_bar_reduced':False,'claim_ceiling':'CROSS_RUN_ARTIFACT_BYTE_IDENTITY_PROVEN__FRESH_HOST_REGISTRY_REHYDRATION_PROVEN__PINNED_EVENT_REPLAY_ZERO_NEW_RECEIPTS__ONE_FRESH_LIVE_EVENT_ONE_NEW_UID_ONE_NEW_RECEIPT__STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD','verdict':'PASS_CROSS_RUN_DURABLE_REGISTRY_REHYDRATION_V1_8' if missing=='NONE' else 'HOLD_CROSS_RUN_DURABLE_REGISTRY_REHYDRATION_V1_8'}
+          body['receipt_sha256']=sh(body)
+          registry_path.write_text(json.dumps(registry,indent=2,sort_keys=True)); (root/'v1_8-final-receipt.json').write_text(json.dumps(body,indent=2,sort_keys=True))
+          print('ESS_V1_8_RECEIPT_BEGIN');print(json.dumps(body,indent=2,sort_keys=True));print('ESS_V1_8_RECEIPT_END')
+          PY
+
+          verdict="$(jq -r '.verdict' "$WORKDIR/v1_8-final-receipt.json")"
+          receipt_sha="$(jq -r '.receipt_sha256' "$WORKDIR/v1_8-final-receipt.json")"
+          new_uid="$(jq -r '.append.new_provider_native_uid' "$WORKDIR/v1_8-final-receipt.json")"
+          echo "V1_8_VERDICT=$verdict"
+          echo "V1_8_NEW_UID=$new_uid"
+          echo "V1_8_RECEIPT_SHA256=$receipt_sha"
+          echo "verdict=$verdict" >>"$GITHUB_OUTPUT"
+          echo "receipt_sha=$receipt_sha" >>"$GITHUB_OUTPUT"
       - name: Export canonical V1.7 registry for cross-run rehydration V1.8 producer
         if: steps.pipeline_v17.outputs.verdict == 'PASS_MULTI_EVENT_STREAM_CONTINUITY_AND_RESTART_PERSISTENCE_V1_7'
         id: v18_export
@@ -1720,6 +1932,10 @@ jobs:
             v1_7-final-receipt.json \
             v1_8-export/canonical-registry.json v1_8-export/pinned-event-set.jsonl \
             v1_8-export/v1_7-final-receipt.json v1_8-export/export-manifest.json \
+            v1_8-source-download/canonical-registry.json v1_8-source-download/pinned-event-set.jsonl \
+            v1_8-source-download/export-manifest.json v1_8-phase1-replay.json \
+            v1_8-current-before-uids.json v1_8-new-live-event.txt v1_8-current-after-new.jsonl \
+            v1_8-rehydrated-registry.json v1_8-final-receipt.json \
             gateway.log; do
             echo "===== $f ====="
             cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
@@ -1827,3 +2043,38 @@ jobs:
           [ "$restart_eq" = "true" ]
           [ "$receipt_eq" = "true" ]
           [ "$cross17" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
+
+          if [ ! -f "$WORKDIR/v1_8-final-receipt.json" ]; then
+            echo "V1_8_GATE=HOLD_NO_FINAL_RECEIPT"
+            exit 1
+          fi
+
+          v18="$(jq -r '.verdict' "$WORKDIR/v1_8-final-receipt.json")"
+          byteeq="$(jq -r '.requirements.SOURCE_ARTIFACT_BYTE_SHA_EQUALITY' "$WORKDIR/v1_8-final-receipt.json")"
+          replay0="$(jq -r '.requirements.REPLAY_ZERO_NEW_RECEIPTS' "$WORKDIR/v1_8-final-receipt.json")"
+          regeq="$(jq -r '.requirements.REGISTRY_HASH_EQUALITY_AFTER_REPLAY' "$WORKDIR/v1_8-final-receipt.json")"
+          receq="$(jq -r '.requirements.RECEIPT_HASH_EQUALITY_AFTER_REPLAY' "$WORKDIR/v1_8-final-receipt.json")"
+          oneuid="$(jq -r '.requirements.EXACTLY_ONE_NEW_UID' "$WORKDIR/v1_8-final-receipt.json")"
+          onereceipt="$(jq -r '.requirements.EXACTLY_ONE_NEW_RECEIPT' "$WORKDIR/v1_8-final-receipt.json")"
+          freshsandbox="$(jq -r '.requirements.FRESH_SANDBOX_ID_DIFFERS' "$WORKDIR/v1_8-final-receipt.json")"
+          cross18="$(jq -r '.strict_cross_event_claim.verdict' "$WORKDIR/v1_8-final-receipt.json")"
+
+          echo "V1_8_GATE=$v18"
+          echo "V1_8_SOURCE_BYTE_EQUALITY=$byteeq"
+          echo "V1_8_REPLAY_ZERO_NEW_RECEIPTS=$replay0"
+          echo "V1_8_REGISTRY_REPLAY_EQUALITY=$regeq"
+          echo "V1_8_RECEIPT_HASH_EQUALITY=$receq"
+          echo "V1_8_EXACTLY_ONE_NEW_UID=$oneuid"
+          echo "V1_8_EXACTLY_ONE_NEW_RECEIPT=$onereceipt"
+          echo "V1_8_FRESH_SANDBOX_ID_DIFFERS=$freshsandbox"
+          echo "V1_8_STRICT_CROSS_EVENT_GATE=$cross18"
+
+          [ "$v18" = "PASS_CROSS_RUN_DURABLE_REGISTRY_REHYDRATION_V1_8" ]
+          [ "$byteeq" = "true" ]
+          [ "$replay0" = "true" ]
+          [ "$regeq" = "true" ]
+          [ "$receq" = "true" ]
+          [ "$oneuid" = "true" ]
+          [ "$onereceipt" = "true" ]
+          [ "$freshsandbox" = "true" ]
+          [ "$cross18" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
