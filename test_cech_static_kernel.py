@@ -148,5 +148,30 @@ class CechAlgebraIdentityTests(KernelMixin, unittest.TestCase):
         self.assertEqual(_clean(k.delta(1, k.delta(0, phi))), {})
 
 
+class CechGlobalDirectSumTests(KernelMixin, unittest.TestCase):
+    def test_global_delta_keeps_64_components_independent(self):
+        k = self._kernel()
+        components = [{} for _ in range(64)]
+        components[37] = {(1,): 2, (2,): 5}
+        out = k.global_delta(0, components)
+        self.assertEqual(len(out), 64)
+        self.assertEqual(_clean(out[37]), _clean(k.delta(0, components[37])))
+        self.assertTrue(all(_clean(out[i]) == {} for i in range(64) if i != 37))
+
+    def test_global_h_keeps_64_components_independent(self):
+        k = self._kernel()
+        components = [{} for _ in range(64)]
+        components[11] = {(1, 2): 7}
+        out = k.global_contracting_homotopy(1, components)
+        self.assertEqual(len(out), 64)
+        self.assertEqual(_clean(out[11]), {(2,): 7})
+        self.assertTrue(all(_clean(out[i]) == {} for i in range(64) if i != 11))
+
+    def test_global_operators_reject_wrong_component_count(self):
+        k = self._kernel()
+        with self.assertRaises(ValueError):
+            k.global_delta(0, [{} for _ in range(63)])
+
+
 if __name__ == "__main__":
     unittest.main()
