@@ -2,13 +2,15 @@ import importlib
 import unittest
 
 
-class CechStaticKernelDimensionTests(unittest.TestCase):
+class KernelMixin:
     def _kernel(self):
         try:
             return importlib.import_module("hgraph_cech_static_kernel")
         except ModuleNotFoundError:
             self.fail("hgraph_cech_static_kernel module is missing")
 
+
+class CechStaticKernelDimensionTests(KernelMixin, unittest.TestCase):
     def test_local_and_global_dimensions_all_degrees(self):
         k = self._kernel()
         expected_local = [
@@ -28,6 +30,28 @@ class CechStaticKernelDimensionTests(unittest.TestCase):
             k.local_dimension(-1)
         with self.assertRaises(ValueError):
             k.local_dimension(20)
+
+
+class CechCoboundaryTests(KernelMixin, unittest.TestCase):
+    def test_delta_degree_zero_uses_alternating_orientation(self):
+        k = self._kernel()
+        f = {(1,): 3, (2,): 5, (3,): 11}
+        df = k.delta(0, f)
+        self.assertEqual(df[(1, 2)], 2)
+        self.assertEqual(df[(1, 3)], 8)
+        self.assertEqual(df[(2, 3)], 6)
+
+    def test_delta_of_single_edge_has_expected_triangle_signs(self):
+        k = self._kernel()
+        edge = {(1, 2): 1}
+        d_edge = k.delta(1, edge)
+        self.assertEqual(d_edge[(1, 2, 3)], 1)
+        self.assertEqual(d_edge[(1, 2, 20)], 1)
+
+    def test_delta_top_degree_is_zero(self):
+        k = self._kernel()
+        top = {tuple(range(1, 21)): 7}
+        self.assertEqual(k.delta(19, top), {})
 
 
 if __name__ == "__main__":
