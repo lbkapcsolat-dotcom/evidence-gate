@@ -24,10 +24,10 @@ class CechCppPythonParityTests(unittest.TestCase):
                 [compiler, "-std=c++17", "-O2", "-DEQ64_CECH_STANDALONE", str(source), "-o", str(binary)],
                 check=True, capture_output=True, text=True,
             )
-            cpp_first = subprocess.run([str(binary)], check=True, capture_output=True, text=True).stdout
-            cpp_second = subprocess.run([str(binary)], check=True, capture_output=True, text=True).stdout
-            self_first = subprocess.run([str(binary), "--selfcheck"], check=True, capture_output=True, text=True).stdout
-            self_second = subprocess.run([str(binary), "--selfcheck"], check=True, capture_output=True, text=True).stdout
+            cpp_first = subprocess.run([str(binary)], check=True, capture_output=True, text=True, timeout=30).stdout
+            cpp_second = subprocess.run([str(binary)], check=True, capture_output=True, text=True, timeout=30).stdout
+            self_first = subprocess.run([str(binary), "--selfcheck"], check=True, capture_output=True, text=True, timeout=30).stdout
+            self_second = subprocess.run([str(binary), "--selfcheck"], check=True, capture_output=True, text=True, timeout=30).stdout
 
         self.assertEqual(cpp_first, cpp_second)
         self.assertEqual(cpp_first, python_first)
