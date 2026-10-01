@@ -70,6 +70,7 @@ jobs:
           test -n "$wheel"
           echo "78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2  $wheel" | sha256sum -c -
           python -m pip install "$wheel"
+          python -m pip install "nanobind==2.13.0"
 
       - name: Prove pinned native HGraph runtime identity
         run: |
