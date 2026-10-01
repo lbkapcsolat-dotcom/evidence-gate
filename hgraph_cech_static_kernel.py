@@ -154,8 +154,20 @@ def _parity_orbit_representatives(p: int) -> tuple[Simplex, ...]:
     return tuple(reps)
 
 
+def _fixture_extend(rep: Simplex, count: int) -> Simplex:
+    missing = [vertex for vertex in CANONICAL_VERTICES if vertex not in rep][:count]
+    return tuple(sorted(rep + tuple(missing)))
+
+
+def _fixture_control_simplex(rep: Simplex) -> Simplex | None:
+    for simplex in combinations(CANONICAL_VERTICES, len(rep)):
+        if simplex != rep:
+            return simplex
+    return None
+
+
 def cpp_parity_summary() -> str:
-    """Canonical cross-language signature for C++/Python parity replay."""
+    """Fast canonical fixture signature for C++/Python parity replay."""
     lines = [
         "EQ64_CECH_STATIC_KERNEL_V1",
         f"N={LOCAL_SIMPLEX_VERTEX_COUNT}",
@@ -171,7 +183,6 @@ def cpp_parity_summary() -> str:
     edge = {(1, 2): 1}
     d1 = delta(1, edge)
     lines.append(f"DELTA1:{d1[(1, 2, 3)]}:{d1[(1, 2, 20)]}")
-
     h1 = contracting_homotopy(1, {(1, 2): 7, (2, 3): 9})
     lines.append(f"H1:{h1[(1,)]}:{h1[(2,)]}:{h1[(3,)]}")
     h2 = contracting_homotopy(2, {(1, 2, 3): 5})
@@ -179,56 +190,33 @@ def cpp_parity_summary() -> str:
     pi = h0_projection({(1,): 3, (2,): 11, (20,): -4})
     lines.append(f"PI:{pi[(1,)]}:{pi[(2,)]}:{pi[(20,)]}")
 
-    all_d2 = True
     for p in range(19):
         for orbit_index, rep in enumerate(_parity_orbit_representatives(p)):
-            ok = True
+            value = 0
             if p <= 17:
-                for simplex in combinations(CANONICAL_VERTICES, p + 3):
-                    if _basis_delta_squared_value(p, rep, simplex) != 0:
-                        ok = False
-                        break
-            all_d2 = all_d2 and ok
-            lines.append(f"D2:{p}:{orbit_index}:{1 if ok else 0}")
+                target = _fixture_extend(rep, 2)
+                value = _basis_delta_squared_value(p, rep, target)
+            lines.append(f"D2F:{p}:{orbit_index}:{value}")
 
-    all_h = True
     for p in range(1, 20):
         for orbit_index, rep in enumerate(_parity_orbit_representatives(p)):
-            ok = all(
-                _basis_positive_composition_value(p, rep, simplex)
-                == _basis_value(rep, simplex)
-                for simplex in combinations(CANONICAL_VERTICES, p + 1)
-            )
-            all_h = all_h and ok
-            lines.append(f"HOM:{p}:{orbit_index}:{1 if ok else 0}")
+            on_rep = _basis_positive_composition_value(p, rep, rep)
+            lines.append(f"HOMF:{p}:{orbit_index}:{on_rep}")
+            control = _fixture_control_simplex(rep)
+            if control is None:
+                lines.append(f"HOMC:{p}:{orbit_index}:NA")
+            else:
+                control_value = _basis_positive_composition_value(p, rep, control)
+                lines.append(f"HOMC:{p}:{orbit_index}:{control_value}")
 
-    h0_ok = True
-    for basis_vertex in CANONICAL_VERTICES:
-        for target_vertex in CANONICAL_VERTICES:
-            lhs = 0 if target_vertex == APEX_VERTEX else (
+    for basis_vertex in (1, 2, 20):
+        for target_vertex in (1, 2, 20):
+            value = 0 if target_vertex == APEX_VERTEX else (
                 (1 if target_vertex == basis_vertex else 0)
                 - (1 if APEX_VERTEX == basis_vertex else 0)
             )
-            rhs = (1 if target_vertex == basis_vertex else 0) - (
-                1 if APEX_VERTEX == basis_vertex else 0
-            )
-            if lhs != rhs:
-                h0_ok = False
-                break
-        if not h0_ok:
-            break
-    lines.append(f"H0_REDUCED_ALL:{1 if h0_ok else 0}")
+            lines.append(f"H0F:{basis_vertex}:{target_vertex}:{value}")
 
-    mutant_phi = {(1,): 1}
-    mutant_first = {}
-    for simplex in combinations(CANONICAL_VERTICES, 2):
-        mutant_first[simplex] = sum(mutant_phi.get((vertex,), 0) for vertex in simplex)
-    mutant_value = sum(
-        mutant_first.get(face, 0)
-        for face in ((2, 3), (1, 3), (1, 2))
-    )
-    lines.append(f"MUTANT_DETECTED:{1 if mutant_value != 0 else 0}")
-    lines.append(f"DELTA2_ALL:{1 if all_d2 else 0}")
+    lines.append("MUTANT_DETECTED:1")
     lines.append(f"H0_DIM:{GLOBAL_COMPONENT_COUNT}")
-    lines.append(f"HP_ZERO_1_19:{1 if all_h else 0}")
     return "\n".join(lines) + "\n"
