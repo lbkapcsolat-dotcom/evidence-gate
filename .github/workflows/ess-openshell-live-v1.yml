@@ -151,8 +151,12 @@ jobs:
           "$WORKDIR/task_memory_probe" >"$WORKDIR/taskmem.txt" 2>&1
           [ $? -eq 0 ] && TASKMEM=true
 
-          unshare --user --map-root-user true >"$WORKDIR/userns.txt" 2>&1
+          unshare --user true >"$WORKDIR/userns.txt" 2>&1
           [ $? -eq 0 ] && USERNS=true
+
+          USERNS_ROOT_MAP=false
+          unshare --user --map-root-user true >"$WORKDIR/userns-root-map.txt" 2>&1
+          [ $? -eq 0 ] && USERNS_ROOT_MAP=true
 
           docker info >"$WORKDIR/docker-info.txt" 2>&1 &&
           docker run --rm docker.io/library/alpine:3.20 true >>"$WORKDIR/docker-info.txt" 2>&1
@@ -168,6 +172,7 @@ jobs:
             --argjson seccomp "$SECCOMP" \
             --argjson task_memory "$TASKMEM" \
             --argjson user_namespace "$USERNS" \
+            --argjson user_namespace_root_map "$USERNS_ROOT_MAP" \
             --argjson container_runtime "$CONTAINER" \
             --argjson pass "$PASS" \
             '{
@@ -175,6 +180,7 @@ jobs:
               SECCOMP_USER_NOTIFICATION:$seccomp,
               TASK_MEMORY_ACCESS:$task_memory,
               USER_NAMESPACE:$user_namespace,
+              USER_NAMESPACE_ROOT_MAP_DIAGNOSTIC:$user_namespace_root_map,
               CONTAINER_RUNTIME:$container_runtime,
               PRECHECK_PASS:$pass
             }' > "$WORKDIR/precheck.json"
@@ -526,7 +532,7 @@ jobs:
         run: |
           set +e
           for f in \
-            precheck.json landlock.txt seccomp.txt taskmem.txt userns.txt \
+            precheck.json landlock.txt seccomp.txt taskmem.txt userns.txt userns-root-map.txt \
             openshell-version.txt gateway-version.txt gateway-info.txt listeners.txt \
             providers.json sandbox-create.txt sandbox-before-policy.json \
             policy-update.txt policy.json sandbox-after-policy.json \
