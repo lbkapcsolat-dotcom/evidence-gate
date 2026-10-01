@@ -1,0 +1,30 @@
+{
+  "schema": "ESS_SAMPLE_ASSURANCE_RECEIPT_BUYER_SAFE_V1",
+  "source": "NVIDIA OpenShell v0.1.2 provider-native OCSF event",
+  "claim": "NET_OPEN_WAS_POLICY_ALLOWED_FOR_EXACT_CALLER_TO_EXACT_DESTINATION_UNDER_EXACT_POLICY_REVISION_AND_HASH",
+  "result": "PASS",
+  "bounded_fields": {
+    "provider_native_uid": "a3721470-0dd0-4d36-b7df-7394ce40b5a9",
+    "caller": "/usr/local/bin/python3.12",
+    "destination": "example.com:443",
+    "firewall_rule": "ess-example-read",
+    "action": "Allowed",
+    "policy_revision": 2,
+    "policy_hash": "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec"
+  },
+  "proof_behaviour": {
+    "replay_x2": "PASS_EQUAL",
+    "mutation_test": "PASS_TO_HOLD",
+    "duplicate_uid": "IDEMPOTENT",
+    "cross_run_rehydration": "PASS_BYTE_EQUALITY"
+  },
+  "claim_ceiling": "Bounded to tested OpenShell network-open authorization evidence path.",
+  "known_hold": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+  "prohibited_claims": [
+    "NVIDIA equivalence",
+    "superiority",
+    "general security proof",
+    "production readiness",
+    "compliance certification"
+  ]
+}
