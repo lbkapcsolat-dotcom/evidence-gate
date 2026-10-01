@@ -1,0 +1,27 @@
+{
+  "schema": "ESS_OPENSHELL_EXTERNAL_ASSURANCE_DEMO_PACKAGE_V1_CLOSE_SEAL",
+  "target": "UNIQA_NIQA_FOUNDING_PILOT",
+  "pinned_close_seal_commit": "e4d8cb581966247aa1c376eac1b58476cb6392b0",
+  "package_files": [
+    "3_MINUTE_DEMO_FLOW.md",
+    "BUYER_SAFE_ARCHITECTURE_DIAGRAM.md",
+    "SAMPLE_ASSURANCE_RECEIPT.json",
+    "PASS_HOLD_EVIDENCE_MATRIX.csv",
+    "CLAIM_CEILING_SLIDE.md",
+    "claim_ceiling_slide.pptx"
+  ],
+  "classification": {
+    "ready": "READY_BOUNDED_EXTERNAL_ASSURANCE_DEMO",
+    "proven_scope": "Bounded OpenShell network-open assurance receipt pipeline",
+    "hold": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+    "out_of_scope": [
+      "NVIDIA equivalence",
+      "superiority",
+      "production readiness",
+      "compliance certification"
+    ]
+  },
+  "no_new_technical_features": true,
+  "no_main_write": true,
+  "no_merge": true
+}
