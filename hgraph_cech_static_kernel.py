@@ -65,3 +65,29 @@ def h0_projection(cochain: Cochain) -> dict[Simplex, int | float]:
     """Projection C^0 -> constants by evaluation at the apex vertex 1."""
     value = cochain.get((APEX_VERTEX,), 0)
     return {(vertex,): value for vertex in CANONICAL_VERTICES}
+
+def _add_cochains(
+    left: Mapping[Simplex, int | float],
+    right: Mapping[Simplex, int | float],
+) -> dict[Simplex, int | float]:
+    keys = left.keys() | right.keys()
+    return {simplex: left.get(simplex, 0) + right.get(simplex, 0) for simplex in keys}
+
+
+def positive_degree_homotopy_composition(
+    p: int, cochain: Cochain
+) -> dict[Simplex, int | float]:
+    """Static graph composition delta*h + h*delta on C^p for p > 0."""
+    _validate_degree(p)
+    if p == 0:
+        raise ValueError("positive-degree composition requires p > 0")
+    delta_h = delta(p - 1, contracting_homotopy(p, cochain))
+    h_delta: dict[Simplex, int | float] = {}
+    if p < MAX_DEGREE:
+        h_delta = contracting_homotopy(p + 1, delta(p, cochain))
+    return _add_cochains(delta_h, h_delta)
+
+
+def h0_reduced_composition(cochain: Cochain) -> dict[Simplex, int | float]:
+    """Static graph composition h_1*delta_0 = I - Pi on C^0."""
+    return contracting_homotopy(1, delta(0, cochain))
