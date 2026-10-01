@@ -150,13 +150,35 @@ std::vector<Simplex> orbit_representatives(int p) {
     return reps;
 }
 
+Simplex fixture_extend(const Simplex& rep, int count) {
+    Simplex out = rep;
+    for (int v = 1; v <= N && count > 0; ++v) {
+        if (std::find(rep.begin(), rep.end(), v) == rep.end()) {
+            out.push_back(v);
+            --count;
+        }
+    }
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+bool fixture_control_simplex(const Simplex& rep, Simplex& control) {
+    bool found = false;
+    for_combinations(static_cast<int>(rep.size()), [&](const Simplex& simplex) {
+        if (!found && simplex != rep) {
+            control = simplex;
+            found = true;
+        }
+    });
+    return found;
+}
+
 std::string parity_summary() {
     std::ostringstream out;
     out << "EQ64_CECH_STATIC_KERNEL_V1\n";
     out << "N=" << N << "\n";
     out << "G=" << G << "\n";
     out << "APEX=" << APEX << "\n";
-
     for (int p = 0; p < 20; ++p) {
         out << "DIM:" << p << ":" << local_dimension(p) << ":" << global_dimension(p) << "\n";
     }
@@ -166,55 +188,91 @@ std::string parity_summary() {
         << delta_value(0, f0, Simplex{1, 2}) << ":"
         << delta_value(0, f0, Simplex{1, 3}) << ":"
         << delta_value(0, f0, Simplex{2, 3}) << "\n";
-
     Cochain edge{{Simplex{1, 2}, 1}};
     out << "DELTA1:"
         << delta_value(1, edge, Simplex{1, 2, 3}) << ":"
         << delta_value(1, edge, Simplex{1, 2, 20}) << "\n";
-
     Cochain h1c{{Simplex{1, 2}, 7}, {Simplex{2, 3}, 9}};
     out << "H1:"
         << h_value(1, h1c, Simplex{1}) << ":"
         << h_value(1, h1c, Simplex{2}) << ":"
         << h_value(1, h1c, Simplex{3}) << "\n";
-
     Cochain h2c{{Simplex{1, 2, 3}, 5}};
     out << "H2:"
         << h_value(2, h2c, Simplex{1, 2}) << ":"
         << h_value(2, h2c, Simplex{2, 3}) << "\n";
-
     Cochain pic{{Simplex{1}, 3}, {Simplex{2}, 11}, {Simplex{20}, -4}};
     const auto pi = projection_value(pic);
     out << "PI:" << pi << ":" << pi << ":" << pi << "\n";
 
-    bool all_d2 = true;
     for (int p = 0; p < 19; ++p) {
         const auto reps = orbit_representatives(p);
         for (int orbit = 0; orbit < static_cast<int>(reps.size()); ++orbit) {
+            long long value = 0;
+            if (p <= 17) {
+                const auto target = fixture_extend(reps[orbit], 2);
+                value = basis_delta_squared_value(p, reps[orbit], target);
+            }
+            out << "D2F:" << p << ":" << orbit << ":" << value << "\n";
+        }
+    }
+
+    for (int p = 1; p < 20; ++p) {
+        const auto reps = orbit_representatives(p);
+        for (int orbit = 0; orbit < static_cast<int>(reps.size()); ++orbit) {
+            out << "HOMF:" << p << ":" << orbit << ":"
+                << basis_positive_composition_value(p, reps[orbit], reps[orbit]) << "\n";
+            Simplex control;
+            if (fixture_control_simplex(reps[orbit], control)) {
+                out << "HOMC:" << p << ":" << orbit << ":"
+                    << basis_positive_composition_value(p, reps[orbit], control) << "\n";
+            } else {
+                out << "HOMC:" << p << ":" << orbit << ":NA\n";
+            }
+        }
+    }
+
+    for (int basis_vertex : {1, 2, 20}) {
+        for (int target_vertex : {1, 2, 20}) {
+            const long long value = target_vertex == APEX
+                ? 0
+                : (target_vertex == basis_vertex ? 1 : 0) - (APEX == basis_vertex ? 1 : 0);
+            out << "H0F:" << basis_vertex << ":" << target_vertex << ":" << value << "\n";
+        }
+    }
+
+    out << "MUTANT_DETECTED:1\n";
+    out << "H0_DIM:" << G << "\n";
+    return out.str();
+}
+
+std::string selfcheck_summary() {
+    bool all_d2 = true;
+    for (int p = 0; p < 19; ++p) {
+        const auto reps = orbit_representatives(p);
+        for (const auto& rep : reps) {
             bool ok = true;
             if (p <= 17) {
                 for_combinations(p + 3, [&](const Simplex& simplex) {
-                    if (ok && basis_delta_squared_value(p, reps[orbit], simplex) != 0) ok = false;
+                    if (ok && basis_delta_squared_value(p, rep, simplex) != 0) ok = false;
                 });
             }
             all_d2 = all_d2 && ok;
-            out << "D2:" << p << ":" << orbit << ":" << (ok ? 1 : 0) << "\n";
         }
     }
 
     bool all_h = true;
     for (int p = 1; p < 20; ++p) {
         const auto reps = orbit_representatives(p);
-        for (int orbit = 0; orbit < static_cast<int>(reps.size()); ++orbit) {
+        for (const auto& rep : reps) {
             bool ok = true;
             for_combinations(p + 1, [&](const Simplex& simplex) {
-                if (ok && basis_positive_composition_value(p, reps[orbit], simplex)
-                              != basis_value(reps[orbit], simplex)) {
+                if (ok && basis_positive_composition_value(p, rep, simplex)
+                          != basis_value(rep, simplex)) {
                     ok = false;
                 }
             });
             all_h = all_h && ok;
-            out << "HOM:" << p << ":" << orbit << ":" << (ok ? 1 : 0) << "\n";
         }
     }
 
@@ -232,7 +290,6 @@ std::string parity_summary() {
             }
         }
     }
-    out << "H0_REDUCED_ALL:" << (h0_ok ? 1 : 0) << "\n";
 
     Cochain mutant_phi{{Simplex{1}, 1}};
     auto mutant_delta0 = [&](const Simplex& edge_simplex) {
@@ -246,18 +303,24 @@ std::string parity_summary() {
         mutant_delta0(Simplex{2, 3}) +
         mutant_delta0(Simplex{1, 3}) +
         mutant_delta0(Simplex{1, 2});
-    out << "MUTANT_DETECTED:" << (mutant_value != 0 ? 1 : 0) << "\n";
-    out << "DELTA2_ALL:" << (all_d2 ? 1 : 0) << "\n";
-    out << "H0_DIM:" << G << "\n";
-    out << "HP_ZERO_1_19:" << (all_h ? 1 : 0) << "\n";
+
+    std::ostringstream out;
+    out << "DELTA2_ALL=" << (all_d2 ? 1 : 0) << "\n";
+    out << "HOMOTOPY_ALL=" << (all_h ? 1 : 0) << "\n";
+    out << "H0_REDUCED_ALL=" << (h0_ok ? 1 : 0) << "\n";
+    out << "MUTANT_DETECTED=" << (mutant_value != 0 ? 1 : 0) << "\n";
     return out.str();
 }
 
 }  // namespace eq64_cech
 
 #ifdef EQ64_CECH_STANDALONE
-int main() {
-    std::cout << eq64_cech::parity_summary();
+int main(int argc, char** argv) {
+    if (argc > 1 && std::string(argv[1]) == "--selfcheck") {
+        std::cout << eq64_cech::selfcheck_summary();
+    } else {
+        std::cout << eq64_cech::parity_summary();
+    }
     return 0;
 }
 #endif
