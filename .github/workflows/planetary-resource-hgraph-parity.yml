@@ -93,3 +93,4 @@ jobs:
           name: planetary-resource-hgraph-cross-parity-receipt
           path: EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__HGRAPH_CROSS_PARITY_RECEIPT.json
           if-no-files-found: error
+# parity-v1 execution trigger
