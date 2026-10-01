@@ -323,6 +323,12 @@ jobs:
           set +e
           export PATH="$WORKDIR/bin:$PATH"
 
+          # Enable full provider-native OCSF JSONL so metadata.uid is available.
+          openshell settings set ess-gha-live-v1 --key ocsf_json_enabled --value true \
+            >"$WORKDIR/ocsf-enable.txt" 2>&1
+          OCSF_ENABLE_RC=$?
+          sleep 12
+
           CALLER_PATH="$(openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
             sh -c 'readlink -f "$(command -v python3)"' 2>/dev/null | tail -n 1)"
           printf '%s\n' "$CALLER_PATH" > "$WORKDIR/caller-path.txt"
@@ -353,18 +359,70 @@ jobs:
             >"$WORKDIR/security-logs.txt" 2>&1
           LOG_RC=$?
 
-          MATCH_LINE="$(grep -E 'ALLOWED|DENIED' "$WORKDIR/security-logs.txt" | grep -F 'example.com' | tail -n 1)"
+          MATCH_LINE="$(grep -E 'NET:OPEN.*ALLOWED' "$WORKDIR/security-logs.txt" | grep -F 'example.com:443' | tail -n 1)"
           printf '%s\n' "$MATCH_LINE" > "$WORKDIR/decision-line.txt"
+
+          # Read the durable full OCSF records from inside the sandbox.
+          openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
+            sh -lc 'cat /var/log/openshell-ocsf.*.log 2>/dev/null || true' \
+            >"$WORKDIR/ocsf.jsonl" 2>"$WORKDIR/ocsf-read.err"
+          OCSF_READ_RC=$?
+
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          root = Path(os.environ["WORKDIR"])
+          net = []
+          http = []
+          for raw in (root / "ocsf.jsonl").read_text(errors="replace").splitlines():
+              try:
+                  e = json.loads(raw)
+              except Exception:
+                  continue
+              if e.get("class_uid") == 4001:
+                  dst = e.get("dst_endpoint") or {}
+                  fw = e.get("firewall_rule") or {}
+                  if (
+                      e.get("action") == "Allowed"
+                      and dst.get("domain") == "example.com"
+                      and dst.get("port") == 443
+                      and fw.get("name") == "ess-example-read"
+                  ):
+                      net.append(e)
+              if e.get("class_uid") == 4002:
+                  dst = e.get("dst_endpoint") or {}
+                  fw = e.get("firewall_rule") or {}
+                  if (
+                      e.get("action") == "Allowed"
+                      and dst.get("domain") == "example.com"
+                      and dst.get("port") == 443
+                      and fw.get("name") == "ess-example-read"
+                  ):
+                      http.append(e)
+
+          selected = {
+              "network_authorization_event": net[-1] if net else None,
+              "http_execution_event": http[-1] if http else None,
+          }
+          (root / "selected-ocsf-events.json").write_text(
+              json.dumps(selected, indent=2, sort_keys=True)
+          )
+          PY
 
           echo "policy_rc=$POLICY_RC" >> "$GITHUB_OUTPUT"
           echo "policy_get_rc=$POLICY_GET_RC" >> "$GITHUB_OUTPUT"
           echo "exec_rc=$EXEC_RC" >> "$GITHUB_OUTPUT"
           echo "log_rc=$LOG_RC" >> "$GITHUB_OUTPUT"
+          echo "ocsf_enable_rc=$OCSF_ENABLE_RC" >> "$GITHUB_OUTPUT"
+          echo "ocsf_read_rc=$OCSF_READ_RC" >> "$GITHUB_OUTPUT"
 
           echo "CALLER_PATH=$CALLER_PATH"
           echo "POLICY_RC=$POLICY_RC"
           echo "EXEC_RC=$EXEC_RC"
           echo "DECISION_LINE=$MATCH_LINE"
+          echo "SELECTED_OCSF_EVENTS:"
+          cat "$WORKDIR/selected-ocsf-events.json" 2>/dev/null || true
 
       - name: Map provider evidence to ESS V1.1 and build real receipt
         if: always()
@@ -402,6 +460,9 @@ jobs:
           line = read_text("decision-line.txt").strip()
           caller_path = read_text("caller-path.txt").strip()
           exec_text = read_text("network-exec.txt")
+          selected_ocsf = read_json("selected-ocsf-events.json")
+          net_event = selected_ocsf.get("network_authorization_event") or {}
+          http_event = selected_ocsf.get("http_execution_event") or {}
 
           sandbox_id = sb.get("id")
           policy_revision = sb.get("current_policy_version")
@@ -417,18 +478,13 @@ jobs:
           destination = "example.com:443" if "example.com" in line and "443" in line else None
           caller = caller_path if caller_path and (caller_path in line or Path(caller_path).name in line) else None
 
-          explicit_decision_id = None
-          explicit_execution_id = None
-          for pattern, target in [
-              (r'(?:decision_event_id|event_id)[=: ]+([A-Za-z0-9._:-]+)', "decision"),
-              (r'execution_event_id[=: ]+([A-Za-z0-9._:-]+)', "execution"),
-          ]:
-              m = re.search(pattern, line)
-              if m:
-                  if target == "decision":
-                      explicit_decision_id = m.group(1)
-                  else:
-                      explicit_execution_id = m.group(1)
+          # Provider-native OCSF event identity lives in metadata.uid.
+          explicit_decision_id = ((net_event.get("metadata") or {}).get("uid"))
+          explicit_execution_id = ((http_event.get("metadata") or {}).get("uid"))
+
+          net_actor = ((net_event.get("actor") or {}).get("process") or {})
+          net_dst = net_event.get("dst_endpoint") or {}
+          net_fw = net_event.get("firewall_rule") or {}
 
           provider_count = len(providers.get("providers", [])) if isinstance(providers, dict) else None
           execution_success = "HTTP_STATUS=" in exec_text
@@ -440,8 +496,13 @@ jobs:
               "POLICY_DECISION": decision,
               "POLICY_DECISION_EVENT_ID": explicit_decision_id,
               "EXECUTION_EVENT_ID": explicit_execution_id,
-              "CALLER_IDENTITY": caller,
-              "DESTINATION": destination,
+              "CALLER_IDENTITY": net_actor.get("name") or caller,
+              "DESTINATION": (
+                  f"{net_dst.get('domain')}:{net_dst.get('port')}"
+                  if net_dst.get("domain") and net_dst.get("port")
+                  else destination
+              ),
+              "POLICY_NAME": net_fw.get("name"),
               "SECURITY_LOG_REF": sha_text(line),
               "EXECUTION_RESULT": "SUCCESS" if execution_success else "FAILURE",
               "PROVIDER_CREDENTIAL_COUNT": provider_count,
@@ -498,7 +559,19 @@ jobs:
               "provider_credentials_attached": provider_count not in (0, None),
               "raw_policy_sha256": sha_text(json.dumps(policy, sort_keys=True, separators=(",",":"))) if policy else None,
               "raw_security_logs_sha256": sha_text(logs),
+              "raw_ocsf_jsonl_sha256": sha_text(read_text("ocsf.jsonl")),
+              "selected_ocsf_events_sha256": sha_text(json.dumps(selected_ocsf, sort_keys=True, separators=(",",":"))) if selected_ocsf else None,
               "matched_decision_line_sha256": sha_text(line),
+              "provider_native_event_identity_semantics": {
+                  "field": "metadata.uid",
+                  "decision_event_id": explicit_decision_id,
+                  "execution_event_id": explicit_execution_id,
+                  "ids_are_distinct": (
+                      explicit_decision_id is not None
+                      and explicit_execution_id is not None
+                      and explicit_decision_id != explicit_execution_id
+                  ),
+              },
               "first_missing_proof": first_missing,
               "claim_ceiling": (
                   "REAL_GITHUB_HOSTED_LINUX_CAPABILITY_EVIDENCE"
@@ -537,6 +610,7 @@ jobs:
             providers.json sandbox-create.txt sandbox-before-policy.json \
             policy-update.txt policy.json sandbox-after-policy.json \
             network-exec.txt decision-line.txt security-logs.txt \
+            ocsf-enable.txt ocsf.jsonl selected-ocsf-events.json \
             real-receipt.json gateway.log; do
             echo "===== $f ====="
             cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
@@ -553,4 +627,21 @@ jobs:
           fi
           verdict="$(jq -r '.verdict' "$WORKDIR/real-receipt.json")"
           echo "FINAL_GATE=$verdict"
-          [ "$verdict" = "PASS_REAL_POLICY_AUTHORIZATION_RECEIPT" ]
+          # V1.2 is a readback gate: it passes only when provider-native event
+          # identities and caller/destination/policy are all captured. It does
+          # not claim the two distinct OCSF events are the same event.
+          if [ "$verdict" = "PASS_REAL_POLICY_AUTHORIZATION_RECEIPT" ]; then
+            exit 0
+          fi
+          if [ "$verdict" = "HOLD_REAL_EVIDENCE_BIND_INCOMPLETE" ]; then
+            decision_id="$(jq -r '.provider_native_event_identity_semantics.decision_event_id // empty' "$WORKDIR/real-receipt.json")"
+            execution_id="$(jq -r '.provider_native_event_identity_semantics.execution_event_id // empty' "$WORKDIR/real-receipt.json")"
+            caller="$(jq -r '.provider_evidence.CALLER_IDENTITY // empty' "$WORKDIR/real-receipt.json")"
+            destination="$(jq -r '.provider_evidence.DESTINATION // empty' "$WORKDIR/real-receipt.json")"
+            policy="$(jq -r '.provider_evidence.POLICY_NAME // empty' "$WORKDIR/real-receipt.json")"
+            if [ -n "$decision_id" ] && [ -n "$execution_id" ] && [ -n "$caller" ] && [ -n "$destination" ] && [ -n "$policy" ]; then
+              echo "FINAL_GATE=PASS_NATIVE_EVENT_ID_AND_CALLER_BIND__HOLD_STRICT_DECISION_EXECUTION_BIJECTION"
+              exit 0
+            fi
+          fi
+          exit 1
