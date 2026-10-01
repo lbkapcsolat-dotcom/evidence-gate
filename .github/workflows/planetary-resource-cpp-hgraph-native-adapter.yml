@@ -1,0 +1,132 @@
+name: Planetary Resource C++ HGraph Native Operator Adapter
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-cpp-hgraph-native-adapter-v1"
+    paths:
+      - planetary_resource_cpp_kernel_v1.cpp
+      - planetary_resource_cpp_hgraph_adapter_v1.cpp
+      - cpp_hgraph_adapter_v1/CMakeLists.txt
+      - run_planetary_resource_cpp_hgraph_adapter_receipt_v1.py
+      - run_planetary_resource_cpp_triple_parity_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_hgraph_bind_v1.py
+      - test_planetary_resource_hgraph_parity_v1.py
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__40_OF_40_RECEIPT.json
+      - .github/workflows/planetary-resource-cpp-hgraph-native-adapter.yml
+  pull_request:
+    paths:
+      - planetary_resource_cpp_kernel_v1.cpp
+      - planetary_resource_cpp_hgraph_adapter_v1.cpp
+      - cpp_hgraph_adapter_v1/CMakeLists.txt
+      - run_planetary_resource_cpp_hgraph_adapter_receipt_v1.py
+      - run_planetary_resource_cpp_triple_parity_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_hgraph_bind_v1.py
+      - test_planetary_resource_hgraph_parity_v1.py
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__40_OF_40_RECEIPT.json
+      - .github/workflows/planetary-resource-cpp-hgraph-native-adapter.yml
+
+permissions:
+  contents: read
+
+jobs:
+  cpp-hgraph-native-adapter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Etap 1 - verify pinned independent C++ kernel
+        shell: bash
+        run: |
+          echo "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f  planetary_resource_cpp_kernel_v1.cpp" | sha256sum -c -
+          grep -F '#include "planetary_resource_cpp_kernel_v1.cpp"' planetary_resource_cpp_hgraph_adapter_v1.cpp
+          if grep -F 'static NodeMap resource_balance_residual' planetary_resource_cpp_hgraph_adapter_v1.cpp; then
+            echo "duplicate domain arithmetic detected in adapter"
+            exit 1
+          fi
+
+      - name: Etap 2 - compile and run pinned standalone C++ kernel
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_standalone_validation.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_standalone_validation.log
+          test "$(grep -c '^{"id":"V' cpp_standalone_validation.log)" -eq 40
+
+      - name: Acquire pinned native HGraph 0.8.31 SDK
+        shell: bash
+        run: |
+          python -m pip download --only-binary=:all: --no-deps "hgraph==0.8.31" -d wheelhouse
+          wheel="$(find wheelhouse -maxdepth 1 -name 'hgraph-0.8.31-*.whl' -print -quit)"
+          test -n "$wheel"
+          echo "78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2  $wheel" | sha256sum -c -
+          python -m pip install "$wheel"
+
+      - name: Prove pinned native HGraph runtime identity
+        run: |
+          python - <<'PY'
+          import importlib.metadata
+          import _hgraph
+          assert importlib.metadata.version("hgraph") == "0.8.31"
+          assert _hgraph.__file__
+          print("HGRAPH_VERSION=0.8.31")
+          print("NATIVE_HGRAPH_MODULE=" + _hgraph.__file__)
+          print("UPSTREAM_RELEASE_COMMIT=1bb4b7f21ddfb6c69c8bae74c523980605ae93f6")
+          print("PINNED_LINUX_WHEEL_SHA256=78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2")
+          PY
+
+      - name: Etap 3 - build native C++ HGraph operator adapter
+        shell: bash
+        run: |
+          cmake -S cpp_hgraph_adapter_v1 -B build/cpp_hgraph_adapter -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/cpp_hgraph_adapter --parallel 2
+          test -x build/cpp_hgraph_adapter/planetary_resource_cpp_hgraph_adapter_v1
+
+      - name: Etap 3 - execute native C++ HGraph operator adapter V01-V40
+        shell: bash
+        run: |
+          build/cpp_hgraph_adapter/planetary_resource_cpp_hgraph_adapter_v1 | tee cpp_hgraph_adapter_validation.log
+          grep -Fx "CPP_HGRAPH_ADAPTER_MATRIX=40/40" cpp_hgraph_adapter_validation.log
+          test "$(grep -c '^{"id":"V' cpp_hgraph_adapter_validation.log)" -eq 40
+
+      - name: Etap 4A - preserve frozen Python reference 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Etap 4B - preserve native HGraph Python-authored binding 40 of 40
+        run: python -m unittest -v test_planetary_resource_hgraph_parity_v1.py
+
+      - name: Etap 4C - regenerate and pin prior 40x3 receipt
+        shell: bash
+        run: |
+          python run_planetary_resource_cpp_triple_parity_v1.py
+          echo "175d214eee5a6d08e4b4751b1b1bcb453172271b67edc3bc5c9958655d9bca79  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_TRIPLE_PARITY_RECEIPT.json" | sha256sum -c -
+          grep -F '"triple_semantic_parity":{"count":40,"equal":40}' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_TRIPLE_PARITY_RECEIPT.json
+
+      - name: Etap 5 - build deterministic native-adapter receipt
+        shell: bash
+        run: |
+          python run_planetary_resource_cpp_hgraph_adapter_receipt_v1.py | tee cpp_hgraph_adapter_receipt.log
+          grep -F '"standalone_equals_cpp_hgraph_adapter":{"count":40,"equal":40}' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_HGRAPH_NATIVE_OPERATOR_ADAPTER_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_CPP_HGRAPH_NATIVE_OPERATOR_ADAPTER_40_OF_40"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_HGRAPH_NATIVE_OPERATOR_ADAPTER_RECEIPT.json
+          sha256sum             planetary_resource_cpp_hgraph_adapter_v1.cpp             cpp_hgraph_adapter_v1/CMakeLists.txt             run_planetary_resource_cpp_hgraph_adapter_receipt_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_HGRAPH_NATIVE_OPERATOR_ADAPTER_RECEIPT.json
+
+      - name: Upload C++ HGraph native-adapter evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-cpp-hgraph-native-adapter-evidence
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_HGRAPH_NATIVE_OPERATOR_ADAPTER_RECEIPT.json
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_TRIPLE_PARITY_RECEIPT.json
+            cpp_standalone_validation.log
+            cpp_hgraph_adapter_validation.log
+            cpp_hgraph_adapter_receipt.log
+          if-no-files-found: error
