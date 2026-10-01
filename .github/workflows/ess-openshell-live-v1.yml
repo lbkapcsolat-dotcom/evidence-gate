@@ -1,0 +1,550 @@
+name: ESS OpenShell Live Sandbox V1
+
+on:
+  push:
+    branches:
+      - test/openshell-live-v1
+
+permissions:
+  contents: read
+
+jobs:
+  openshell-live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      OPENSHELL_VERSION: v0.1.2
+      WORKDIR: /tmp/ess-openshell-live-v1
+    steps:
+      - name: Prepare capability probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WORKDIR"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential jq curl ca-certificates util-linux
+
+          cat > "$WORKDIR/landlock_probe.c" <<'EOF'
+          #define _GNU_SOURCE
+          #include <linux/landlock.h>
+          #include <sys/syscall.h>
+          #include <unistd.h>
+          #include <stdio.h>
+          #include <errno.h>
+          #include <string.h>
+          int main(void) {
+              long abi = syscall(SYS_landlock_create_ruleset, NULL, 0, LANDLOCK_CREATE_RULESET_VERSION);
+              if (abi < 0) {
+                  fprintf(stderr, "landlock_create_ruleset failed: %s\n", strerror(errno));
+                  return 1;
+              }
+              printf("LANDLOCK_ABI=%ld\n", abi);
+              return abi >= 3 ? 0 : 2;
+          }
+          EOF
+
+          cat > "$WORKDIR/seccomp_notify_probe.c" <<'EOF'
+          #define _GNU_SOURCE
+          #include <linux/seccomp.h>
+          #include <linux/filter.h>
+          #include <sys/prctl.h>
+          #include <sys/syscall.h>
+          #include <stddef.h>
+          #include <unistd.h>
+          #include <stdio.h>
+          #include <errno.h>
+          #include <string.h>
+          int main(void) {
+              struct sock_filter filter[] = {
+                  BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+                  BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_getpid, 0, 1),
+                  BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+                  BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+              };
+              struct sock_fprog prog = {
+                  .len = (unsigned short)(sizeof(filter)/sizeof(filter[0])),
+                  .filter = filter
+              };
+              if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
+                  fprintf(stderr, "PR_SET_NO_NEW_PRIVS failed: %s\n", strerror(errno));
+                  return 1;
+              }
+              long fd = syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER,
+                                SECCOMP_FILTER_FLAG_NEW_LISTENER, &prog);
+              if (fd < 0) {
+                  fprintf(stderr, "seccomp NEW_LISTENER failed: %s\n", strerror(errno));
+                  return 2;
+              }
+              printf("SECCOMP_USER_NOTIFICATION_LISTENER_FD=%ld\n", fd);
+              close((int)fd);
+              return 0;
+          }
+          EOF
+
+          cat > "$WORKDIR/task_memory_probe.c" <<'EOF'
+          #define _GNU_SOURCE
+          #include <sys/uio.h>
+          #include <sys/types.h>
+          #include <sys/wait.h>
+          #include <unistd.h>
+          #include <stdint.h>
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <signal.h>
+          #include <string.h>
+          #include <errno.h>
+          int main(void) {
+              int p[2];
+              if (pipe(p) != 0) return 1;
+              pid_t child = fork();
+              if (child < 0) return 2;
+              if (child == 0) {
+                  close(p[0]);
+                  volatile int secret = 0x12345678;
+                  uintptr_t addr = (uintptr_t)&secret;
+                  if (write(p[1], &addr, sizeof(addr)) != sizeof(addr)) _exit(3);
+                  sleep(10);
+                  _exit(0);
+              }
+              close(p[1]);
+              uintptr_t addr = 0;
+              if (read(p[0], &addr, sizeof(addr)) != sizeof(addr)) {
+                  kill(child, SIGKILL); waitpid(child, NULL, 0); return 4;
+              }
+              int value = 0;
+              struct iovec local = {.iov_base=&value, .iov_len=sizeof(value)};
+              struct iovec remote = {.iov_base=(void*)addr, .iov_len=sizeof(value)};
+              ssize_t n = process_vm_readv(child, &local, 1, &remote, 1, 0);
+              int saved = errno;
+              kill(child, SIGKILL);
+              waitpid(child, NULL, 0);
+              if (n != sizeof(value)) {
+                  fprintf(stderr, "process_vm_readv failed: %s\n", strerror(saved));
+                  return 5;
+              }
+              printf("TASK_MEMORY_VALUE=0x%x\n", value);
+              return value == 0x12345678 ? 0 : 6;
+          }
+          EOF
+
+          gcc -O2 -Wall -Wextra "$WORKDIR/landlock_probe.c" -o "$WORKDIR/landlock_probe"
+          gcc -O2 -Wall -Wextra "$WORKDIR/seccomp_notify_probe.c" -o "$WORKDIR/seccomp_notify_probe"
+          gcc -O2 -Wall -Wextra "$WORKDIR/task_memory_probe.c" -o "$WORKDIR/task_memory_probe"
+
+      - name: Run fail-closed Linux capability precheck
+        id: precheck
+        shell: bash
+        run: |
+          set +e
+          LANDLOCK=false
+          SECCOMP=false
+          TASKMEM=false
+          USERNS=false
+          CONTAINER=false
+
+          "$WORKDIR/landlock_probe" >"$WORKDIR/landlock.txt" 2>&1
+          [ $? -eq 0 ] && LANDLOCK=true
+
+          "$WORKDIR/seccomp_notify_probe" >"$WORKDIR/seccomp.txt" 2>&1
+          [ $? -eq 0 ] && SECCOMP=true
+
+          "$WORKDIR/task_memory_probe" >"$WORKDIR/taskmem.txt" 2>&1
+          [ $? -eq 0 ] && TASKMEM=true
+
+          unshare --user --map-root-user true >"$WORKDIR/userns.txt" 2>&1
+          [ $? -eq 0 ] && USERNS=true
+
+          docker info >"$WORKDIR/docker-info.txt" 2>&1 &&
+          docker run --rm docker.io/library/alpine:3.20 true >>"$WORKDIR/docker-info.txt" 2>&1
+          [ $? -eq 0 ] && CONTAINER=true
+
+          PASS=false
+          if $LANDLOCK && $SECCOMP && $TASKMEM && $USERNS && $CONTAINER; then
+            PASS=true
+          fi
+
+          jq -n \
+            --argjson landlock "$LANDLOCK" \
+            --argjson seccomp "$SECCOMP" \
+            --argjson task_memory "$TASKMEM" \
+            --argjson user_namespace "$USERNS" \
+            --argjson container_runtime "$CONTAINER" \
+            --argjson pass "$PASS" \
+            '{
+              LANDLOCK_ABI:$landlock,
+              SECCOMP_USER_NOTIFICATION:$seccomp,
+              TASK_MEMORY_ACCESS:$task_memory,
+              USER_NAMESPACE:$user_namespace,
+              CONTAINER_RUNTIME:$container_runtime,
+              PRECHECK_PASS:$pass
+            }' > "$WORKDIR/precheck.json"
+
+          cat "$WORKDIR/precheck.json"
+          echo "pass=$PASS" >> "$GITHUB_OUTPUT"
+
+      - name: Install pinned official OpenShell v0.1.2 and verify release SHA
+        if: steps.precheck.outputs.pass == 'true'
+        id: install
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WORKDIR/download" "$WORKDIR/bin" "$WORKDIR/tls"
+
+          base="https://github.com/NVIDIA/OpenShell/releases/download/v0.1.2"
+          curl -L --fail --silent --show-error -o "$WORKDIR/download/openshell.tar.gz" \
+            "$base/openshell-x86_64-unknown-linux-musl.tar.gz"
+          curl -L --fail --silent --show-error -o "$WORKDIR/download/gateway.tar.gz" \
+            "$base/openshell-gateway-x86_64-unknown-linux-gnu.tar.gz"
+          curl -L --fail --silent --show-error -o "$WORKDIR/download/supervisor.tar.gz" \
+            "$base/openshell-supervisor-x86_64-unknown-linux-gnu.tar.gz"
+          curl -L --fail --silent --show-error -o "$WORKDIR/download/sandbox.tar.gz" \
+            "$base/openshell-sandbox-x86_64-unknown-linux-musl.tar.gz"
+
+          echo "7eb6917285331a09e3300266a0558616481a5e9927cae2612ea07c4045b6dd6f  $WORKDIR/download/openshell.tar.gz" | sha256sum -c -
+          echo "218d887845b3a020ab7535c9985eb9c666d6938f144044957f8b82b42892aadb  $WORKDIR/download/gateway.tar.gz" | sha256sum -c -
+          echo "801d717f4211b4c24449b08a47ce5571ff623ce993c10d44e133dbe2edc36611  $WORKDIR/download/supervisor.tar.gz" | sha256sum -c -
+          echo "f07ad7177f4c3ff7743f89531eda36bb784c56b45b166f49c5a51fbcfa5274a6  $WORKDIR/download/sandbox.tar.gz" | sha256sum -c -
+
+          tar -xzf "$WORKDIR/download/openshell.tar.gz" -C "$WORKDIR/bin"
+          tar -xzf "$WORKDIR/download/gateway.tar.gz" -C "$WORKDIR/bin"
+          tar -xzf "$WORKDIR/download/supervisor.tar.gz" -C "$WORKDIR/bin"
+          tar -xzf "$WORKDIR/download/sandbox.tar.gz" -C "$WORKDIR/bin"
+          chmod +x "$WORKDIR/bin/"*
+
+          "$WORKDIR/bin/openshell" --version | tee "$WORKDIR/openshell-version.txt"
+          "$WORKDIR/bin/openshell-gateway" --version | tee "$WORKDIR/gateway-version.txt"
+          "$WORKDIR/bin/openshell-supervisor" --version | tee "$WORKDIR/supervisor-version.txt"
+          "$WORKDIR/bin/openshell-sandbox" --version | tee "$WORKDIR/sandbox-version.txt"
+
+          "$WORKDIR/bin/openshell-gateway" generate-certs \
+            --output-dir "$WORKDIR/tls" \
+            --server-san 127.0.0.1 \
+            --server-san localhost
+
+          cat > "$WORKDIR/gateway.toml" <<EOF
+          [openshell]
+          version = 2
+
+          [openshell.gateway]
+          bind_address = "127.0.0.1:17670"
+          log_level = "info"
+          compute_driver = "docker"
+          disable_tls = true
+
+          [openshell.gateway.auth]
+          allow_unauthenticated_users = true
+
+          [openshell.gateway.gateway_jwt]
+          signing_key_path = "$WORKDIR/tls/jwt/signing.pem"
+          public_key_path = "$WORKDIR/tls/jwt/public.pem"
+          kid_path = "$WORKDIR/tls/jwt/kid"
+          gateway_id = "ess-gha-live-v1"
+          ttl_secs = 3600
+
+          [openshell.drivers.docker]
+          default_image = "python:3.12-slim"
+          image_pull_policy = "if_not_present"
+          sandbox_label = "ess-gha-live-v1"
+          EOF
+
+          "$WORKDIR/bin/openshell-gateway" config preflight --path "$WORKDIR/gateway.toml"
+          sha256sum "$WORKDIR/gateway.toml" > "$WORKDIR/gateway-config.sha256"
+
+      - name: Start localhost-only gateway and create real minimal sandbox
+        if: steps.precheck.outputs.pass == 'true'
+        id: runtime
+        shell: bash
+        run: |
+          set +e
+          export PATH="$WORKDIR/bin:$PATH"
+          export OPENSHELL_DB_URL="sqlite:$WORKDIR/gateway.db?mode=rwc"
+
+          nohup "$WORKDIR/bin/openshell-gateway" --config "$WORKDIR/gateway.toml" \
+            >"$WORKDIR/gateway.log" 2>&1 &
+          echo $! > "$WORKDIR/gateway.pid"
+
+          GATEWAY_OK=false
+          for i in $(seq 1 30); do
+            openshell gateway add --name ess-gha-live --local http://127.0.0.1:17670 >/dev/null 2>&1 || true
+            openshell gateway select ess-gha-live >/dev/null 2>&1 || true
+            openshell gateway info >"$WORKDIR/gateway-info.txt" 2>&1
+            if [ $? -eq 0 ]; then
+              GATEWAY_OK=true
+              break
+            fi
+            sleep 1
+          done
+
+          ss -ltnp >"$WORKDIR/listeners.txt" 2>&1 || true
+          openshell provider list -o json >"$WORKDIR/providers.json" 2>&1 || true
+
+          SANDBOX_RC=99
+          if $GATEWAY_OK; then
+            openshell sandbox create \
+              --name ess-gha-live-v1 \
+              --from python:3.12-slim \
+              --no-auto-providers \
+              --detach -- sleep 300 \
+              >"$WORKDIR/sandbox-create.txt" 2>&1
+            SANDBOX_RC=$?
+          fi
+
+          openshell sandbox get ess-gha-live-v1 -o json \
+            >"$WORKDIR/sandbox-before-policy.json" 2>"$WORKDIR/sandbox-get.err" || true
+          openshell logs ess-gha-live-v1 -n 300 --source all \
+            >"$WORKDIR/logs-before-policy.txt" 2>&1 || true
+
+          READY=false
+          if jq -e '.conditions[]? | select(.type=="Ready" and .status=="True")' \
+              "$WORKDIR/sandbox-before-policy.json" >/dev/null 2>&1; then
+            READY=true
+          fi
+
+          echo "gateway_ok=$GATEWAY_OK" >> "$GITHUB_OUTPUT"
+          echo "sandbox_ready=$READY" >> "$GITHUB_OUTPUT"
+          echo "sandbox_create_rc=$SANDBOX_RC" >> "$GITHUB_OUTPUT"
+
+          echo "GATEWAY_OK=$GATEWAY_OK"
+          echo "SANDBOX_READY=$READY"
+          cat "$WORKDIR/gateway-info.txt" 2>/dev/null || true
+          cat "$WORKDIR/sandbox-before-policy.json" 2>/dev/null || true
+
+      - name: Run one controlled network policy event and capture real evidence
+        if: steps.precheck.outputs.pass == 'true' && steps.runtime.outputs.sandbox_ready == 'true'
+        id: event
+        shell: bash
+        run: |
+          set +e
+          export PATH="$WORKDIR/bin:$PATH"
+
+          CALLER_PATH="$(openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
+            sh -c 'readlink -f "$(command -v python3)"' 2>/dev/null | tail -n 1)"
+          printf '%s\n' "$CALLER_PATH" > "$WORKDIR/caller-path.txt"
+
+          openshell policy update ess-gha-live-v1 \
+            --add-endpoint example.com:443:read-only:rest:enforce \
+            --binary "$CALLER_PATH" \
+            --rule-name ess-example-read \
+            --wait --timeout 60 \
+            >"$WORKDIR/policy-update.txt" 2>&1
+          POLICY_RC=$?
+
+          openshell policy get ess-gha-live-v1 --full -o json \
+            >"$WORKDIR/policy.json" 2>"$WORKDIR/policy.err"
+          POLICY_GET_RC=$?
+
+          openshell sandbox get ess-gha-live-v1 -o json \
+            >"$WORKDIR/sandbox-after-policy.json" 2>"$WORKDIR/sandbox-after.err"
+
+          openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
+            "$CALLER_PATH" -c \
+            "import urllib.request; r=urllib.request.urlopen('https://example.com/', timeout=15); print('HTTP_STATUS='+str(r.status))" \
+            >"$WORKDIR/network-exec.txt" 2>&1
+          EXEC_RC=$?
+
+          sleep 2
+          openshell logs ess-gha-live-v1 --since 10m --source all \
+            >"$WORKDIR/security-logs.txt" 2>&1
+          LOG_RC=$?
+
+          MATCH_LINE="$(grep -E 'ALLOWED|DENIED' "$WORKDIR/security-logs.txt" | grep -F 'example.com' | tail -n 1)"
+          printf '%s\n' "$MATCH_LINE" > "$WORKDIR/decision-line.txt"
+
+          echo "policy_rc=$POLICY_RC" >> "$GITHUB_OUTPUT"
+          echo "policy_get_rc=$POLICY_GET_RC" >> "$GITHUB_OUTPUT"
+          echo "exec_rc=$EXEC_RC" >> "$GITHUB_OUTPUT"
+          echo "log_rc=$LOG_RC" >> "$GITHUB_OUTPUT"
+
+          echo "CALLER_PATH=$CALLER_PATH"
+          echo "POLICY_RC=$POLICY_RC"
+          echo "EXEC_RC=$EXEC_RC"
+          echo "DECISION_LINE=$MATCH_LINE"
+
+      - name: Map provider evidence to ESS V1.1 and build real receipt
+        if: always()
+        id: receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, re
+          from pathlib import Path
+
+          root = Path(os.environ["WORKDIR"])
+
+          def read_text(name):
+              p = root / name
+              return p.read_text(errors="replace") if p.exists() else ""
+
+          def read_json(name):
+              p = root / name
+              if not p.exists():
+                  return {}
+              try:
+                  return json.loads(p.read_text())
+              except Exception:
+                  return {}
+
+          def sha_text(s):
+              return hashlib.sha256(s.encode()).hexdigest() if s else None
+
+          pre = read_json("precheck.json")
+          sb = read_json("sandbox-after-policy.json") or read_json("sandbox-before-policy.json")
+          providers = read_json("providers.json")
+          policy = read_json("policy.json")
+          logs = read_text("security-logs.txt") or read_text("logs-before-policy.txt")
+          line = read_text("decision-line.txt").strip()
+          caller_path = read_text("caller-path.txt").strip()
+          exec_text = read_text("network-exec.txt")
+
+          sandbox_id = sb.get("id")
+          policy_revision = sb.get("current_policy_version")
+          adm = sb.get("configuration_admission") or {}
+          policy_hash = adm.get("policy_hash") or None
+
+          decision = None
+          if "ALLOWED" in line:
+              decision = "ALLOW"
+          elif "DENIED" in line:
+              decision = "DENY"
+
+          destination = "example.com:443" if "example.com" in line and "443" in line else None
+          caller = caller_path if caller_path and (caller_path in line or Path(caller_path).name in line) else None
+
+          explicit_decision_id = None
+          explicit_execution_id = None
+          for pattern, target in [
+              (r'(?:decision_event_id|event_id)[=: ]+([A-Za-z0-9._:-]+)', "decision"),
+              (r'execution_event_id[=: ]+([A-Za-z0-9._:-]+)', "execution"),
+          ]:
+              m = re.search(pattern, line)
+              if m:
+                  if target == "decision":
+                      explicit_decision_id = m.group(1)
+                  else:
+                      explicit_execution_id = m.group(1)
+
+          provider_count = len(providers.get("providers", [])) if isinstance(providers, dict) else None
+          execution_success = "HTTP_STATUS=" in exec_text
+
+          fields = {
+              "SANDBOX_ID": sandbox_id,
+              "POLICY_HASH": policy_hash,
+              "POLICY_REVISION_AT_EXECUTION": policy_revision,
+              "POLICY_DECISION": decision,
+              "POLICY_DECISION_EVENT_ID": explicit_decision_id,
+              "EXECUTION_EVENT_ID": explicit_execution_id,
+              "CALLER_IDENTITY": caller,
+              "DESTINATION": destination,
+              "SECURITY_LOG_REF": sha_text(line),
+              "EXECUTION_RESULT": "SUCCESS" if execution_success else "FAILURE",
+              "PROVIDER_CREDENTIAL_COUNT": provider_count,
+          }
+
+          required = [
+              "SANDBOX_ID",
+              "POLICY_HASH",
+              "POLICY_REVISION_AT_EXECUTION",
+              "POLICY_DECISION",
+              "POLICY_DECISION_EVENT_ID",
+              "EXECUTION_EVENT_ID",
+              "CALLER_IDENTITY",
+              "DESTINATION",
+              "SECURITY_LOG_REF",
+          ]
+
+          first_missing = "NONE"
+          for key in required:
+              if fields.get(key) in (None, "", 0):
+                  first_missing = key
+                  break
+
+          if not pre.get("PRECHECK_PASS"):
+              verdict = "HOLD_LINUX_CAPABILITY_PRECHECK"
+              first_missing = next((k for k,v in pre.items() if k != "PRECHECK_PASS" and not v), "PRECHECK")
+          elif not sandbox_id:
+              verdict = "HOLD_REAL_SANDBOX_NOT_BOUND"
+              first_missing = "SANDBOX_ID"
+          elif not execution_success:
+              verdict = "HOLD_REAL_NETWORK_EXECUTION"
+              if first_missing == "NONE":
+                  first_missing = "EXECUTION_RESULT"
+          elif first_missing != "NONE":
+              verdict = "HOLD_REAL_EVIDENCE_BIND_INCOMPLETE"
+          elif decision != "ALLOW":
+              verdict = "HOLD_POLICY_DECISION_NOT_ALLOW"
+              first_missing = "POLICY_DECISION_ALLOW"
+          else:
+              verdict = "PASS_REAL_POLICY_AUTHORIZATION_RECEIPT"
+
+          receipt_body = {
+              "schema": "ESS_OPENSHELL_REAL_POLICY_AUTHORIZATION_RECEIPT_V1",
+              "gate": "ESS__NVIDIA_OPENSHELL__GITHUB_ACTIONS_LINUX_CAPABILITY_AND_LIVE_SANDBOX_V1",
+              "openshell_version": "v0.1.2",
+              "openshell_tag_commit": "6648bd0c290efbc41ba131ee9831ee45cd431f94",
+              "source_repo": os.environ.get("GITHUB_REPOSITORY"),
+              "source_ref": os.environ.get("GITHUB_REF"),
+              "source_sha": os.environ.get("GITHUB_SHA"),
+              "run_id": os.environ.get("GITHUB_RUN_ID"),
+              "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+              "precheck": pre,
+              "provider_evidence": fields,
+              "provider_credentials_attached": provider_count not in (0, None),
+              "raw_policy_sha256": sha_text(json.dumps(policy, sort_keys=True, separators=(",",":"))) if policy else None,
+              "raw_security_logs_sha256": sha_text(logs),
+              "matched_decision_line_sha256": sha_text(line),
+              "first_missing_proof": first_missing,
+              "claim_ceiling": (
+                  "REAL_GITHUB_HOSTED_LINUX_CAPABILITY_EVIDENCE"
+                  "__REAL_OPENSHELL_RUNTIME_EVIDENCE"
+                  "__NO_GENERAL_SECURITY_CLAIM"
+                  "__NO_BUSINESS_AUTHORIZATION_CLAIM"
+              ),
+              "verdict": verdict,
+          }
+          canonical = json.dumps(receipt_body, sort_keys=True, separators=(",",":")).encode()
+          receipt_body["receipt_sha256"] = hashlib.sha256(canonical).hexdigest()
+
+          (root / "real-receipt.json").write_text(json.dumps(receipt_body, indent=2, sort_keys=True))
+          print("ESS_RECEIPT_JSON_BEGIN")
+          print(json.dumps(receipt_body, indent=2, sort_keys=True))
+          print("ESS_RECEIPT_JSON_END")
+          PY
+
+          verdict="$(jq -r '.verdict' "$WORKDIR/real-receipt.json")"
+          first_missing="$(jq -r '.first_missing_proof' "$WORKDIR/real-receipt.json")"
+          receipt_sha="$(jq -r '.receipt_sha256' "$WORKDIR/real-receipt.json")"
+          echo "VERDICT=$verdict"
+          echo "FIRST_MISSING_PROOF=$first_missing"
+          echo "RECEIPT_SHA256=$receipt_sha"
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          echo "receipt_sha=$receipt_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Emit raw readback bundle to job log
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          for f in \
+            precheck.json landlock.txt seccomp.txt taskmem.txt userns.txt \
+            openshell-version.txt gateway-version.txt gateway-info.txt listeners.txt \
+            providers.json sandbox-create.txt sandbox-before-policy.json \
+            policy-update.txt policy.json sandbox-after-policy.json \
+            network-exec.txt decision-line.txt security-logs.txt \
+            real-receipt.json gateway.log; do
+            echo "===== $f ====="
+            cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
+          done
+
+      - name: Fail closed unless the full real receipt passes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f "$WORKDIR/real-receipt.json" ]; then
+            echo "FINAL_GATE=HOLD_NO_RECEIPT"
+            exit 1
+          fi
+          verdict="$(jq -r '.verdict' "$WORKDIR/real-receipt.json")"
+          echo "FINAL_GATE=$verdict"
+          [ "$verdict" = "PASS_REAL_POLICY_AUTHORIZATION_RECEIPT" ]
