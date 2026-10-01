@@ -22,15 +22,20 @@ class CechCppPythonParityTests(unittest.TestCase):
             binary = Path(tmp) / "eq64_cech_cpp"
             subprocess.run(
                 [compiler, "-std=c++17", "-O2", "-DEQ64_CECH_STANDALONE", str(source), "-o", str(binary)],
-                check=True,
-                capture_output=True,
-                text=True,
+                check=True, capture_output=True, text=True,
             )
             cpp_first = subprocess.run([str(binary)], check=True, capture_output=True, text=True).stdout
             cpp_second = subprocess.run([str(binary)], check=True, capture_output=True, text=True).stdout
+            self_first = subprocess.run([str(binary), "--selfcheck"], check=True, capture_output=True, text=True).stdout
+            self_second = subprocess.run([str(binary), "--selfcheck"], check=True, capture_output=True, text=True).stdout
 
         self.assertEqual(cpp_first, cpp_second)
         self.assertEqual(cpp_first, python_first)
+        self.assertEqual(self_first, self_second)
+        self.assertEqual(
+            self_first,
+            "DELTA2_ALL=1\nHOMOTOPY_ALL=1\nH0_REDUCED_ALL=1\nMUTANT_DETECTED=1\n",
+        )
 
 
 if __name__ == "__main__":
