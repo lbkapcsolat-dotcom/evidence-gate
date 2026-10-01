@@ -376,12 +376,18 @@ jobs:
 
           if [ -n "$SUPERVISOR_CONTAINER" ]; then
             # Supervisor image is intentionally minimal/distroless and has no shell.
-            # docker cp uses the daemon archive API and does not require an in-container shell.
+            # docker cp/export use the daemon archive API and do not require an in-container shell.
+            docker inspect "$SUPERVISOR_CONTAINER" >"$WORKDIR/supervisor-inspect.json" 2>&1 || true
+            docker export "$SUPERVISOR_CONTAINER" | tar -tf - | grep -E '(^|/)var/log|openshell-ocsf' \
+              >"$WORKDIR/supervisor-log-tree.txt" 2>&1 || true
+
             rm -rf "$WORKDIR/supervisor-var-log"
             mkdir -p "$WORKDIR/supervisor-var-log"
             docker cp "$SUPERVISOR_CONTAINER:/var/log/." "$WORKDIR/supervisor-var-log/" \
               2>"$WORKDIR/ocsf-read.err"
             OCSF_COPY_RC=$?
+            find "$WORKDIR/supervisor-var-log" -maxdepth 3 -printf '%y %p\n' \
+              >"$WORKDIR/supervisor-var-log-tree.txt" 2>&1 || true
             cat "$WORKDIR"/supervisor-var-log/openshell-ocsf.*.log \
               >"$WORKDIR/ocsf.jsonl" 2>>"$WORKDIR/ocsf-read.err"
             OCSF_CAT_RC=$?
@@ -638,7 +644,8 @@ jobs:
             providers.json sandbox-create.txt sandbox-before-policy.json \
             policy-update.txt policy.json sandbox-after-policy.json \
             network-exec.txt decision-line.txt security-logs.txt \
-            ocsf-enable.txt docker-ps.txt supervisor-container-id.txt ocsf-read.err \
+            ocsf-enable.txt docker-ps.txt supervisor-container-id.txt supervisor-inspect.json \
+            supervisor-log-tree.txt supervisor-var-log-tree.txt ocsf-read.err \
             ocsf.jsonl selected-ocsf-events.json \
             real-receipt.json gateway.log; do
             echo "===== $f ====="
