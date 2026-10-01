@@ -1,0 +1,11 @@
+Area,Status,Evidence,Buyer-safe statement
+Provider-native event capture,PASS,V1.4 receipt 7669b615409830bcdc62b07bc0de1a546989138023747d84230b1a7bc4886ef7,A native OpenShell OCSF event can be captured and bound to exact fields.
+Assurance adapter replay,PASS,V1.5 receipt 2cd23f34ccb8f959e3ff18fd41b4fec76b8d77f327e2f84803232dd8a13b0a9c,The same event produces the same canonical assurance claim.
+Mutation falsification,PASS,V1.5,A single changed bound field flips PASS to HOLD.
+Live stream receipts,PASS,V1.6 receipt 53ca0dd225a85eec7756c9ecb8f1aadf8dbbd3022e6687d32600153505bb161b,Relevant NET:OPEN stream events produce one receipt per native UID.
+Duplicate UID idempotency,PASS,V1.6,Duplicate events do not create duplicate state.
+Process restart persistence,PASS,V1.7 receipt 4d03756fe8f7205349cf9659186d685d242f888871df7bdd432057542a1b6741,Registry and receipt hashes remain equal after processor restart.
+Cross-run durable rehydration,PASS,V1.8 receipt 7835b4322011ac20b227bd4fe73600dffaa7fc8405b9834dbeefac0cc0c80e3c,A separate run rehydrates byte-identical registry artifact and appends exactly one new event.
+Cross-event native correlation,HOLD,HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL,No end-to-end cross-event correlation is claimed without provider-native correlation evidence.
+Production readiness,NOT PROVEN,Out of scope,This proof is demo-ready but not production admission.
+NVIDIA equivalence/superiority,OUT OF SCOPE,Claim ceiling,ESS is not claimed to be equivalent or superior to NVIDIA OpenShell.
