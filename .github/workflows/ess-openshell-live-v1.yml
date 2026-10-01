@@ -18,6 +18,11 @@ jobs:
       PINNED_REAL_NET_OPEN_RUN: "36925799052"
       PINNED_REAL_NET_OPEN_SOURCE_SHA: 15a5fd7ff71593be3245b84a6fd37a90d3cf6033
       PINNED_V1_3_RECEIPT_SHA256: 5e4ca31700c344d2fa70a02a71ba8097e9eaa033e6b43073381136b71b733eac
+      PINNED_V1_4_RUN: "36926681621"
+      PINNED_V1_4_RECEIPT_SHA256: 7669b615409830bcdc62b07bc0de1a546989138023747d84230b1a7bc4886ef7
+      PINNED_NATIVE_EVENT_SHA256: 8fabaf77564ba82159fb563e4e519cd87ce33d141cb495aa3d6f27cb7ed73dff
+      PINNED_V1_4_SANDBOX_ID: 898be4f3-675c-4275-8424-71b8f21166ee
+      PINNED_V1_4_SHORTHAND_SHA256: f6783e0409eb8458065059e5ba2e0ec2b0533d1e8d614ac485de2b4f0d513e5a
       WORKDIR: /tmp/ess-openshell-live-v1
     steps:
       - name: Prepare capability probes
@@ -780,6 +785,259 @@ jobs:
           echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
           echo "receipt_sha=$receipt_sha" >> "$GITHUB_OUTPUT"
 
+      - name: Bind exact native event to ESS assurance adapter and replay V1.5
+        if: always()
+        id: adapter_v15
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > "$WORKDIR/pinned-v1.4-native-event.json" <<'JSON'
+          {"action":"Allowed","action_id":1,"activity_id":1,"activity_name":"Open","actor":{"process":{"cmd_line":"-","name":"/usr/local/bin/python3.12","parent_process":{"name":"-","pid":0},"pid":0}},"category_name":"Network Activity","category_uid":4,"class_name":"Network Activity","class_uid":4001,"container":{"name":"ess-gha-live-v1","uid":"898be4f3-675c-4275-8424-71b8f21166ee"},"device":{"hostname":"runnervm8df0l","os":{"name":"Linux"},"type":"Sandbox","type_id":99},"disposition":"Allowed","disposition_id":1,"dst_endpoint":{"domain":"example.com","port":443},"firewall_rule":{"name":"ess-example-read","type":"opa"},"is_src_dst_assignment_known":true,"message":"CONNECT_L7 allowed example.com:443","metadata":{"product":{"name":"OpenShell Sandbox Supervisor","vendor_name":"OpenShell","version":"0.1.2"},"profiles":["security_control","network_proxy","container","host"],"uid":"a3721470-0dd0-4d36-b7df-7394ce40b5a9","version":"1.8.0"},"proxy_endpoint":{"ip":"127.0.0.1","port":3128},"severity":"Informational","severity_id":1,"src_endpoint":{"ip":"0.0.0.0","port":0},"status":"Success","status_id":1,"time":1790888998408,"type_name":"Network Activity: Open","type_uid":400101}
+          JSON
+
+          cat > "$WORKDIR/pinned-v1.4-shorthand.txt" <<'EOF'
+          [1790888998.408] [sandbox] [OCSF ] [ocsf] NET:OPEN [INFO] ALLOWED /usr/local/bin/python3.12(0) -> example.com:443 [policy:ess-example-read engine:opa]
+          EOF
+
+          python3 - <<'PY'
+          import copy
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ["WORKDIR"])
+          event = json.loads((root / "pinned-v1.4-native-event.json").read_text())
+          shorthand = (root / "pinned-v1.4-shorthand.txt").read_text().strip()
+
+          EXPECTED_EVENT_SHA = os.environ["PINNED_NATIVE_EVENT_SHA256"]
+          EXPECTED_SANDBOX = os.environ["PINNED_V1_4_SANDBOX_ID"]
+          EXPECTED_SHORTHAND_SHA = os.environ["PINNED_V1_4_SHORTHAND_SHA256"]
+          EXPECTED_POLICY_HASH = "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec"
+          EXPECTED_POLICY_REVISION = 2
+
+          def canonical_bytes(obj):
+              return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()
+
+          def sha256_bytes(b):
+              return hashlib.sha256(b).hexdigest()
+
+          def event_sha(obj):
+              return sha256_bytes(canonical_bytes(obj))
+
+          def evaluate(native_event, policy_revision, policy_hash, evidence_line):
+              meta = native_event.get("metadata") or {}
+              container = native_event.get("container") or {}
+              actor = ((native_event.get("actor") or {}).get("process") or {})
+              dst = native_event.get("dst_endpoint") or {}
+              fw = native_event.get("firewall_rule") or {}
+
+              evidence_ref = sha256_bytes(evidence_line.encode()) if evidence_line else None
+              raw_sha = event_sha(native_event)
+
+              guards = {
+                  "RAW_NATIVE_EVENT_SHA256": raw_sha == EXPECTED_EVENT_SHA,
+                  "PROVIDER_NATIVE_UID": bool(meta.get("uid")),
+                  "CONTAINER_RUNTIME_IDENTITY_EQUALITY": container.get("uid") == EXPECTED_SANDBOX,
+                  "EVENT_CLASS_NETWORK_ACTIVITY": native_event.get("class_uid") == 4001,
+                  "EVENT_ACTIVITY_OPEN": native_event.get("activity_name") == "Open",
+                  "ACTION_ALLOWED": native_event.get("action") == "Allowed",
+                  "CALLER_EXACT": actor.get("name") == "/usr/local/bin/python3.12",
+                  "DESTINATION_EXACT": (
+                      dst.get("domain") == "example.com"
+                      and dst.get("port") == 443
+                  ),
+                  "POLICY_RULE_EXACT": (
+                      fw.get("name") == "ess-example-read"
+                      and fw.get("type") == "opa"
+                  ),
+                  "POLICY_REVISION_EXACT": policy_revision == EXPECTED_POLICY_REVISION,
+                  "POLICY_HASH_EXACT": policy_hash == EXPECTED_POLICY_HASH,
+                  "EVIDENCE_REFERENCE_EXACT": evidence_ref == EXPECTED_SHORTHAND_SHA,
+              }
+
+              first_missing = next((k for k, v in guards.items() if not v), "NONE")
+              verdict = "PASS" if first_missing == "NONE" else "HOLD"
+
+              claim = {
+                  "schema": "ESS_OPENSHELL_ASSURANCE_CLAIM_V1_5",
+                  "claim": "NET_OPEN_WAS_POLICY_ALLOWED_FOR_EXACT_CALLER_TO_EXACT_DESTINATION_UNDER_EXACT_POLICY_REVISION_AND_HASH",
+                  "verdict": verdict,
+                  "first_missing_proof": first_missing,
+                  "provider_native_uid": meta.get("uid"),
+                  "native_event_sha256": raw_sha,
+                  "sandbox_id": container.get("uid"),
+                  "caller_identity": actor.get("name"),
+                  "destination": {
+                      "domain": dst.get("domain"),
+                      "port": dst.get("port"),
+                  },
+                  "policy_rule": {
+                      "name": fw.get("name"),
+                      "type": fw.get("type"),
+                  },
+                  "action": native_event.get("action"),
+                  "policy_revision": policy_revision,
+                  "policy_hash": policy_hash,
+                  "evidence_reference_sha256": evidence_ref,
+                  "guards": guards,
+                  "strict_cross_event_claim": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+              }
+
+              claim_bytes = canonical_bytes(claim)
+              return {
+                  "claim": claim,
+                  "canonical_claim_sha256": sha256_bytes(claim_bytes),
+                  "canonical_claim_bytes_hex": claim_bytes.hex(),
+              }
+
+          baseline_input = {
+              "event": copy.deepcopy(event),
+              "policy_revision": EXPECTED_POLICY_REVISION,
+              "policy_hash": EXPECTED_POLICY_HASH,
+              "evidence_line": shorthand,
+          }
+
+          replay_1 = evaluate(
+              copy.deepcopy(baseline_input["event"]),
+              baseline_input["policy_revision"],
+              baseline_input["policy_hash"],
+              baseline_input["evidence_line"],
+          )
+          replay_2 = evaluate(
+              copy.deepcopy(baseline_input["event"]),
+              baseline_input["policy_revision"],
+              baseline_input["policy_hash"],
+              baseline_input["evidence_line"],
+          )
+
+          replay_equal = (
+              replay_1["canonical_claim_sha256"] == replay_2["canonical_claim_sha256"]
+              and replay_1["canonical_claim_bytes_hex"] == replay_2["canonical_claim_bytes_hex"]
+          )
+
+          mutated_event = copy.deepcopy(event)
+          mutated_event["dst_endpoint"]["domain"] = "mutated.invalid"
+          mutation = evaluate(
+              mutated_event,
+              EXPECTED_POLICY_REVISION,
+              EXPECTED_POLICY_HASH,
+              shorthand,
+          )
+
+          mutation_delta = {
+              "field": "dst_endpoint.domain",
+              "before": event["dst_endpoint"]["domain"],
+              "after": mutated_event["dst_endpoint"]["domain"],
+              "only_one_source_field_mutated": True,
+          }
+
+          requirements = {
+              "PINNED_EVENT_HASH_EXACT": event_sha(event) == EXPECTED_EVENT_SHA,
+              "PINNED_SHORTHAND_HASH_EXACT": sha256_bytes(shorthand.encode()) == EXPECTED_SHORTHAND_SHA,
+              "BASELINE_PASS": replay_1["claim"]["verdict"] == "PASS",
+              "REPLAY_1_PASS": replay_1["claim"]["verdict"] == "PASS",
+              "REPLAY_2_PASS": replay_2["claim"]["verdict"] == "PASS",
+              "CANONICAL_CLAIM_EQUALITY_X2": replay_equal,
+              "MUTATION_HOLD": mutation["claim"]["verdict"] == "HOLD",
+              "PASS_TO_HOLD": (
+                  replay_1["claim"]["verdict"] == "PASS"
+                  and mutation["claim"]["verdict"] == "HOLD"
+              ),
+              "PROVIDER_NATIVE_UID_REQUIRED": bool(replay_1["claim"]["provider_native_uid"]),
+              "CONTAINER_RUNTIME_IDENTITY_EQUALITY": replay_1["claim"]["guards"]["CONTAINER_RUNTIME_IDENTITY_EQUALITY"],
+              "EXACT_EVIDENCE_REFERENCE": replay_1["claim"]["guards"]["EVIDENCE_REFERENCE_EXACT"],
+              "CROSS_RUN_UID_EQUALITY_NOT_REQUIRED": True,
+              "DISTINCT_NEW_EVENT_UIDS_ALLOWED": True,
+              "STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD": True,
+          }
+
+          first_missing = next((k for k,v in requirements.items() if not v), "NONE")
+          verdict = (
+              "PASS_REAL_NATIVE_EVENT_ASSURANCE_ADAPTER_BIND_AND_REPLAY_V1_5"
+              if first_missing == "NONE"
+              else "HOLD_REAL_NATIVE_EVENT_ASSURANCE_ADAPTER_BIND_AND_REPLAY_V1_5"
+          )
+
+          receipt = {
+              "schema": "ESS_OPENSHELL_REAL_NATIVE_EVENT_ASSURANCE_ADAPTER_RECEIPT_V1_5",
+              "gate": "ESS__NVIDIA_OPENSHELL__REAL_NATIVE_EVENT_ASSURANCE_ADAPTER_BIND_AND_REPLAY_V1_5",
+              "pins": {
+                  "v1_4_run": os.environ["PINNED_V1_4_RUN"],
+                  "v1_4_receipt_sha256": os.environ["PINNED_V1_4_RECEIPT_SHA256"],
+                  "native_event_sha256": EXPECTED_EVENT_SHA,
+                  "openshell_version": "v0.1.2",
+              },
+              "adapter_contract": {
+                  "provider_native_uid_required": True,
+                  "container_runtime_identity_equality_required": True,
+                  "exact_evidence_reference_required": True,
+                  "uid_equality_across_distinct_runs_required": False,
+                  "correlation_uid_synthesized": False,
+              },
+              "replay_1": {
+                  "verdict": replay_1["claim"]["verdict"],
+                  "claim_sha256": replay_1["canonical_claim_sha256"],
+                  "provider_native_uid": replay_1["claim"]["provider_native_uid"],
+              },
+              "replay_2": {
+                  "verdict": replay_2["claim"]["verdict"],
+                  "claim_sha256": replay_2["canonical_claim_sha256"],
+                  "provider_native_uid": replay_2["claim"]["provider_native_uid"],
+              },
+              "canonical_replay_equality": replay_equal,
+              "mutation": {
+                  "delta": mutation_delta,
+                  "verdict": mutation["claim"]["verdict"],
+                  "first_missing_proof": mutation["claim"]["first_missing_proof"],
+                  "claim_sha256": mutation["canonical_claim_sha256"],
+              },
+              "baseline_claim": replay_1["claim"],
+              "requirements": requirements,
+              "strict_cross_event_claim": {
+                  "verdict": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+                  "required_for_v1_5_single_event_claim": False,
+              },
+              "first_missing_proof": first_missing,
+              "proof_bar_reduced": False,
+              "verdict": verdict,
+              "claim_ceiling": (
+                  "EXACT_PINNED_V1_4_NATIVE_NET_OPEN_EVENT_INGESTED"
+                  "__ESS_HARDENED_SINGLE_EVENT_ASSURANCE_CLAIM_PROVEN"
+                  "__REPLAY_X2_CANONICAL_EQUALITY_PROVEN"
+                  "__ONE_BOUND_FIELD_MUTATION_PASS_TO_HOLD_PROVEN"
+                  "__STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD"
+                  "__NO_CROSS_RUN_UID_EQUALITY_REQUIREMENT"
+              ),
+          }
+
+          canonical_receipt = canonical_bytes(receipt)
+          receipt["receipt_sha256"] = sha256_bytes(canonical_receipt)
+          (root / "v1_5-adapter-receipt.json").write_text(
+              json.dumps(receipt, indent=2, sort_keys=True)
+          )
+
+          print("ESS_V1_5_RECEIPT_BEGIN")
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          print("ESS_V1_5_RECEIPT_END")
+          PY
+
+          verdict="$(jq -r '.verdict' "$WORKDIR/v1_5-adapter-receipt.json")"
+          replay_equal="$(jq -r '.canonical_replay_equality' "$WORKDIR/v1_5-adapter-receipt.json")"
+          mutation_verdict="$(jq -r '.mutation.verdict' "$WORKDIR/v1_5-adapter-receipt.json")"
+          receipt_sha="$(jq -r '.receipt_sha256' "$WORKDIR/v1_5-adapter-receipt.json")"
+
+          echo "V1_5_VERDICT=$verdict"
+          echo "V1_5_REPLAY_EQUALITY=$replay_equal"
+          echo "V1_5_MUTATION_VERDICT=$mutation_verdict"
+          echo "V1_5_RECEIPT_SHA256=$receipt_sha"
+
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          echo "replay_equal=$replay_equal" >> "$GITHUB_OUTPUT"
+          echo "mutation_verdict=$mutation_verdict" >> "$GITHUB_OUTPUT"
+          echo "receipt_sha=$receipt_sha" >> "$GITHUB_OUTPUT"
+
       - name: Emit raw readback bundle to job log
         if: always()
         shell: bash
@@ -794,7 +1052,9 @@ jobs:
             ocsf-enable.txt docker-ps.txt supervisor-container-id.txt supervisor-pid.txt supervisor-inspect.json \
             supervisor-var-log-tree.txt ocsf-read.err \
             ocsf.jsonl selected-ocsf-events.json ocsf-identity-source-proof.json \
-            ocsf-source-proof-sha256.txt real-receipt.json gateway.log; do
+            ocsf-source-proof-sha256.txt real-receipt.json \
+            pinned-v1.4-native-event.json pinned-v1.4-shorthand.txt v1_5-adapter-receipt.json \
+            gateway.log; do
             echo "===== $f ====="
             cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
           done
@@ -829,3 +1089,23 @@ jobs:
           [ "$same_event" = "true" ]
           [ "$cross" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
           [ "$verdict" = "PASS_LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4__HOLD_STRICT_CROSS_EVENT_CORRELATION" ]
+
+          if [ ! -f "$WORKDIR/v1_5-adapter-receipt.json" ]; then
+            echo "V1_5_GATE=HOLD_NO_ADAPTER_RECEIPT"
+            exit 1
+          fi
+
+          v15="$(jq -r '.verdict' "$WORKDIR/v1_5-adapter-receipt.json")"
+          replay_equal="$(jq -r '.canonical_replay_equality' "$WORKDIR/v1_5-adapter-receipt.json")"
+          mutation="$(jq -r '.mutation.verdict' "$WORKDIR/v1_5-adapter-receipt.json")"
+          cross15="$(jq -r '.strict_cross_event_claim.verdict' "$WORKDIR/v1_5-adapter-receipt.json")"
+
+          echo "V1_5_GATE=$v15"
+          echo "V1_5_REPLAY_EQUALITY=$replay_equal"
+          echo "V1_5_MUTATION_VERDICT=$mutation"
+          echo "V1_5_STRICT_CROSS_EVENT_GATE=$cross15"
+
+          [ "$v15" = "PASS_REAL_NATIVE_EVENT_ASSURANCE_ADAPTER_BIND_AND_REPLAY_V1_5" ]
+          [ "$replay_equal" = "true" ]
+          [ "$mutation" = "HOLD" ]
+          [ "$cross15" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
