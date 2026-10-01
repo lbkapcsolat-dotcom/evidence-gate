@@ -1,0 +1,79 @@
+{
+  "schema": "ESS_OPENSHELL_CAPABILITY_MATRIX_V1",
+  "proven": [
+    {
+      "capability": "provider_native_ocsf_uid_capture",
+      "evidence": "V1_4"
+    },
+    {
+      "capability": "single_event_policy_authorization_binding",
+      "evidence": "V1_4+V1_5"
+    },
+    {
+      "capability": "exact_caller_destination_policy_binding",
+      "evidence": "V1_5"
+    },
+    {
+      "capability": "deterministic_claim_replay",
+      "evidence": "V1_5"
+    },
+    {
+      "capability": "single_bound_field_mutation_pass_to_hold",
+      "evidence": "V1_5"
+    },
+    {
+      "capability": "live_stream_to_assurance_receipt",
+      "evidence": "V1_6"
+    },
+    {
+      "capability": "duplicate_native_uid_idempotency",
+      "evidence": "V1_6"
+    },
+    {
+      "capability": "multi_event_distinct_native_uid_registry",
+      "evidence": "V1_7"
+    },
+    {
+      "capability": "process_restart_registry_and_receipt_equality",
+      "evidence": "V1_7"
+    },
+    {
+      "capability": "cross_run_artifact_byte_identity",
+      "evidence": "V1_8"
+    },
+    {
+      "capability": "fresh_run_registry_rehydration_zero_delta_replay",
+      "evidence": "V1_8"
+    },
+    {
+      "capability": "fresh_run_one_new_live_event_one_new_receipt_append",
+      "evidence": "V1_8"
+    }
+  ],
+  "not_proven": [
+    {
+      "capability": "provider_native_cross_event_correlation",
+      "reason": "OpenShell v0.1.2 typed metadata did not provide a populated native correlation UID for the tested path"
+    },
+    {
+      "capability": "production_provider_integration",
+      "reason": "No external provider credentials or paid API used"
+    },
+    {
+      "capability": "general_system_security",
+      "reason": "Evidence is bounded to the tested OpenShell network-authorization path"
+    },
+    {
+      "capability": "physical_host_identity_continuity",
+      "reason": "Fresh GitHub run and distinct sandbox identity were proven; provider-native physical VM identity was not bound"
+    }
+  ],
+  "out_of_scope": [
+    "NVIDIA_PRODUCT_EQUIVALENCE",
+    "SUPERIORITY_COMPARISON",
+    "COMPLIANCE_CERTIFICATION",
+    "LEGAL_OPINION",
+    "PRODUCTION_WRITE_AUTHORIZATION",
+    "MODEL_QUALITY_OR_SAFETY_EVALUATION"
+  ]
+}

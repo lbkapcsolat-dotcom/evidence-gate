@@ -1,0 +1,18 @@
+{
+  "schema": "ESS_OPENSHELL_CLAIM_CEILING_V1",
+  "allowed_external_claim": [
+    "On OpenShell v0.1.2, the tested ESS assurance adapter can bind one provider-native allowed network-open event to exact caller, destination, policy revision/hash and native UID evidence.",
+    "For the tested path, the ESS layer produced deterministic replayable assurance receipts and fail-closed HOLD behavior when one bound evidence field was mutated.",
+    "For the tested path, receipt processing remained idempotent across duplicate event ingestion, process restart, and a separate GitHub Actions run using a byte-identical persisted registry artifact.",
+    "The demonstrated assurance behavior is read/evidence-oriented and bounded to the specific tested OpenShell path."
+  ],
+  "prohibited_overclaim": [
+    "ESS is equivalent to NVIDIA OpenShell.",
+    "ESS is superior to NVIDIA OpenShell.",
+    "ESS proves OpenShell or any AI system is secure in general.",
+    "ESS proves end-to-end cross-event causality without provider-native correlation evidence.",
+    "ESS is production-ready from this proof alone.",
+    "ESS provides compliance certification from this proof."
+  ],
+  "strict_cross_event_claim": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL"
+}

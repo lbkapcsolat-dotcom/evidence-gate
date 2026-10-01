@@ -1,0 +1,44 @@
+{
+  "schema": "ESS_OPENSHELL_REPRODUCTION_MAP_V1",
+  "prerequisites": [
+    "GitHub Actions Linux runner with the previously demonstrated required kernel capabilities",
+    "Official NVIDIA OpenShell v0.1.2 pinned to tag commit 6648bd0c290efbc41ba131ee9831ee45cd431f94",
+    "No external provider credentials",
+    "No paid API"
+  ],
+  "sequence": [
+    {
+      "step": 1,
+      "gate": "V1_4",
+      "action": "Start localhost gateway, create minimal sandbox, execute one allowed local policy-controlled network-open event, capture full provider-native OCSF event and exact policy revision/hash."
+    },
+    {
+      "step": 2,
+      "gate": "V1_5",
+      "action": "Map exact native event into hardened ESS assurance schema, replay twice, mutate one bound field, require PASS/PASS then HOLD."
+    },
+    {
+      "step": 3,
+      "gate": "V1_6",
+      "action": "Ingest live OCSF stream, build receipt registry, replay duplicate UID, require no duplicate receipt."
+    },
+    {
+      "step": 4,
+      "gate": "V1_7",
+      "action": "Generate multiple distinct native events, persist UID registry, restart processing, replay, require registry/receipt equality, append exactly one new event."
+    },
+    {
+      "step": 5,
+      "gate": "V1_8",
+      "action": "Persist canonical registry as run artifact, start a separate GitHub Actions run, download the exact pinned artifact, require byte-SHA equality, replay pinned events with zero new receipts, then append exactly one fresh live native event and one receipt."
+    }
+  ],
+  "expected_terminal_state": {
+    "v1_4": "PASS bounded single-event capture",
+    "v1_5": "PASS adapter replay and falsification",
+    "v1_6": "PASS live stream idempotency",
+    "v1_7": "PASS process restart persistence",
+    "v1_8": "PASS cross-run durable rehydration",
+    "strict_cross_event_correlation": "HOLD"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "schema": "ESS_OPENSHELL_ASSURANCE_LAYER_MINIMUM_PROOF_CLOSE_SEAL_V1",
+  "gate": "ESS__NVIDIA_OPENSHELL__ASSURANCE_LAYER_MINIMUM_PROOF_CLOSE_SEAL_V1",
+  "frozen_at_source_state": {
+    "branch": "test/openshell-live-v1",
+    "parent_commit": "edfd0b9b1d311fce5e115460a0c791159697c007",
+    "openshell_version": "v0.1.2",
+    "openshell_tag_commit": "6648bd0c290efbc41ba131ee9831ee45cd431f94"
+  },
+  "pinned_receipts": {
+    "v1_4": "7669b615409830bcdc62b07bc0de1a546989138023747d84230b1a7bc4886ef7",
+    "v1_5": "2cd23f34ccb8f959e3ff18fd41b4fec76b8d77f327e2f84803232dd8a13b0a9c",
+    "v1_6": "53ca0dd225a85eec7756c9ecb8f1aadf8dbbd3022e6687d32600153505bb161b",
+    "v1_7": "4d03756fe8f7205349cf9659186d685d242f888871df7bdd432057542a1b6741",
+    "v1_8": "7835b4322011ac20b227bd4fe73600dffaa7fc8405b9834dbeefac0cc0c80e3c"
+  },
+  "member_git_blob_sha1": {
+    "evidence/openshell/minimum-proof-v1/CANONICAL_EVIDENCE_MANIFEST.json": "2ecbd153bb1ce72ce2fbf71fcca8a4b2d494e9da",
+    "evidence/openshell/minimum-proof-v1/CAPABILITY_MATRIX.json": "b4249d6cbb1f2c9b2bd75965328c07583c257ccf",
+    "evidence/openshell/minimum-proof-v1/CLAIM_CEILING.json": "bf6b3b7df29d1671d33b02ec84dd2d91db372dcf",
+    "evidence/openshell/minimum-proof-v1/KNOWN_HOLDS.json": "8ee7b1cd2a53effd715178e9604ed5a98b08516a",
+    "evidence/openshell/minimum-proof-v1/REPRODUCTION_MAP.json": "42e111a84cce0792c0a1e23a272f393d96d1b0eb"
+  },
+  "classification": {
+    "proven": [
+      "bounded provider-native single-event authorization evidence bind",
+      "deterministic assurance replay",
+      "single-field falsification PASS-to-HOLD",
+      "live stream receipt pipeline",
+      "duplicate UID idempotency",
+      "process restart persistence",
+      "cross-run byte-identical registry rehydration",
+      "fresh-run exactly-one-new-event exactly-one-new-receipt append"
+    ],
+    "not_proven": [
+      "provider-native strict cross-event correlation",
+      "general AI system security",
+      "production readiness",
+      "physical host identity continuity"
+    ],
+    "out_of_scope": [
+      "NVIDIA equivalence",
+      "superiority",
+      "compliance certification",
+      "legal opinion",
+      "production writes"
+    ]
+  },
+  "strict_cross_event_claim": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+  "external_demo_evaluation": {
+    "verdict": "READY_BOUNDED_EXTERNAL_ASSURANCE_DEMO",
+    "allowed_demo_scope": "Demonstrate one exact provider-native OpenShell network authorization event flowing through ESS evidence normalization, receipt generation, deterministic replay, fail-closed mutation, stream idempotency and persisted registry rehydration.",
+    "conditions": [
+      "State the claim ceiling before the demo.",
+      "Keep cross-event correlation visibly on HOLD.",
+      "Use no provider credentials or paid APIs.",
+      "Do not present this as NVIDIA equivalence, superiority, certification, or production security proof."
+    ]
+  },
+  "frozen_minimum_proof": true,
+  "no_new_features": true,
+  "no_main_write": true,
+  "no_merge": true
+}

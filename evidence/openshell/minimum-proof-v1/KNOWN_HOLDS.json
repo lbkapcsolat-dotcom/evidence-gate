@@ -1,0 +1,30 @@
+{
+  "schema": "ESS_OPENSHELL_KNOWN_HOLDS_V1",
+  "holds": [
+    {
+      "id": "HOLD_001",
+      "scope": "strict_cross_event_correlation",
+      "status": "HOLD",
+      "evidence_gap": "No populated provider-native correlation UID was proven for cross-event linkage in the tested OpenShell v0.1.2 typed metadata path.",
+      "forbidden_workaround": "Do not synthesize a correlation UID."
+    },
+    {
+      "id": "HOLD_002",
+      "scope": "production_provider_credentials",
+      "status": "OUT_OF_SCOPE",
+      "evidence_gap": "No provider credentials, paid API, or production provider execution was authorized."
+    },
+    {
+      "id": "HOLD_003",
+      "scope": "production_runtime_admission",
+      "status": "OUT_OF_SCOPE",
+      "evidence_gap": "No production runtime admission or remote production write was tested."
+    },
+    {
+      "id": "HOLD_004",
+      "scope": "generalized_security_assurance",
+      "status": "NOT_PROVEN",
+      "evidence_gap": "The proof covers a bounded policy-authorized network-open evidence path, not all OpenShell capabilities or all AI-agent risks."
+    }
+  ]
+}

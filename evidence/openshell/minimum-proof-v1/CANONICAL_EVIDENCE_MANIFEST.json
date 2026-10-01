@@ -1,0 +1,59 @@
+{
+  "schema": "ESS_OPENSHELL_CANONICAL_EVIDENCE_MANIFEST_V1",
+  "gate": "ESS__NVIDIA_OPENSHELL__ASSURANCE_LAYER_MINIMUM_PROOF_CLOSE_SEAL_V1",
+  "branch": "test/openshell-live-v1",
+  "frozen_parent_commit": "edfd0b9b1d311fce5e115460a0c791159697c007",
+  "pins": {
+    "openshell_version": "v0.1.2",
+    "openshell_tag_commit": "6648bd0c290efbc41ba131ee9831ee45cd431f94",
+    "policy_revision": 2,
+    "policy_hash": "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec",
+    "v1_4": {
+      "run_id": "36926681621",
+      "receipt_sha256": "7669b615409830bcdc62b07bc0de1a546989138023747d84230b1a7bc4886ef7",
+      "native_event_sha256": "8fabaf77564ba82159fb563e4e519cd87ce33d141cb495aa3d6f27cb7ed73dff",
+      "verdict": "PASS_LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4__HOLD_STRICT_CROSS_EVENT_CORRELATION"
+    },
+    "v1_5": {
+      "receipt_sha256": "2cd23f34ccb8f959e3ff18fd41b4fec76b8d77f327e2f84803232dd8a13b0a9c",
+      "validated_in_run_id": "36933054064",
+      "verdict": "PASS_REAL_NATIVE_EVENT_ASSURANCE_ADAPTER_BIND_AND_REPLAY_V1_5"
+    },
+    "v1_6": {
+      "receipt_sha256": "53ca0dd225a85eec7756c9ecb8f1aadf8dbbd3022e6687d32600153505bb161b",
+      "validated_in_run_id": "36933054064",
+      "verdict": "PASS_LIVE_STREAM_TO_ASSURANCE_RECEIPT_PIPELINE_V1_6"
+    },
+    "v1_7": {
+      "receipt_sha256": "4d03756fe8f7205349cf9659186d685d242f888871df7bdd432057542a1b6741",
+      "validated_in_run_id": "36933054064",
+      "verdict": "PASS_MULTI_EVENT_STREAM_CONTINUITY_AND_RESTART_PERSISTENCE_V1_7"
+    },
+    "v1_8": {
+      "source_run_id": "36932258437",
+      "source_head_sha": "0a094bc6a99047fe5817979675f96c0d44d6dbf9",
+      "source_artifact_id": "11196531826",
+      "source_artifact_digest_sha256": "2bd6111958610fb9836dc4b20fa133ee89ea053a26346157fa8360eb86664bab",
+      "registry_file_sha256": "ef24423cb469b4d7922bd0407f2b681a8ff7ee8d4d8988667ba9604e05ebd028",
+      "event_set_file_sha256": "0bb90c85d0d16393d0e9e906177546255a608152cfc4817c15ed2cf8085acd58",
+      "consumer_run_id": "36933054064",
+      "consumer_head_sha": "edfd0b9b1d311fce5e115460a0c791159697c007",
+      "receipt_sha256": "7835b4322011ac20b227bd4fe73600dffaa7fc8405b9834dbeefac0cc0c80e3c",
+      "new_provider_native_uid": "f0e41739-dfad-491b-8655-043d4a117713",
+      "new_receipt_sha256": "3d3d6721aeab2f621733948cbc3e0070a3ffd41d4ef68b788271e83646191bee",
+      "verdict": "PASS_CROSS_RUN_DURABLE_REGISTRY_REHYDRATION_V1_8"
+    }
+  },
+  "evidence_chain": [
+    "V1_4_PROVIDER_NATIVE_SINGLE_EVENT_CAPTURE",
+    "V1_5_ASSURANCE_ADAPTER_AND_DETERMINISTIC_REPLAY",
+    "V1_6_LIVE_STREAM_TO_RECEIPT_PIPELINE",
+    "V1_7_MULTI_EVENT_CONTINUITY_AND_PROCESS_RESTART_PERSISTENCE",
+    "V1_8_CROSS_RUN_DURABLE_REGISTRY_REHYDRATION"
+  ],
+  "proof_bar_reduced": false,
+  "no_nvidia_equivalence_claim": true,
+  "no_superiority_claim": true,
+  "no_main_write": true,
+  "no_merge": true
+}
