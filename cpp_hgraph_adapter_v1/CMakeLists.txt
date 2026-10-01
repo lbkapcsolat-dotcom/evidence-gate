@@ -50,6 +50,6 @@ if(MSVC)
 else()
     target_compile_options(
         planetary_resource_cpp_hgraph_adapter_v1
-        PRIVATE -Wall -Wextra -Werror
+        PRIVATE -Wall -Wextra -Werror -Wno-pedantic
     )
 endif()
