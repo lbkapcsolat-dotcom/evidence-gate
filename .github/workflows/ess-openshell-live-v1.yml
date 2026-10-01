@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   openshell-live:
@@ -25,6 +26,7 @@ jobs:
       PINNED_V1_4_SHORTHAND_SHA256: f6783e0409eb8458065059e5ba2e0ec2b0533d1e8d614ac485de2b4f0d513e5a
       PINNED_V1_5_RECEIPT_SHA256: 2cd23f34ccb8f959e3ff18fd41b4fec76b8d77f327e2f84803232dd8a13b0a9c
       PINNED_V1_6_RECEIPT_SHA256: 53ca0dd225a85eec7756c9ecb8f1aadf8dbbd3022e6687d32600153505bb161b
+      PINNED_V1_7_RECEIPT_SHA256: 4d03756fe8f7205349cf9659186d685d242f888871df7bdd432057542a1b6741
       WORKDIR: /tmp/ess-openshell-live-v1
     steps:
       - name: Prepare capability probes
@@ -1636,6 +1638,64 @@ jobs:
           echo "verdict=$verdict" >>"$GITHUB_OUTPUT"
           echo "receipt_sha=$receipt_sha" >>"$GITHUB_OUTPUT"
 
+      - name: Export canonical V1.7 registry for cross-run rehydration V1.8 producer
+        if: steps.pipeline_v17.outputs.verdict == 'PASS_MULTI_EVENT_STREAM_CONTINUITY_AND_RESTART_PERSISTENCE_V1_7'
+        id: v18_export
+        shell: bash
+        run: |
+          set -euo pipefail
+          ART="$WORKDIR/v1_8-export"
+          rm -rf "$ART"
+          mkdir -p "$ART"
+
+          cp "$WORKDIR/v1_7-registry-after-fourth.json" "$ART/canonical-registry.json"
+          cp "$WORKDIR/v1_7-stream-four.jsonl" "$ART/pinned-event-set.jsonl"
+          cp "$WORKDIR/v1_7-final-receipt.json" "$ART/v1_7-final-receipt.json"
+
+          registry_sha="$(sha256sum "$ART/canonical-registry.json" | awk '{print $1}')"
+          event_set_sha="$(sha256sum "$ART/pinned-event-set.jsonl" | awk '{print $1}')"
+          v17_file_sha="$(sha256sum "$ART/v1_7-final-receipt.json" | awk '{print $1}')"
+
+          jq -n \
+            --arg schema "ESS_OPENSHELL_CROSS_RUN_EXPORT_MANIFEST_V1_8" \
+            --arg source_run "$GITHUB_RUN_ID" \
+            --arg source_sha "$GITHUB_SHA" \
+            --arg pinned_v1_7_receipt "$PINNED_V1_7_RECEIPT_SHA256" \
+            --arg registry_sha "$registry_sha" \
+            --arg event_set_sha "$event_set_sha" \
+            --arg v17_file_sha "$v17_file_sha" \
+            '{
+              schema:$schema,
+              source_run_id:$source_run,
+              source_sha:$source_sha,
+              pinned_v1_7_receipt_sha256:$pinned_v1_7_receipt,
+              canonical_registry_file_sha256:$registry_sha,
+              pinned_event_set_file_sha256:$event_set_sha,
+              v1_7_final_receipt_file_sha256:$v17_file_sha,
+              exported_registry_count:4,
+              synthetic_uid:false,
+              strict_cross_event_claim:"HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL"
+            }' >"$ART/export-manifest.json"
+
+          manifest_sha="$(sha256sum "$ART/export-manifest.json" | awk '{print $1}')"
+
+          echo "V1_8_EXPORT_REGISTRY_SHA256=$registry_sha"
+          echo "V1_8_EXPORT_EVENT_SET_SHA256=$event_set_sha"
+          echo "V1_8_EXPORT_MANIFEST_SHA256=$manifest_sha"
+
+          echo "registry_sha=$registry_sha" >>"$GITHUB_OUTPUT"
+          echo "event_set_sha=$event_set_sha" >>"$GITHUB_OUTPUT"
+          echo "manifest_sha=$manifest_sha" >>"$GITHUB_OUTPUT"
+
+      - name: Persist V1.8 producer bundle as immutable run artifact
+        if: steps.v18_export.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-openshell-v1-8-source-${{ github.run_id }}
+          path: /tmp/ess-openshell-live-v1/v1_8-export
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 1
       - name: Emit raw readback bundle to job log
         if: always()
         shell: bash
@@ -1657,7 +1717,10 @@ jobs:
             v1_7-stream-three.jsonl v1_7-stream-four.jsonl \
             v1_7-init-report.json v1_7-replay-report.json v1_7-append-report.json \
             v1_7-registry-after-init.json v1_7-registry-after-replay.json v1_7-registry-after-fourth.json \
-            v1_7-final-receipt.json gateway.log; do
+            v1_7-final-receipt.json \
+            v1_8-export/canonical-registry.json v1_8-export/pinned-event-set.jsonl \
+            v1_8-export/v1_7-final-receipt.json v1_8-export/export-manifest.json \
+            gateway.log; do
             echo "===== $f ====="
             cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
           done
