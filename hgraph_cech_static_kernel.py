@@ -91,3 +91,21 @@ def positive_degree_homotopy_composition(
 def h0_reduced_composition(cochain: Cochain) -> dict[Simplex, int | float]:
     """Static graph composition h_1*delta_0 = I - Pi on C^0."""
     return contracting_homotopy(1, delta(0, cochain))
+
+def _validate_components(components) -> None:
+    if len(components) != GLOBAL_COMPONENT_COUNT:
+        raise ValueError(f"expected {GLOBAL_COMPONENT_COUNT} components")
+
+
+def global_delta(p: int, components) -> tuple[dict[Simplex, int | float], ...]:
+    """Apply delta independently to the 64 direct-sum components."""
+    _validate_components(components)
+    return tuple(delta(p, component) for component in components)
+
+
+def global_contracting_homotopy(
+    p: int, components
+) -> tuple[dict[Simplex, int | float], ...]:
+    """Apply h_p independently to the 64 direct-sum components."""
+    _validate_components(components)
+    return tuple(contracting_homotopy(p, component) for component in components)
