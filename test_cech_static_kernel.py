@@ -54,5 +54,34 @@ class CechCoboundaryTests(KernelMixin, unittest.TestCase):
         self.assertEqual(k.delta(19, top), {})
 
 
+class CechContractingHomotopyTests(KernelMixin, unittest.TestCase):
+    def test_h1_inserts_apex_and_vanishes_on_apex_vertex(self):
+        k = self._kernel()
+        phi = {(1, 2): 7, (2, 3): 9}
+        hphi = k.contracting_homotopy(1, phi)
+        self.assertEqual(hphi[(1,)], 0)
+        self.assertEqual(hphi[(2,)], 7)
+        self.assertEqual(hphi[(3,)], 0)
+
+    def test_h2_apex_present_and_absent_targets(self):
+        k = self._kernel()
+        phi = {(1, 2, 3): 5}
+        hphi = k.contracting_homotopy(2, phi)
+        self.assertEqual(hphi[(1, 2)], 0)
+        self.assertEqual(hphi[(2, 3)], 5)
+
+    def test_h0_projection_is_constant_apex_evaluation(self):
+        k = self._kernel()
+        f = {(1,): 3, (2,): 11, (20,): -4}
+        projection = k.h0_projection(f)
+        self.assertEqual(len(projection), 20)
+        self.assertTrue(all(projection[(v,)] == 3 for v in range(1, 21)))
+
+    def test_contracting_homotopy_rejects_degree_zero(self):
+        k = self._kernel()
+        with self.assertRaises(ValueError):
+            k.contracting_homotopy(0, {(1,): 1})
+
+
 if __name__ == "__main__":
     unittest.main()
