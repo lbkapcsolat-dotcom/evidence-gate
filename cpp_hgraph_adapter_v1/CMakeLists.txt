@@ -5,7 +5,7 @@ project(equilibrium_planetary_resource_cpp_hgraph_adapter_v1 LANGUAGES CXX)
 find_package(Python 3.12 COMPONENTS Interpreter Development REQUIRED)
 
 execute_process(
-    COMMAND "\${Python_EXECUTABLE}" -c
+    COMMAND "${Python_EXECUTABLE}" -c
             "import sysconfig; print(sysconfig.get_path('purelib'))"
     OUTPUT_VARIABLE HGRAPH_PYTHON_PREFIX
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -15,17 +15,17 @@ if(NOT HGRAPH_PYTHON_PREFIX_RESULT EQUAL 0 OR HGRAPH_PYTHON_PREFIX STREQUAL "")
     message(FATAL_ERROR "Could not determine Python site-packages prefix")
 endif()
 
-list(APPEND CMAKE_PREFIX_PATH "\${HGRAPH_PYTHON_PREFIX}")
+list(APPEND CMAKE_PREFIX_PATH "${HGRAPH_PYTHON_PREFIX}")
 file(GLOB HGRAPH_CONFIG_HINTS
     LIST_DIRECTORIES true
-    "\${HGRAPH_PYTHON_PREFIX}/lib*/cmake/hgraph"
+    "${HGRAPH_PYTHON_PREFIX}/lib*/cmake/hgraph"
 )
 
-find_package(hgraph CONFIG REQUIRED HINTS \${HGRAPH_CONFIG_HINTS})
+find_package(hgraph CONFIG REQUIRED HINTS ${HGRAPH_CONFIG_HINTS})
 
 add_executable(
     planetary_resource_cpp_hgraph_adapter_v1
-    "\${CMAKE_CURRENT_LIST_DIR}/../planetary_resource_cpp_hgraph_adapter_v1.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/../planetary_resource_cpp_hgraph_adapter_v1.cpp"
 )
 
 target_compile_features(
