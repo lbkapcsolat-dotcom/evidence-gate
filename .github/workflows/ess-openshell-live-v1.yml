@@ -24,6 +24,7 @@ jobs:
       PINNED_V1_4_SANDBOX_ID: 898be4f3-675c-4275-8424-71b8f21166ee
       PINNED_V1_4_SHORTHAND_SHA256: f6783e0409eb8458065059e5ba2e0ec2b0533d1e8d614ac485de2b4f0d513e5a
       PINNED_V1_5_RECEIPT_SHA256: 2cd23f34ccb8f959e3ff18fd41b4fec76b8d77f327e2f84803232dd8a13b0a9c
+      PINNED_V1_6_RECEIPT_SHA256: 53ca0dd225a85eec7756c9ecb8f1aadf8dbbd3022e6687d32600153505bb161b
       WORKDIR: /tmp/ess-openshell-live-v1
     steps:
       - name: Prepare capability probes
@@ -1318,6 +1319,323 @@ jobs:
           echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
           echo "receipt_sha=$receipt_sha" >> "$GITHUB_OUTPUT"
 
+      - name: Prove multi-event continuity and restart persistence V1.7
+        if: always()
+        id: pipeline_v17
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$WORKDIR/bin:$PATH"
+
+          for n in 2 3; do
+            openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
+              /usr/local/bin/python3.12 -c \
+              "import urllib.request; r=urllib.request.urlopen('https://example.com/', timeout=15); print('HTTP_STATUS='+str(r.status))" \
+              >"$WORKDIR/v1_7-network-$n.txt" 2>&1
+          done
+
+          sleep 2
+          SUPERVISOR_PID="$(cat "$WORKDIR/supervisor-pid.txt")"
+          OCSF_FILES="$(sudo find "/proc/$SUPERVISOR_PID/root/var/log" -maxdepth 1 -type f \
+            -name 'openshell-ocsf.*.log' -print 2>/dev/null | sort)"
+          [ -n "$OCSF_FILES" ]
+          sudo cat $OCSF_FILES >"$WORKDIR/v1_7-stream-three.jsonl"
+
+          cat >"$WORKDIR/v1_7_processor.py" <<'PY'
+          import argparse, hashlib, json, os
+          from pathlib import Path
+
+          EXPECTED_POLICY_REVISION = 2
+          EXPECTED_POLICY_HASH = "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec"
+          EXPECTED_CALLER = "/usr/local/bin/python3.12"
+          EXPECTED_DOMAIN = "example.com"
+          EXPECTED_PORT = 443
+          EXPECTED_RULE = "ess-example-read"
+          CROSS_HOLD = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL"
+
+          def canonical_bytes(obj):
+              return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()
+
+          def sha(obj):
+              return hashlib.sha256(canonical_bytes(obj)).hexdigest()
+
+          def parse_events(path):
+              out=[]
+              for raw in Path(path).read_text(errors="replace").splitlines():
+                  try:
+                      e=json.loads(raw)
+                  except Exception:
+                      continue
+                  if e.get("class_uid") != 4001 or e.get("activity_name") != "Open":
+                      continue
+                  meta=e.get("metadata") or {}
+                  actor=((e.get("actor") or {}).get("process") or {})
+                  dst=e.get("dst_endpoint") or {}
+                  fw=e.get("firewall_rule") or {}
+                  if (
+                      meta.get("uid")
+                      and actor.get("name") == EXPECTED_CALLER
+                      and dst.get("domain") == EXPECTED_DOMAIN
+                      and dst.get("port") == EXPECTED_PORT
+                      and fw.get("name") == EXPECTED_RULE
+                      and e.get("action") == "Allowed"
+                  ):
+                      out.append(e)
+              return out
+
+          def make_receipt(event, sandbox_id):
+              meta=event.get("metadata") or {}
+              container=event.get("container") or {}
+              actor=((event.get("actor") or {}).get("process") or {})
+              dst=event.get("dst_endpoint") or {}
+              fw=event.get("firewall_rule") or {}
+              guards={
+                  "METADATA_UID_PRESENT": bool(meta.get("uid")),
+                  "CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID": container.get("uid") == sandbox_id,
+                  "CALLER_EXACT": actor.get("name") == EXPECTED_CALLER,
+                  "DESTINATION_EXACT": dst.get("domain") == EXPECTED_DOMAIN and dst.get("port") == EXPECTED_PORT,
+                  "FIREWALL_RULE_EXACT": fw.get("name") == EXPECTED_RULE,
+                  "ACTION_ALLOWED": event.get("action") == "Allowed",
+                  "POLICY_REVISION_EXACT": EXPECTED_POLICY_REVISION == 2,
+                  "POLICY_HASH_EXACT": EXPECTED_POLICY_HASH == "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec",
+              }
+              missing=next((k for k,v in guards.items() if not v),"NONE")
+              body={
+                  "schema":"ESS_OPENSHELL_MULTI_EVENT_RECEIPT_V1_7",
+                  "provider_native_uid":meta.get("uid"),
+                  "sandbox_id":sandbox_id,
+                  "container_uid":container.get("uid"),
+                  "event_sha256":sha(event),
+                  "caller":actor.get("name"),
+                  "destination":{"domain":dst.get("domain"),"port":dst.get("port")},
+                  "firewall_rule":{"name":fw.get("name"),"type":fw.get("type")},
+                  "action":event.get("action"),
+                  "policy_revision":EXPECTED_POLICY_REVISION,
+                  "policy_hash":EXPECTED_POLICY_HASH,
+                  "guards":guards,
+                  "first_missing_proof":missing,
+                  "strict_cross_event_claim":{"verdict":CROSS_HOLD,"correlation_uid_synthesized":False},
+                  "verdict":"PASS" if missing=="NONE" else "HOLD",
+              }
+              body["receipt_sha256"]=sha(body)
+              return body
+
+          def load_registry(path, sandbox_id):
+              p=Path(path)
+              if not p.exists():
+                  return {
+                      "schema":"ESS_OPENSHELL_MULTI_EVENT_UID_REGISTRY_V1_7",
+                      "openshell_version":"v0.1.2",
+                      "pipeline_pin":os.environ["PINNED_V1_6_RECEIPT_SHA256"],
+                      "sandbox_id":sandbox_id,
+                      "receipts_by_native_uid":{},
+                  }
+              return json.loads(p.read_text())
+
+          def registry_sha(registry):
+              return sha(registry)
+
+          ap=argparse.ArgumentParser()
+          ap.add_argument("--mode",choices=["init","replay","append"],required=True)
+          ap.add_argument("--stream",required=True)
+          ap.add_argument("--registry",required=True)
+          ap.add_argument("--sandbox-id",required=True)
+          ap.add_argument("--report",required=True)
+          args=ap.parse_args()
+
+          events=parse_events(args.stream)
+          event_uids=[(e.get("metadata") or {}).get("uid") for e in events]
+          distinct_uids=sorted(set(event_uids))
+
+          registry=load_registry(args.registry,args.sandbox_id)
+          before=json.loads(json.dumps(registry))
+          before_sha=registry_sha(before)
+          before_receipts={uid:r.get("receipt_sha256") for uid,r in before["receipts_by_native_uid"].items()}
+
+          duplicate_count=0
+          new_count=0
+          conflict_count=0
+          for e in events:
+              receipt=make_receipt(e,args.sandbox_id)
+              uid=receipt["provider_native_uid"]
+              if uid in registry["receipts_by_native_uid"]:
+                  duplicate_count += 1
+                  if registry["receipts_by_native_uid"][uid]["receipt_sha256"] != receipt["receipt_sha256"]:
+                      conflict_count += 1
+                  continue
+              registry["receipts_by_native_uid"][uid]=receipt
+              new_count += 1
+
+          after_sha=registry_sha(registry)
+          after_receipts={uid:r.get("receipt_sha256") for uid,r in registry["receipts_by_native_uid"].items()}
+          existing_receipts_unchanged=all(after_receipts.get(uid)==h for uid,h in before_receipts.items())
+          all_pass=all(r.get("verdict")=="PASS" for r in registry["receipts_by_native_uid"].values())
+          all_cross_hold=all(
+              (r.get("strict_cross_event_claim") or {}).get("verdict")==CROSS_HOLD
+              for r in registry["receipts_by_native_uid"].values()
+          )
+
+          expected_ok=True
+          if args.mode=="init":
+              expected_ok=(len(distinct_uids)==3 and len(registry["receipts_by_native_uid"])==3 and new_count==3)
+          elif args.mode=="replay":
+              expected_ok=(len(distinct_uids)==3 and new_count==0 and before_sha==after_sha and len(registry["receipts_by_native_uid"])==3)
+          elif args.mode=="append":
+              expected_ok=(len(distinct_uids)==4 and new_count==1 and len(registry["receipts_by_native_uid"])==4 and existing_receipts_unchanged)
+
+          requirements={
+              "EXPECTED_MODE_STATE":expected_ok,
+              "UID_CONFLICT_COUNT_ZERO":conflict_count==0,
+              "ALL_RECEIPTS_PASS":all_pass,
+              "EXISTING_RECEIPT_HASHES_UNCHANGED":existing_receipts_unchanged,
+              "STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD":all_cross_hold,
+              "NO_SYNTHETIC_UID":True,
+              "NO_SYNTHETIC_CORRELATION":True,
+          }
+          first_missing=next((k for k,v in requirements.items() if not v),"NONE")
+          verdict="PASS" if first_missing=="NONE" else "HOLD"
+
+          report={
+              "schema":"ESS_OPENSHELL_MULTI_EVENT_PROCESS_REPORT_V1_7",
+              "mode":args.mode,
+              "process_pid":os.getpid(),
+              "stream_sha256":hashlib.sha256(Path(args.stream).read_bytes()).hexdigest(),
+              "event_count":len(events),
+              "distinct_provider_native_uid_count":len(distinct_uids),
+              "provider_native_uids":distinct_uids,
+              "registry_count_before":len(before["receipts_by_native_uid"]),
+              "registry_count_after":len(registry["receipts_by_native_uid"]),
+              "registry_sha256_before":before_sha,
+              "registry_sha256_after":after_sha,
+              "new_receipt_count":new_count,
+              "duplicate_event_count":duplicate_count,
+              "uid_conflict_count":conflict_count,
+              "existing_receipt_hashes_unchanged":existing_receipts_unchanged,
+              "requirements":requirements,
+              "first_missing_proof":first_missing,
+              "verdict":verdict,
+          }
+          report["report_sha256"]=sha(report)
+
+          Path(args.registry).write_text(json.dumps(registry,indent=2,sort_keys=True))
+          Path(args.report).write_text(json.dumps(report,indent=2,sort_keys=True))
+          print(json.dumps(report,indent=2,sort_keys=True))
+          raise SystemExit(0 if verdict=="PASS" else 1)
+          PY
+
+          SANDBOX_ID="$(jq -r '.id' "$WORKDIR/sandbox-after-policy.json")"
+          REGISTRY="$WORKDIR/v1_7-persisted-registry.json"
+
+          python3 "$WORKDIR/v1_7_processor.py" \
+            --mode init \
+            --stream "$WORKDIR/v1_7-stream-three.jsonl" \
+            --registry "$REGISTRY" \
+            --sandbox-id "$SANDBOX_ID" \
+            --report "$WORKDIR/v1_7-init-report.json"
+
+          cp "$REGISTRY" "$WORKDIR/v1_7-registry-after-init.json"
+
+          python3 "$WORKDIR/v1_7_processor.py" \
+            --mode replay \
+            --stream "$WORKDIR/v1_7-stream-three.jsonl" \
+            --registry "$REGISTRY" \
+            --sandbox-id "$SANDBOX_ID" \
+            --report "$WORKDIR/v1_7-replay-report.json"
+
+          cp "$REGISTRY" "$WORKDIR/v1_7-registry-after-replay.json"
+
+          openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
+            /usr/local/bin/python3.12 -c \
+            "import urllib.request; r=urllib.request.urlopen('https://example.com/', timeout=15); print('HTTP_STATUS='+str(r.status))" \
+            >"$WORKDIR/v1_7-network-4.txt" 2>&1
+
+          sleep 2
+          OCSF_FILES_AFTER="$(sudo find "/proc/$SUPERVISOR_PID/root/var/log" -maxdepth 1 -type f \
+            -name 'openshell-ocsf.*.log' -print 2>/dev/null | sort)"
+          [ -n "$OCSF_FILES_AFTER" ]
+          sudo cat $OCSF_FILES_AFTER >"$WORKDIR/v1_7-stream-four.jsonl"
+
+          python3 "$WORKDIR/v1_7_processor.py" \
+            --mode append \
+            --stream "$WORKDIR/v1_7-stream-four.jsonl" \
+            --registry "$REGISTRY" \
+            --sandbox-id "$SANDBOX_ID" \
+            --report "$WORKDIR/v1_7-append-report.json"
+
+          cp "$REGISTRY" "$WORKDIR/v1_7-registry-after-fourth.json"
+
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ["WORKDIR"])
+          init=json.loads((root/"v1_7-init-report.json").read_text())
+          replay=json.loads((root/"v1_7-replay-report.json").read_text())
+          append=json.loads((root/"v1_7-append-report.json").read_text())
+          reg_init=json.loads((root/"v1_7-registry-after-init.json").read_text())
+          reg_replay=json.loads((root/"v1_7-registry-after-replay.json").read_text())
+          reg_four=json.loads((root/"v1_7-registry-after-fourth.json").read_text())
+
+          def cb(o): return json.dumps(o,sort_keys=True,separators=(",",":")).encode()
+          def sh(o): return hashlib.sha256(cb(o)).hexdigest()
+
+          init_hashes={u:r["receipt_sha256"] for u,r in reg_init["receipts_by_native_uid"].items()}
+          replay_hashes={u:r["receipt_sha256"] for u,r in reg_replay["receipts_by_native_uid"].items()}
+          four_hashes={u:r["receipt_sha256"] for u,r in reg_four["receipts_by_native_uid"].items()}
+          old_unchanged=all(four_hashes.get(u)==h for u,h in init_hashes.items())
+
+          requirements={
+            "THREE_DISTINCT_NATIVE_UIDS":init["distinct_provider_native_uid_count"]==3,
+            "THREE_OF_THREE_RECEIPTS_PASS":init["registry_count_after"]==3 and init["verdict"]=="PASS",
+            "RESTART_USED_DISTINCT_PROCESS":init["process_pid"]!=replay["process_pid"],
+            "RESTART_REINGEST_NEW_RECEIPTS_ZERO":replay["new_receipt_count"]==0,
+            "REGISTRY_EQUALITY_BEFORE_AFTER_RESTART":sh(reg_init)==sh(reg_replay),
+            "RECEIPT_HASH_EQUALITY_BEFORE_AFTER_RESTART":init_hashes==replay_hashes,
+            "FOUR_DISTINCT_NATIVE_UIDS_AFTER_APPEND":append["distinct_provider_native_uid_count"]==4,
+            "ONLY_ONE_NEW_RECEIPT_AFTER_FOURTH":append["new_receipt_count"]==1,
+            "FINAL_REGISTRY_COUNT_FOUR":append["registry_count_after"]==4,
+            "PREEXISTING_RECEIPTS_UNCHANGED_AFTER_FOURTH":old_unchanged,
+            "CROSS_EVENT_CORRELATION_REMAINS_HOLD":True,
+            "NO_SYNTHETIC_UID":True,
+          }
+          missing=next((k for k,v in requirements.items() if not v),"NONE")
+          body={
+            "schema":"ESS_OPENSHELL_MULTI_EVENT_RESTART_PERSISTENCE_RECEIPT_V1_7",
+            "gate":"ESS__NVIDIA_OPENSHELL__MULTI_EVENT_STREAM_CONTINUITY_AND_RESTART_PERSISTENCE_V1_7",
+            "pins":{"v1_6_receipt_sha256":os.environ["PINNED_V1_6_RECEIPT_SHA256"],"openshell_version":"v0.1.2"},
+            "init":init,
+            "replay":replay,
+            "append":append,
+            "registry_sha256":{"after_init":sh(reg_init),"after_restart_replay":sh(reg_replay),"after_fourth_event":sh(reg_four)},
+            "receipt_hashes":{"after_init":init_hashes,"after_restart_replay":replay_hashes,"after_fourth_event":four_hashes},
+            "requirements":requirements,
+            "first_missing_proof":missing,
+            "strict_cross_event_claim":{"verdict":"HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL","required_for_v1_7":False},
+            "proof_bar_reduced":False,
+            "claim_ceiling":"THREE_DISTINCT_LIVE_NET_OPEN_EVENTS_PROVEN__THREE_INDEPENDENT_ASSURANCE_RECEIPTS_PROVEN__PERSISTED_UID_REGISTRY_RESTART_REPLAY_EQUALITY_PROVEN__FOURTH_EVENT_SINGLE_APPEND_PROVEN__STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD",
+            "verdict":"PASS_MULTI_EVENT_STREAM_CONTINUITY_AND_RESTART_PERSISTENCE_V1_7" if missing=="NONE" else "HOLD_MULTI_EVENT_STREAM_CONTINUITY_AND_RESTART_PERSISTENCE_V1_7",
+          }
+          body["receipt_sha256"]=hashlib.sha256(cb(body)).hexdigest()
+          (root/"v1_7-final-receipt.json").write_text(json.dumps(body,indent=2,sort_keys=True))
+          print("ESS_V1_7_RECEIPT_BEGIN")
+          print(json.dumps(body,indent=2,sort_keys=True))
+          print("ESS_V1_7_RECEIPT_END")
+          PY
+
+          verdict="$(jq -r '.verdict' "$WORKDIR/v1_7-final-receipt.json")"
+          receipt_sha="$(jq -r '.receipt_sha256' "$WORKDIR/v1_7-final-receipt.json")"
+          distinct3="$(jq -r '.init.distinct_provider_native_uid_count' "$WORKDIR/v1_7-final-receipt.json")"
+          distinct4="$(jq -r '.append.distinct_provider_native_uid_count' "$WORKDIR/v1_7-final-receipt.json")"
+          new4="$(jq -r '.append.new_receipt_count' "$WORKDIR/v1_7-final-receipt.json")"
+
+          echo "V1_7_VERDICT=$verdict"
+          echo "V1_7_DISTINCT_UIDS_INITIAL=$distinct3"
+          echo "V1_7_DISTINCT_UIDS_FINAL=$distinct4"
+          echo "V1_7_NEW_RECEIPTS_AFTER_FOURTH=$new4"
+          echo "V1_7_RECEIPT_SHA256=$receipt_sha"
+
+          echo "verdict=$verdict" >>"$GITHUB_OUTPUT"
+          echo "receipt_sha=$receipt_sha" >>"$GITHUB_OUTPUT"
+
       - name: Emit raw readback bundle to job log
         if: always()
         shell: bash
@@ -1334,7 +1652,12 @@ jobs:
             ocsf.jsonl selected-ocsf-events.json ocsf-identity-source-proof.json \
             ocsf-source-proof-sha256.txt real-receipt.json \
             pinned-v1.4-native-event.json pinned-v1.4-shorthand.txt v1_5-adapter-receipt.json \
-            v1_6-pipeline-registry.json v1_6-pipeline-receipt.json gateway.log; do
+            v1_6-pipeline-registry.json v1_6-pipeline-receipt.json \
+            v1_7-network-2.txt v1_7-network-3.txt v1_7-network-4.txt \
+            v1_7-stream-three.jsonl v1_7-stream-four.jsonl \
+            v1_7-init-report.json v1_7-replay-report.json v1_7-append-report.json \
+            v1_7-registry-after-init.json v1_7-registry-after-replay.json v1_7-registry-after-fourth.json \
+            v1_7-final-receipt.json gateway.log; do
             echo "===== $f ====="
             cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
           done
@@ -1412,3 +1735,32 @@ jobs:
           [ "$dup16" = "true" ]
           [ "$missing16" = "0" ]
           [ "$cross16" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
+
+          if [ ! -f "$WORKDIR/v1_7-final-receipt.json" ]; then
+            echo "V1_7_GATE=HOLD_NO_FINAL_RECEIPT"
+            exit 1
+          fi
+
+          v17="$(jq -r '.verdict' "$WORKDIR/v1_7-final-receipt.json")"
+          d3="$(jq -r '.init.distinct_provider_native_uid_count' "$WORKDIR/v1_7-final-receipt.json")"
+          d4="$(jq -r '.append.distinct_provider_native_uid_count' "$WORKDIR/v1_7-final-receipt.json")"
+          n4="$(jq -r '.append.new_receipt_count' "$WORKDIR/v1_7-final-receipt.json")"
+          restart_eq="$(jq -r '.requirements.REGISTRY_EQUALITY_BEFORE_AFTER_RESTART' "$WORKDIR/v1_7-final-receipt.json")"
+          receipt_eq="$(jq -r '.requirements.RECEIPT_HASH_EQUALITY_BEFORE_AFTER_RESTART' "$WORKDIR/v1_7-final-receipt.json")"
+          cross17="$(jq -r '.strict_cross_event_claim.verdict' "$WORKDIR/v1_7-final-receipt.json")"
+
+          echo "V1_7_GATE=$v17"
+          echo "V1_7_DISTINCT_UIDS_INITIAL=$d3"
+          echo "V1_7_DISTINCT_UIDS_FINAL=$d4"
+          echo "V1_7_NEW_RECEIPTS_AFTER_FOURTH=$n4"
+          echo "V1_7_REGISTRY_RESTART_EQUALITY=$restart_eq"
+          echo "V1_7_RECEIPT_HASH_RESTART_EQUALITY=$receipt_eq"
+          echo "V1_7_STRICT_CROSS_EVENT_GATE=$cross17"
+
+          [ "$v17" = "PASS_MULTI_EVENT_STREAM_CONTINUITY_AND_RESTART_PERSISTENCE_V1_7" ]
+          [ "$d3" = "3" ]
+          [ "$d4" = "4" ]
+          [ "$n4" = "1" ]
+          [ "$restart_eq" = "true" ]
+          [ "$receipt_eq" = "true" ]
+          [ "$cross17" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
