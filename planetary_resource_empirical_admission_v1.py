@@ -240,8 +240,11 @@ def unit_conversion(spec: Mapping[str, Any], candidate: EmpiricalCandidate) -> t
         raise AdmissionHold("HOLD_DIMENSIONAL_INCOMPATIBILITY")
 
     expected_basis = spec.get("gas_basis")
-    actual_basis = rule.get("gas_basis") or candidate.source_gas_basis or None
-    if expected_basis and actual_basis != expected_basis:
+    rule_basis = rule.get("gas_basis")
+    declared_basis = candidate.source_gas_basis or rule_basis or None
+    if expected_basis and rule_basis and rule_basis != expected_basis:
+        raise AdmissionHold("HOLD_HHV_LHV_BASIS_MISMATCH")
+    if expected_basis and declared_basis != expected_basis:
         raise AdmissionHold("HOLD_HHV_LHV_BASIS_MISMATCH")
 
     if candidate.value is None:
