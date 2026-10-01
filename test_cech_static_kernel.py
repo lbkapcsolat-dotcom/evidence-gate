@@ -83,5 +83,70 @@ class CechContractingHomotopyTests(KernelMixin, unittest.TestCase):
             k.contracting_homotopy(0, {(1,): 1})
 
 
+def _clean(cochain):
+    return {simplex: value for simplex, value in cochain.items() if value != 0}
+
+
+def _orbit_representatives(p):
+    reps = [tuple(range(1, p + 2))]
+    if p <= 18:
+        reps.append(tuple(range(2, p + 3)))
+    return reps
+
+
+class CechAlgebraIdentityTests(KernelMixin, unittest.TestCase):
+    def test_delta_squared_zero_all_degrees_both_orbits(self):
+        k = self._kernel()
+        for p in range(19):
+            for rep in _orbit_representatives(p):
+                with self.subTest(p=p, rep=rep):
+                    phi = {rep: 1}
+                    first = k.delta(p, phi)
+                    second = k.delta(p + 1, first)
+                    self.assertEqual(_clean(second), {})
+
+    def test_positive_degree_graph_composition_is_identity_all_degrees(self):
+        k = self._kernel()
+        for p in range(1, 20):
+            for rep in _orbit_representatives(p):
+                with self.subTest(p=p, rep=rep):
+                    phi = {rep: 1}
+                    composed = k.positive_degree_homotopy_composition(p, phi)
+                    self.assertEqual(_clean(composed), phi)
+
+    def test_h0_reduced_composition_equals_identity_minus_projection(self):
+        k = self._kernel()
+        for vertex in (1, 2, 20):
+            with self.subTest(vertex=vertex):
+                f = {(vertex,): 1}
+                lhs = _clean(k.h0_reduced_composition(f))
+                projection = k.h0_projection(f)
+                rhs = _clean({
+                    (v,): f.get((v,), 0) - projection[(v,)]
+                    for v in range(1, 21)
+                })
+                self.assertEqual(lhs, rhs)
+
+    def test_orientation_sign_mutant_is_detected(self):
+        k = self._kernel()
+
+        def mutant_delta_all_plus(p, cochain):
+            from itertools import combinations
+            out = {}
+            if p == 19:
+                return out
+            for simplex in combinations(range(1, 21), p + 2):
+                out[simplex] = sum(
+                    cochain.get(simplex[:j] + simplex[j + 1 :], 0)
+                    for j in range(p + 2)
+                )
+            return out
+
+        phi = {(1,): 1}
+        broken = mutant_delta_all_plus(1, mutant_delta_all_plus(0, phi))
+        self.assertNotEqual(_clean(broken), {})
+        self.assertEqual(_clean(k.delta(1, k.delta(0, phi))), {})
+
+
 if __name__ == "__main__":
     unittest.main()
