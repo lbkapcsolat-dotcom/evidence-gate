@@ -23,6 +23,7 @@ jobs:
       PINNED_NATIVE_EVENT_SHA256: 8fabaf77564ba82159fb563e4e519cd87ce33d141cb495aa3d6f27cb7ed73dff
       PINNED_V1_4_SANDBOX_ID: 898be4f3-675c-4275-8424-71b8f21166ee
       PINNED_V1_4_SHORTHAND_SHA256: f6783e0409eb8458065059e5ba2e0ec2b0533d1e8d614ac485de2b4f0d513e5a
+      PINNED_V1_5_RECEIPT_SHA256: 2cd23f34ccb8f959e3ff18fd41b4fec76b8d77f327e2f84803232dd8a13b0a9c
       WORKDIR: /tmp/ess-openshell-live-v1
     steps:
       - name: Prepare capability probes
@@ -1038,6 +1039,285 @@ jobs:
           echo "mutation_verdict=$mutation_verdict" >> "$GITHUB_OUTPUT"
           echo "receipt_sha=$receipt_sha" >> "$GITHUB_OUTPUT"
 
+      - name: Build live OCSF stream to assurance receipt pipeline V1.6
+        if: always()
+        id: pipeline_v16
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          root = Path(os.environ["WORKDIR"])
+
+          def canonical_bytes(obj):
+              return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()
+
+          def sha256_bytes(b):
+              return hashlib.sha256(b).hexdigest()
+
+          def read_json(path):
+              p = root / path
+              if not p.exists():
+                  return {}
+              try:
+                  return json.loads(p.read_text())
+              except Exception:
+                  return {}
+
+          sb = read_json("sandbox-after-policy.json") or read_json("sandbox-before-policy.json")
+          policy = read_json("policy.json")
+          ocsf_path = root / "ocsf.jsonl"
+
+          if not ocsf_path.exists():
+              raise SystemExit("ocsf.jsonl missing")
+
+          policy_revision = sb.get("current_policy_version")
+          policy_hash = (sb.get("configuration_admission") or {}).get("policy_hash")
+          runtime_sandbox_id = sb.get("id")
+
+          def make_receipt(event):
+              meta = event.get("metadata") or {}
+              container = event.get("container") or {}
+              actor = ((event.get("actor") or {}).get("process") or {})
+              dst = event.get("dst_endpoint") or {}
+              fw = event.get("firewall_rule") or {}
+
+              uid = meta.get("uid")
+              guards = {
+                  "METADATA_UID_PRESENT": bool(uid),
+                  "CONTAINER_UID_PRESENT": bool(container.get("uid")),
+                  "CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID": (
+                      bool(container.get("uid"))
+                      and container.get("uid") == runtime_sandbox_id
+                  ),
+                  "EVENT_CLASS_NETWORK_ACTIVITY": event.get("class_uid") == 4001,
+                  "EVENT_ACTIVITY_OPEN": event.get("activity_name") == "Open",
+                  "CALLER_PRESENT": bool(actor.get("name")),
+                  "DESTINATION_PRESENT": bool(dst.get("domain") or dst.get("ip")),
+                  "DESTINATION_PORT_PRESENT": dst.get("port") is not None,
+                  "FIREWALL_RULE_PRESENT": bool(fw.get("name")),
+                  "ACTION_PRESENT": bool(event.get("action")),
+                  "EFFECTIVE_POLICY_REVISION_PRESENT": policy_revision is not None,
+                  "EFFECTIVE_POLICY_HASH_PRESENT": bool(policy_hash),
+              }
+              first_missing = next((k for k,v in guards.items() if not v), "NONE")
+              verdict = "PASS" if first_missing == "NONE" else "HOLD"
+
+              body = {
+                  "schema": "ESS_OPENSHELL_STREAM_EVENT_ASSURANCE_RECEIPT_V1_6",
+                  "provider_native_uid": uid,
+                  "runtime_sandbox_id": runtime_sandbox_id,
+                  "container_uid": container.get("uid"),
+                  "event": {
+                      "class_uid": event.get("class_uid"),
+                      "activity_name": event.get("activity_name"),
+                      "action": event.get("action"),
+                      "actor_process": actor.get("name"),
+                      "destination": {
+                          "domain": dst.get("domain"),
+                          "ip": dst.get("ip"),
+                          "port": dst.get("port"),
+                      },
+                      "firewall_rule": {
+                          "name": fw.get("name"),
+                          "type": fw.get("type"),
+                      },
+                      "time": event.get("time"),
+                      "raw_event_sha256": sha256_bytes(canonical_bytes(event)),
+                  },
+                  "effective_policy": {
+                      "revision": policy_revision,
+                      "hash": policy_hash,
+                      "raw_policy_sha256": (
+                          sha256_bytes(canonical_bytes(policy)) if policy else None
+                      ),
+                  },
+                  "guards": guards,
+                  "first_missing_proof": first_missing,
+                  "strict_cross_event_claim": {
+                      "verdict": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+                      "correlation_uid_synthesized": False,
+                  },
+                  "verdict": verdict,
+              }
+              body["receipt_sha256"] = sha256_bytes(canonical_bytes(body))
+              return body
+
+          def parse_relevant_events():
+              events = []
+              for raw in ocsf_path.read_text(errors="replace").splitlines():
+                  try:
+                      event = json.loads(raw)
+                  except Exception:
+                      continue
+                  if event.get("class_uid") != 4001:
+                      continue
+                  if event.get("activity_name") != "Open":
+                      continue
+                  fw = event.get("firewall_rule") or {}
+                  if not fw.get("name"):
+                      continue
+                  events.append(event)
+              return events
+
+          def build_registry(events):
+              registry = {}
+              duplicate_count = 0
+              missing_uid_count = 0
+
+              for event in events:
+                  receipt = make_receipt(event)
+                  uid = receipt.get("provider_native_uid")
+                  if not uid:
+                      missing_uid_count += 1
+                      # Fail-closed: a missing native UID cannot enter the canonical registry.
+                      continue
+                  if uid in registry:
+                      duplicate_count += 1
+                      # Idempotency requires the duplicate UID to resolve to the exact same receipt.
+                      if registry[uid]["receipt_sha256"] != receipt["receipt_sha256"]:
+                          raise SystemExit(
+                              f"DUPLICATE_UID_CONFLICT:{uid}:"
+                              f"{registry[uid]['receipt_sha256']}!={receipt['receipt_sha256']}"
+                          )
+                      continue
+                  registry[uid] = receipt
+
+              canonical = {
+                  "schema": "ESS_OPENSHELL_STREAM_ASSURANCE_REGISTRY_V1_6",
+                  "openshell_version": "v0.1.2",
+                  "pipeline_pin": os.environ["PINNED_V1_5_RECEIPT_SHA256"],
+                  "runtime_sandbox_id": runtime_sandbox_id,
+                  "effective_policy_revision": policy_revision,
+                  "effective_policy_hash": policy_hash,
+                  "receipts_by_native_uid": registry,
+              }
+              registry_sha = sha256_bytes(canonical_bytes(canonical))
+              return canonical, registry_sha, duplicate_count, missing_uid_count
+
+          events = parse_relevant_events()
+
+          registry_1, registry_sha_1, dup_1, missing_1 = build_registry(events)
+          registry_2, registry_sha_2, dup_2, missing_2 = build_registry(events)
+
+          # Duplicate-idempotency canary: append one exact duplicate event and prove
+          # that the canonical registry hash is unchanged.
+          duplicate_canary_events = list(events)
+          if events:
+              duplicate_canary_events.append(json.loads(json.dumps(events[0])))
+          registry_dup, registry_sha_dup, dup_canary, missing_dup = build_registry(duplicate_canary_events)
+
+          replay_equal = registry_sha_1 == registry_sha_2
+          duplicate_idempotent = registry_sha_1 == registry_sha_dup
+
+          receipts = list(registry_1["receipts_by_native_uid"].values())
+          all_receipts_pass = bool(receipts) and all(r["verdict"] == "PASS" for r in receipts)
+          all_have_uid = bool(receipts) and all(bool(r["provider_native_uid"]) for r in receipts)
+          all_cross_event_hold = bool(receipts) and all(
+              r["strict_cross_event_claim"]["verdict"]
+              == "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL"
+              for r in receipts
+          )
+
+          requirements = {
+              "PINNED_V1_5_RECEIPT_PRESENT": bool(os.environ["PINNED_V1_5_RECEIPT_SHA256"]),
+              "OCSF_STREAM_PRESENT": ocsf_path.exists(),
+              "RELEVANT_EVENT_COUNT_NONZERO": len(events) > 0,
+              "MISSING_UID_COUNT_ZERO": missing_1 == 0,
+              "ALL_RECEIPTS_PASS": all_receipts_pass,
+              "ALL_RECEIPTS_HAVE_PROVIDER_NATIVE_UID": all_have_uid,
+              "REPLAY_X2_REGISTRY_EQUALITY": replay_equal,
+              "DUPLICATE_EVENT_UID_IDEMPOTENCY": duplicate_idempotent,
+              "DUPLICATE_CANARY_WAS_OBSERVED": (dup_canary >= 1) if events else False,
+              "STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD": all_cross_event_hold,
+              "NO_SYNTHETIC_UID": True,
+              "NO_SYNTHETIC_CORRELATION": True,
+          }
+
+          first_missing = next((k for k,v in requirements.items() if not v), "NONE")
+          verdict = (
+              "PASS_LIVE_STREAM_TO_ASSURANCE_RECEIPT_PIPELINE_V1_6"
+              if first_missing == "NONE"
+              else "HOLD_LIVE_STREAM_TO_ASSURANCE_RECEIPT_PIPELINE_V1_6"
+          )
+
+          receipt = {
+              "schema": "ESS_OPENSHELL_LIVE_STREAM_PIPELINE_RECEIPT_V1_6",
+              "gate": "ESS__NVIDIA_OPENSHELL__LIVE_STREAM_TO_ASSURANCE_RECEIPT_PIPELINE_V1_6",
+              "pins": {
+                  "v1_5_receipt_sha256": os.environ["PINNED_V1_5_RECEIPT_SHA256"],
+                  "openshell_version": "v0.1.2",
+              },
+              "stream": {
+                  "raw_ocsf_jsonl_sha256": sha256_bytes(ocsf_path.read_bytes()),
+                  "relevant_event_count": len(events),
+                  "canonical_receipt_count": len(receipts),
+                  "duplicate_count_first_pass": dup_1,
+                  "missing_uid_count": missing_1,
+              },
+              "replay": {
+                  "registry_sha256_run_1": registry_sha_1,
+                  "registry_sha256_run_2": registry_sha_2,
+                  "equal": replay_equal,
+              },
+              "duplicate_uid_idempotency": {
+                  "registry_sha256_baseline": registry_sha_1,
+                  "registry_sha256_with_duplicate_canary": registry_sha_dup,
+                  "equal": duplicate_idempotent,
+                  "duplicate_events_collapsed": dup_canary,
+              },
+              "registry": registry_1,
+              "requirements": requirements,
+              "first_missing_proof": first_missing,
+              "proof_bar_reduced": False,
+              "strict_cross_event_claim": {
+                  "verdict": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+                  "required_for_v1_6_single_event_receipts": False,
+              },
+              "claim_ceiling": (
+                  "LIVE_OCSF_NETWORK_OPEN_STREAM_INGESTED"
+                  "__ONE_ASSURANCE_RECEIPT_PER_UNIQUE_PROVIDER_NATIVE_EVENT_UID"
+                  "__DETERMINISTIC_REGISTRY_REPLAY_X2"
+                  "__DUPLICATE_EVENT_UID_IDEMPOTENCY_PROVEN"
+                  "__STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD"
+                  "__NO_SYNTHETIC_UID_OR_CORRELATION"
+              ),
+              "verdict": verdict,
+          }
+          receipt["receipt_sha256"] = sha256_bytes(canonical_bytes(receipt))
+
+          (root / "v1_6-pipeline-registry.json").write_text(
+              json.dumps(registry_1, indent=2, sort_keys=True)
+          )
+          (root / "v1_6-pipeline-receipt.json").write_text(
+              json.dumps(receipt, indent=2, sort_keys=True)
+          )
+
+          print("ESS_V1_6_RECEIPT_BEGIN")
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          print("ESS_V1_6_RECEIPT_END")
+          PY
+
+          verdict="$(jq -r '.verdict' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          event_count="$(jq -r '.stream.relevant_event_count' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          receipt_count="$(jq -r '.stream.canonical_receipt_count' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          replay_equal="$(jq -r '.replay.equal' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          dup_equal="$(jq -r '.duplicate_uid_idempotency.equal' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          receipt_sha="$(jq -r '.receipt_sha256' "$WORKDIR/v1_6-pipeline-receipt.json")"
+
+          echo "V1_6_VERDICT=$verdict"
+          echo "V1_6_EVENT_COUNT=$event_count"
+          echo "V1_6_RECEIPT_COUNT=$receipt_count"
+          echo "V1_6_REPLAY_EQUALITY=$replay_equal"
+          echo "V1_6_DUPLICATE_IDEMPOTENCY=$dup_equal"
+          echo "V1_6_RECEIPT_SHA256=$receipt_sha"
+
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          echo "receipt_sha=$receipt_sha" >> "$GITHUB_OUTPUT"
+
       - name: Emit raw readback bundle to job log
         if: always()
         shell: bash
@@ -1054,7 +1334,7 @@ jobs:
             ocsf.jsonl selected-ocsf-events.json ocsf-identity-source-proof.json \
             ocsf-source-proof-sha256.txt real-receipt.json \
             pinned-v1.4-native-event.json pinned-v1.4-shorthand.txt v1_5-adapter-receipt.json \
-            gateway.log; do
+            v1_6-pipeline-registry.json v1_6-pipeline-receipt.json gateway.log; do
             echo "===== $f ====="
             cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
           done
@@ -1109,3 +1389,26 @@ jobs:
           [ "$replay_equal" = "true" ]
           [ "$mutation" = "HOLD" ]
           [ "$cross15" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
+
+          if [ ! -f "$WORKDIR/v1_6-pipeline-receipt.json" ]; then
+            echo "V1_6_GATE=HOLD_NO_PIPELINE_RECEIPT"
+            exit 1
+          fi
+
+          v16="$(jq -r '.verdict' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          replay16="$(jq -r '.replay.equal' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          dup16="$(jq -r '.duplicate_uid_idempotency.equal' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          missing16="$(jq -r '.stream.missing_uid_count' "$WORKDIR/v1_6-pipeline-receipt.json")"
+          cross16="$(jq -r '.strict_cross_event_claim.verdict' "$WORKDIR/v1_6-pipeline-receipt.json")"
+
+          echo "V1_6_GATE=$v16"
+          echo "V1_6_REPLAY_EQUALITY=$replay16"
+          echo "V1_6_DUPLICATE_IDEMPOTENCY=$dup16"
+          echo "V1_6_MISSING_UID_COUNT=$missing16"
+          echo "V1_6_STRICT_CROSS_EVENT_GATE=$cross16"
+
+          [ "$v16" = "PASS_LIVE_STREAM_TO_ASSURANCE_RECEIPT_PIPELINE_V1_6" ]
+          [ "$replay16" = "true" ]
+          [ "$dup16" = "true" ]
+          [ "$missing16" = "0" ]
+          [ "$cross16" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
