@@ -362,11 +362,28 @@ jobs:
           MATCH_LINE="$(grep -E 'NET:OPEN.*ALLOWED' "$WORKDIR/security-logs.txt" | grep -F 'example.com:443' | tail -n 1)"
           printf '%s\n' "$MATCH_LINE" > "$WORKDIR/decision-line.txt"
 
-          # Read the durable full OCSF records from inside the sandbox.
-          openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
-            sh -lc 'cat /var/log/openshell-ocsf.*.log 2>/dev/null || true' \
-            >"$WORKDIR/ocsf.jsonl" 2>"$WORKDIR/ocsf-read.err"
-          OCSF_READ_RC=$?
+          # The Docker driver separates workload and supervisor containers.
+          # Full OCSF JSONL is written by the supervisor companion, so read it
+          # directly from that container rather than from the workload.
+          SANDBOX_ID="$(jq -r '.id // empty' "$WORKDIR/sandbox-after-policy.json")"
+          docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Labels}}' \
+            >"$WORKDIR/docker-ps.txt" 2>&1 || true
+          SUPERVISOR_CONTAINER="$(docker ps -a \
+            --filter "label=openshell.ai/sandbox-id=$SANDBOX_ID" \
+            --filter "label=openshell.ai/isolation-role=supervisor" \
+            -q | head -n 1)"
+          printf '%s\n' "$SUPERVISOR_CONTAINER" > "$WORKDIR/supervisor-container-id.txt"
+
+          if [ -n "$SUPERVISOR_CONTAINER" ]; then
+            docker exec "$SUPERVISOR_CONTAINER" sh -lc \
+              'cat /var/log/openshell-ocsf.*.log 2>/dev/null || true' \
+              >"$WORKDIR/ocsf.jsonl" 2>"$WORKDIR/ocsf-read.err"
+            OCSF_READ_RC=$?
+          else
+            : >"$WORKDIR/ocsf.jsonl"
+            echo "SUPERVISOR_CONTAINER_NOT_FOUND" >"$WORKDIR/ocsf-read.err"
+            OCSF_READ_RC=44
+          fi
 
           python3 - <<'PY'
           import json, os
@@ -610,7 +627,8 @@ jobs:
             providers.json sandbox-create.txt sandbox-before-policy.json \
             policy-update.txt policy.json sandbox-after-policy.json \
             network-exec.txt decision-line.txt security-logs.txt \
-            ocsf-enable.txt ocsf.jsonl selected-ocsf-events.json \
+            ocsf-enable.txt docker-ps.txt supervisor-container-id.txt ocsf-read.err \
+            ocsf.jsonl selected-ocsf-events.json \
             real-receipt.json gateway.log; do
             echo "===== $f ====="
             cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
