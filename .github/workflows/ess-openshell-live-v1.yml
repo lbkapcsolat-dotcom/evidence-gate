@@ -1659,6 +1659,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export PATH="$WORKDIR/bin:$PATH"
           SRC="$WORKDIR/v1_8-source-download"
           [ -f "$SRC/canonical-registry.json" ]
           [ -f "$SRC/pinned-event-set.jsonl" ]
@@ -1776,7 +1777,11 @@ jobs:
             'registry_byte_sha_equality':replay_registry_file_sha_before==replay_registry_file_sha_after==os.environ['PINNED_V1_8_REGISTRY_FILE_SHA256'],
             'receipt_hash_equality':receipt_hashes_equal,
           }
-          (root/'v1_8-phase1-replay.json').write_text(json.dumps(phase1,indent=2,sort_keys=True))
+          phase1_path=root/'v1_8-phase1-replay.json'
+          phase1_path.write_text(json.dumps(phase1,indent=2,sort_keys=True))
+          print("V1_8_PHASE1="+json.dumps(phase1,sort_keys=True))
+          if not phase1_path.exists():
+              raise SystemExit('V1_8_PHASE1_NOT_MATERIALIZED')
           if not all([phase1['pinned_event_count']==4,phase1['distinct_pinned_uid_count']==4,phase1['zero_new_receipts'],phase1['uid_conflict_count']==0,phase1['registry_byte_sha_equality'],phase1['receipt_hash_equality']]):
               raise SystemExit('V1_8_PHASE1_HOLD')
           PY
