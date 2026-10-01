@@ -1,0 +1,38 @@
+name: EQ64 Cech Static Kernel CI
+
+on:
+  push:
+    branches:
+      - eq64-hgraph-cech-static-kernel-v1
+    paths:
+      - "hgraph_cech_static_kernel.py"
+      - "hgraph_cech_static_kernel.cpp"
+      - "test_cech_static_kernel.py"
+      - "test_cech_static_kernel_cpp_parity.py"
+      - ".github/workflows/eq64-cech-static-kernel-ci.yml"
+  pull_request:
+    paths:
+      - "hgraph_cech_static_kernel.py"
+      - "hgraph_cech_static_kernel.cpp"
+      - "test_cech_static_kernel.py"
+      - "test_cech_static_kernel_cpp_parity.py"
+      - ".github/workflows/eq64-cech-static-kernel-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python
+        run: python -m compileall -q hgraph_cech_static_kernel.py test_cech_static_kernel.py test_cech_static_kernel_cpp_parity.py
+      - name: Full EQ64 Cech kernel matrix
+        run: python -m unittest -v test_cech_static_kernel.py test_cech_static_kernel_cpp_parity.py
+      - name: Evidence hashes
+        run: sha256sum hgraph_cech_static_kernel.py hgraph_cech_static_kernel.cpp test_cech_static_kernel.py test_cech_static_kernel_cpp_parity.py
