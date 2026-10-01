@@ -15,8 +15,9 @@ jobs:
     env:
       OPENSHELL_VERSION: v0.1.2
       OPENSHELL_TAG_COMMIT: 6648bd0c290efbc41ba131ee9831ee45cd431f94
-      PINNED_REAL_NET_OPEN_RUN: "36919702193"
-      PINNED_REAL_NET_OPEN_SOURCE_SHA: 1a9ef90abb64a50771b728d6b7fd8c74ac6beb2a
+      PINNED_REAL_NET_OPEN_RUN: "36925799052"
+      PINNED_REAL_NET_OPEN_SOURCE_SHA: 15a5fd7ff71593be3245b84a6fd37a90d3cf6033
+      PINNED_V1_3_RECEIPT_SHA256: 5e4ca31700c344d2fa70a02a71ba8097e9eaa033e6b43073381136b71b733eac
       WORKDIR: /tmp/ess-openshell-live-v1
     steps:
       - name: Prepare capability probes
@@ -467,44 +468,44 @@ jobs:
           MATCH_LINE="$(grep -E 'NET:OPEN.*ALLOWED' "$WORKDIR/security-logs.txt" | grep -F 'example.com:443' | tail -n 1)"
           printf '%s\n' "$MATCH_LINE" > "$WORKDIR/decision-line.txt"
 
-          # The Docker driver separates workload and supervisor containers.
-          # Full OCSF JSONL is written by the supervisor companion, so read it
-          # directly from that container rather than from the workload.
+          # Full OCSF JSONL is written by the official supervisor to /var/log.
+          # The Docker driver places /var/log on a writable tmpfs. docker export
+          # does not preserve tmpfs contents, so read the running supervisor's
+          # own root via /proc/<pid>/root. This is a host-side, read-only capture.
           SANDBOX_ID="$(jq -r '.id // empty' "$WORKDIR/sandbox-after-policy.json")"
-          docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Labels}}' \
-            >"$WORKDIR/docker-ps.txt" 2>&1 || true
-          SUPERVISOR_CONTAINER="$(docker ps -a \
-            --filter "label=openshell.ai/sandbox-id=$SANDBOX_ID" \
-            --filter "label=openshell.ai/isolation-role=supervisor" \
-            -q | head -n 1)"
+          docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Labels}}'             >"$WORKDIR/docker-ps.txt" 2>&1 || true
+          SUPERVISOR_CONTAINER="$(docker ps -a             --filter "label=openshell.ai/sandbox-id=$SANDBOX_ID"             --filter "label=openshell.ai/isolation-role=supervisor"             -q | head -n 1)"
           printf '%s\n' "$SUPERVISOR_CONTAINER" > "$WORKDIR/supervisor-container-id.txt"
 
+          OCSF_READ_RC=44
           if [ -n "$SUPERVISOR_CONTAINER" ]; then
-            # Supervisor image is intentionally minimal/distroless and has no shell.
-            # docker cp/export use the daemon archive API and do not require an in-container shell.
             docker inspect "$SUPERVISOR_CONTAINER" >"$WORKDIR/supervisor-inspect.json" 2>&1 || true
-            docker export "$SUPERVISOR_CONTAINER" | tar -tf - | grep -E '(^|/)var/log|openshell-ocsf' \
-              >"$WORKDIR/supervisor-log-tree.txt" 2>&1 || true
+            SUPERVISOR_PID="$(docker inspect -f '{{.State.Pid}}' "$SUPERVISOR_CONTAINER" 2>/dev/null)"
+            printf '%s\n' "$SUPERVISOR_PID" >"$WORKDIR/supervisor-pid.txt"
 
-            rm -rf "$WORKDIR/supervisor-var-log"
-            mkdir -p "$WORKDIR/supervisor-var-log"
-            docker cp "$SUPERVISOR_CONTAINER:/var/log/." "$WORKDIR/supervisor-var-log/" \
-              2>"$WORKDIR/ocsf-read.err"
-            OCSF_COPY_RC=$?
-            find "$WORKDIR/supervisor-var-log" -maxdepth 3 -printf '%y %p\n' \
-              >"$WORKDIR/supervisor-var-log-tree.txt" 2>&1 || true
-            cat "$WORKDIR"/supervisor-var-log/openshell-ocsf.*.log \
-              >"$WORKDIR/ocsf.jsonl" 2>>"$WORKDIR/ocsf-read.err"
-            OCSF_CAT_RC=$?
-            if [ "$OCSF_COPY_RC" -eq 0 ] && [ "$OCSF_CAT_RC" -eq 0 ]; then
-              OCSF_READ_RC=0
+            if [ -n "$SUPERVISOR_PID" ] && [ "$SUPERVISOR_PID" != "0" ]; then
+              sudo find "/proc/$SUPERVISOR_PID/root/var/log" -maxdepth 1 -type f -printf '%f %s\n'                 >"$WORKDIR/supervisor-var-log-tree.txt" 2>"$WORKDIR/ocsf-read.err" || true
+
+              mapfile -t OCSF_FILES < <(
+                sudo find "/proc/$SUPERVISOR_PID/root/var/log" -maxdepth 1 -type f                   -name 'openshell-ocsf.*.log' -print 2>/dev/null | sort
+              )
+
+              if [ "${#OCSF_FILES[@]}" -gt 0 ]; then
+                sudo cat "${OCSF_FILES[@]}" >"$WORKDIR/ocsf.jsonl" 2>>"$WORKDIR/ocsf-read.err"
+                OCSF_READ_RC=$?
+              else
+                : >"$WORKDIR/ocsf.jsonl"
+                echo "NO_OCSF_JSONL_IN_SUPERVISOR_TMPFS" >>"$WORKDIR/ocsf-read.err"
+                OCSF_READ_RC=45
+              fi
             else
-              OCSF_READ_RC=45
+              : >"$WORKDIR/ocsf.jsonl"
+              echo "SUPERVISOR_PID_UNAVAILABLE" >"$WORKDIR/ocsf-read.err"
+              OCSF_READ_RC=46
             fi
           else
             : >"$WORKDIR/ocsf.jsonl"
             echo "SUPERVISOR_CONTAINER_NOT_FOUND" >"$WORKDIR/ocsf-read.err"
-            OCSF_READ_RC=44
           fi
 
           python3 - <<'PY'
@@ -513,36 +514,28 @@ jobs:
 
           root = Path(os.environ["WORKDIR"])
           net = []
-          http = []
           for raw in (root / "ocsf.jsonl").read_text(errors="replace").splitlines():
               try:
                   e = json.loads(raw)
               except Exception:
                   continue
-              if e.get("class_uid") == 4001:
-                  dst = e.get("dst_endpoint") or {}
-                  fw = e.get("firewall_rule") or {}
-                  if (
-                      e.get("action") == "Allowed"
-                      and dst.get("domain") == "example.com"
-                      and dst.get("port") == 443
-                      and fw.get("name") == "ess-example-read"
-                  ):
-                      net.append(e)
-              if e.get("class_uid") == 4002:
-                  dst = e.get("dst_endpoint") or {}
-                  fw = e.get("firewall_rule") or {}
-                  if (
-                      e.get("action") == "Allowed"
-                      and dst.get("domain") == "example.com"
-                      and dst.get("port") == 443
-                      and fw.get("name") == "ess-example-read"
-                  ):
-                      http.append(e)
+              if e.get("class_uid") != 4001:
+                  continue
+              dst = e.get("dst_endpoint") or {}
+              fw = e.get("firewall_rule") or {}
+              actor = ((e.get("actor") or {}).get("process") or {})
+              if (
+                  e.get("activity_name") == "Open"
+                  and e.get("action") == "Allowed"
+                  and dst.get("domain") == "example.com"
+                  and dst.get("port") == 443
+                  and fw.get("name") == "ess-example-read"
+                  and actor.get("name") == "/usr/local/bin/python3.12"
+              ):
+                  net.append(e)
 
           selected = {
               "network_authorization_event": net[-1] if net else None,
-              "http_execution_event": http[-1] if http else None,
           }
           (root / "selected-ocsf-events.json").write_text(
               json.dumps(selected, indent=2, sort_keys=True)
@@ -563,7 +556,7 @@ jobs:
           echo "SELECTED_OCSF_EVENTS:"
           cat "$WORKDIR/selected-ocsf-events.json" 2>/dev/null || true
 
-      - name: Rebuild V1.1 receipt semantics under OCSF V1.3 model
+      - name: Build live native OCSF UID receipt V1.4
         if: always()
         id: receipt
         shell: bash
@@ -594,245 +587,195 @@ jobs:
           pre = read_json("precheck.json")
           source_proof = read_json("ocsf-identity-source-proof.json")
           sb = read_json("sandbox-after-policy.json") or read_json("sandbox-before-policy.json")
-          providers = read_json("providers.json")
           policy = read_json("policy.json")
-          logs = read_text("security-logs.txt") or read_text("logs-before-policy.txt")
-          line = read_text("decision-line.txt").strip()
-          caller_path = read_text("caller-path.txt").strip()
-          exec_text = read_text("network-exec.txt")
-          selected_ocsf = read_json("selected-ocsf-events.json")
-          net_event = selected_ocsf.get("network_authorization_event") or {}
-          http_event = selected_ocsf.get("http_execution_event") or {}
+          selected = read_json("selected-ocsf-events.json")
+          event = selected.get("network_authorization_event") or {}
+          shorthand = read_text("decision-line.txt").strip()
+          security_logs = read_text("security-logs.txt")
+          execution = read_text("network-exec.txt")
 
-          sandbox_id = sb.get("id")
+          meta = event.get("metadata") or {}
+          container = event.get("container") or {}
+          actor = ((event.get("actor") or {}).get("process") or {})
+          dst = event.get("dst_endpoint") or {}
+          fw = event.get("firewall_rule") or {}
+
+          runtime_sandbox_id = sb.get("id")
+          event_uid = meta.get("uid")
+          event_container_uid = container.get("uid")
+          caller = actor.get("name")
+          destination = (
+              f"{dst.get('domain')}:{dst.get('port')}"
+              if dst.get("domain") and dst.get("port") else None
+          )
+          policy_name = fw.get("name")
+          action = event.get("action")
+
           policy_revision = sb.get("current_policy_version")
-          adm = sb.get("configuration_admission") or {}
-          policy_hash = adm.get("policy_hash") or None
+          policy_hash = (sb.get("configuration_admission") or {}).get("policy_hash")
 
-          decision = "ALLOW" if "ALLOWED" in line else ("DENY" if "DENIED" in line else None)
-
-          destination = "example.com:443" if "example.com:443" in line else None
-          caller = (
-              caller_path
-              if caller_path and (caller_path in line or Path(caller_path).name in line)
-              else None
+          # Parse the exact human-readable projection generated from the same OCSF class.
+          shorthand_match = re.search(
+              r'NET:OPEN \[INFO\] ALLOWED ([^\(]+)\([^\)]*\) -> ([^\s]+) '
+              r'\[policy:([^\s\]]+) engine:([^\]]+)\]',
+              shorthand
           )
-          policy_name_match = re.search(r'\[policy:([^\s\]]+)', line)
-          policy_name_from_line = policy_name_match.group(1) if policy_name_match else None
+          shorthand_projection = None
+          if shorthand_match:
+              shorthand_projection = {
+                  "event_type": "NET:OPEN",
+                  "action": "Allowed",
+                  "caller": shorthand_match.group(1),
+                  "destination": shorthand_match.group(2),
+                  "policy": shorthand_match.group(3),
+                  "engine": shorthand_match.group(4),
+              }
 
-          net_meta = net_event.get("metadata") or {}
-          http_meta = http_event.get("metadata") or {}
-          net_uid = net_meta.get("uid")
-          http_uid = http_meta.get("uid")
-          net_corr = net_meta.get("correlation_uid")
-          http_corr = http_meta.get("correlation_uid")
-
-          net_actor = ((net_event.get("actor") or {}).get("process") or {})
-          net_dst = net_event.get("dst_endpoint") or {}
-          net_fw = net_event.get("firewall_rule") or {}
-
-          provider_count = len(providers.get("providers", [])) if isinstance(providers, dict) else None
-          execution_success = "HTTP_STATUS=" in exec_text
-
-          fields = {
-              "SANDBOX_ID": sandbox_id,
-              "POLICY_HASH": policy_hash,
-              "POLICY_REVISION_AT_EXECUTION": policy_revision,
-              "POLICY_DECISION": decision,
-              "CALLER_IDENTITY": net_actor.get("name") or caller,
-              "DESTINATION": (
-                  f"{net_dst.get('domain')}:{net_dst.get('port')}"
-                  if net_dst.get("domain") and net_dst.get("port")
-                  else destination
+          native_projection = {
+              "event_type": (
+                  "NET:OPEN"
+                  if event.get("class_uid") == 4001 and event.get("activity_name") == "Open"
+                  else None
               ),
-              "POLICY_NAME": net_fw.get("name") or policy_name_from_line,
-              "SECURITY_LOG_REF": sha_text(line),
-              "EXECUTION_RESULT": "SUCCESS" if execution_success else "FAILURE",
-              "PROVIDER_CREDENTIAL_COUNT": provider_count,
+              "action": action,
+              "caller": caller,
+              "destination": destination,
+              "policy": policy_name,
+              "engine": fw.get("type"),
           }
 
-          required_single = [
-              "SANDBOX_ID",
-              "POLICY_HASH",
-              "POLICY_REVISION_AT_EXECUTION",
-              "POLICY_DECISION",
-              "CALLER_IDENTITY",
-              "DESTINATION",
-              "POLICY_NAME",
-              "SECURITY_LOG_REF",
-          ]
-
-          single_missing = next(
-              (k for k in required_single if fields.get(k) in (None, "", 0)),
-              "NONE"
+          same_observed_event_projection = (
+              shorthand_projection is not None
+              and native_projection["event_type"] == shorthand_projection["event_type"]
+              and native_projection["action"] == shorthand_projection["action"]
+              and native_projection["caller"] == shorthand_projection["caller"]
+              and native_projection["destination"] == shorthand_projection["destination"]
+              and native_projection["policy"] == shorthand_projection["policy"]
           )
 
-          exact_policy_pin = (
-              fields["POLICY_REVISION_AT_EXECUTION"] == 2
-              and fields["POLICY_HASH"]
+          requirements = {
+              "PRECHECK_PASS": pre.get("PRECHECK_PASS") is True,
+              "SOURCE_UID_SEMANTICS_PASS": source_proof.get("source_semantics_pass") is True,
+              "FULL_NATIVE_OCSF_RECORD_CAPTURED": bool(event),
+              "METADATA_UID_NONEMPTY": bool(event_uid),
+              "CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID": (
+                  bool(event_container_uid)
+                  and event_container_uid == runtime_sandbox_id
+              ),
+              "CALLER_BOUND_FROM_SAME_EVENT": caller == "/usr/local/bin/python3.12",
+              "DESTINATION_BOUND_FROM_SAME_EVENT": destination == "example.com:443",
+              "FIREWALL_RULE_BOUND_FROM_SAME_EVENT": policy_name == "ess-example-read",
+              "ACTION_BOUND_FROM_SAME_EVENT": action == "Allowed",
+              "EXACT_POLICY_REVISION": policy_revision == 2,
+              "EXACT_POLICY_HASH": (
+                  policy_hash
                   == "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec"
-          )
-
-          if not pre.get("PRECHECK_PASS"):
-              single_event_verdict = "HOLD_LINUX_CAPABILITY_PRECHECK"
-              single_missing = "PRECHECK"
-          elif not source_proof.get("source_semantics_pass"):
-              single_event_verdict = "HOLD_OCSF_IDENTITY_SOURCE_SEMANTICS"
-              single_missing = "OCSF_IDENTITY_SOURCE_SEMANTICS"
-          elif not execution_success:
-              single_event_verdict = "HOLD_REAL_NETWORK_EXECUTION"
-              single_missing = "EXECUTION_RESULT"
-          elif single_missing != "NONE":
-              single_event_verdict = "HOLD_SINGLE_EVENT_BIND_INCOMPLETE"
-          elif decision != "ALLOW":
-              single_event_verdict = "HOLD_POLICY_DECISION_NOT_ALLOW"
-              single_missing = "POLICY_DECISION_ALLOW"
-          elif not exact_policy_pin:
-              single_event_verdict = "HOLD_EXACT_POLICY_REVISION_HASH_PIN"
-              single_missing = "POLICY_REVISION_HASH_EXACT"
-          else:
-              single_event_verdict = "PASS_EXACT_NET_OPEN_AUTHORIZATION_EVENT_BIND"
-
-          runtime_corr_support = (
-              source_proof.get("cross_event_correlation", {})
-              .get("runtime_metadata_struct_support")
-          )
-          native_correlation_captured = bool(
-              net_corr and http_corr and net_corr == http_corr
-          )
-
-          if native_correlation_captured:
-              cross_event_verdict = "PASS_NATIVE_OCSF_CORRELATION_UID_BIND"
-              cross_event_missing = "NONE"
-          elif runtime_corr_support is False:
-              cross_event_verdict = (
-                  "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL"
-              )
-              cross_event_missing = "METADATA_CORRELATION_UID_POPULATION"
-          else:
-              cross_event_verdict = "HOLD_NATIVE_CORRELATION_UID_NOT_CAPTURED"
-              cross_event_missing = "METADATA_CORRELATION_UID_CAPTURE"
-
-          native_uid_capture = {
-              "field": "metadata.uid",
-              "network_event_uid": net_uid,
-              "http_event_uid": http_uid,
-              "network_uid_capture_status": (
-                  "CAPTURED" if net_uid else "HOLD_NOT_CAPTURED_IN_CURRENT_RUNTIME_EXPORT"
               ),
-              "http_uid_capture_status": (
-                  "CAPTURED" if http_uid else "HOLD_NOT_CAPTURED_IN_CURRENT_RUNTIME_EXPORT"
-              ),
-              "net_uid_equals_http_uid_required": False,
+              "EXECUTION_RESULT_SUCCESS": "HTTP_STATUS=200" in execution,
+              "ESS_LOG_REFERENCE_SAME_OBSERVED_EVENT": same_observed_event_projection,
           }
 
-          old_v1_1 = {
-              "old_requirement": "POLICY_DECISION_EVENT_ID == EXECUTION_EVENT_ID",
-              "status": "RETIRED_AS_OCSF_SEMANTICALLY_INVALID_FOR_DISTINCT_EVENTS",
-              "replacement": (
-                  "Single-event authorization claim uses one exact NET:OPEN event; "
-                  "cross-event claims require native metadata.correlation_uid or remain HOLD."
-              ),
-              "proof_bar_reduced": False,
-          }
-
-          if single_event_verdict.startswith("PASS_"):
-              overall = "PASS_V1_3_SINGLE_EVENT_IDENTITY_MODEL"
-              if cross_event_verdict.startswith("HOLD_"):
-                  overall += "__HOLD_STRICT_CROSS_EVENT_CORRELATION"
-              if not net_uid:
-                  overall += "__HOLD_LIVE_NATIVE_UID_CAPTURE"
-          else:
-              overall = "HOLD_V1_3_MODEL_OR_SINGLE_EVENT_EVIDENCE"
-
-          first_missing = (
-              single_missing
-              if not single_event_verdict.startswith("PASS_")
-              else (
-                  "LIVE_PROVIDER_NATIVE_EVENT_UID_CAPTURE"
-                  if not net_uid
-                  else cross_event_missing
-              )
+          first_missing = next((k for k,v in requirements.items() if not v), "NONE")
+          single_verdict = (
+              "PASS_LIVE_NATIVE_OCSF_UID_SINGLE_EVENT_BIND"
+              if first_missing == "NONE"
+              else "HOLD_LIVE_NATIVE_OCSF_UID_SINGLE_EVENT_BIND"
           )
 
-          receipt_body = {
-              "schema": "ESS_OPENSHELL_OCSF_EVENT_IDENTITY_RECEIPT_V1_3",
-              "gate": "ESS__NVIDIA_OPENSHELL__OCSF_EVENT_IDENTITY_AND_CORRELATION_MODEL_V1_3",
+          # V0.1.2 typed Metadata has no correlation_uid field. Keep the cross-event
+          # claim explicitly outside this gate and on HOLD.
+          cross_event = {
+              "required_for_v1_4": False,
+              "correlation_field": "metadata.correlation_uid",
+              "verdict": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+              "synthetic_correlation_uid_created": False,
+          }
+
+          body = {
+              "schema": "ESS_OPENSHELL_LIVE_NATIVE_OCSF_UID_RECEIPT_V1_4",
+              "gate": "ESS__NVIDIA_OPENSHELL__LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4",
               "openshell_version": "v0.1.2",
               "openshell_tag_commit": os.environ["OPENSHELL_TAG_COMMIT"],
-              "pinned_real_net_open_evidence": {
-                  "run_id": os.environ["PINNED_REAL_NET_OPEN_RUN"],
-                  "source_sha": os.environ["PINNED_REAL_NET_OPEN_SOURCE_SHA"],
-                  "current_exact_net_open_line_sha256": sha_text(line),
+              "pins": {
+                  "v1_3_run": os.environ["PINNED_REAL_NET_OPEN_RUN"],
+                  "v1_3_source_sha": os.environ["PINNED_REAL_NET_OPEN_SOURCE_SHA"],
+                  "v1_3_receipt_sha256": os.environ["PINNED_V1_3_RECEIPT_SHA256"],
               },
-              "source_repo": os.environ.get("GITHUB_REPOSITORY"),
-              "source_ref": os.environ.get("GITHUB_REF"),
-              "source_sha": os.environ.get("GITHUB_SHA"),
-              "run_id": os.environ.get("GITHUB_RUN_ID"),
-              "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
-              "precheck": pre,
-              "ocsf_identity_source_proof": source_proof,
-              "identity_model": {
-                  "EVENT_ID": "metadata.uid",
-                  "SANDBOX_ID": "container.uid",
-                  "STREAM_CURSOR": "transport/watch cursor; not metadata.uid",
-                  "GATEWAY_CHANNEL_ID": "gateway relay channel_id; not metadata.uid",
-                  "CROSS_EVENT_CORRELATION": "metadata.correlation_uid",
+              "run": {
+                  "repo": os.environ.get("GITHUB_REPOSITORY"),
+                  "ref": os.environ.get("GITHUB_REF"),
+                  "source_sha": os.environ.get("GITHUB_SHA"),
+                  "run_id": os.environ.get("GITHUB_RUN_ID"),
+                  "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
               },
-              "single_event_claim": {
-                  "claim": (
-                      "NET_OPEN_WAS_POLICY_ALLOWED_FOR_EXACT_CALLER_TO_EXACT_DESTINATION_"
-                      "UNDER_EXACT_POLICY_REVISION_AND_HASH"
-                  ),
-                  "primary_event_type": "NET:OPEN",
-                  "provider_evidence": fields,
-                  "verdict": single_event_verdict,
+              "native_event": {
+                  "metadata_uid": event_uid,
+                  "container_uid": event_container_uid,
+                  "runtime_sandbox_id": runtime_sandbox_id,
+                  "actor_process": actor,
+                  "destination": dst,
+                  "firewall_rule": fw,
+                  "action": action,
+                  "class_uid": event.get("class_uid"),
+                  "activity_name": event.get("activity_name"),
+                  "time": event.get("time"),
+                  "raw_event_sha256": sha_text(
+                      json.dumps(event, sort_keys=True, separators=(",",":"))
+                  ) if event else None,
               },
-              "provider_native_event_identity": native_uid_capture,
-              "strict_cross_event_claim": {
-                  "network_correlation_uid": net_corr,
-                  "http_correlation_uid": http_corr,
-                  "verdict": cross_event_verdict,
-                  "first_missing_proof": cross_event_missing,
+              "exact_policy": {
+                  "revision": policy_revision,
+                  "hash": policy_hash,
+                  "raw_policy_sha256": sha_text(
+                      json.dumps(policy, sort_keys=True, separators=(",",":"))
+                  ) if policy else None,
               },
-              "v1_1_semantics_rebuild": old_v1_1,
-              "provider_credentials_attached": provider_count not in (0, None),
-              "raw_policy_sha256": sha_text(
-                  json.dumps(policy, sort_keys=True, separators=(",",":"))
-              ) if policy else None,
-              "raw_security_logs_sha256": sha_text(logs),
-              "raw_ocsf_jsonl_sha256": sha_text(read_text("ocsf.jsonl")),
-              "selected_ocsf_events_sha256": sha_text(
-                  json.dumps(selected_ocsf, sort_keys=True, separators=(",",":"))
-              ) if selected_ocsf else None,
+              "ess_log_reference": {
+                  "exact_shorthand_line_sha256": sha_text(shorthand),
+                  "shorthand_projection": shorthand_projection,
+                  "native_projection": native_projection,
+                  "same_observed_event_projection": same_observed_event_projection,
+              },
+              "requirements": requirements,
+              "single_event_verdict": single_verdict,
+              "strict_cross_event_claim": cross_event,
+              "provider_native_uid": event_uid,
+              "provider_native_uid_synthesized": False,
+              "correlation_uid_synthesized": False,
               "first_missing_proof": first_missing,
-              "claim_ceiling": (
-                  "EXACT_SINGLE_NET_OPEN_AUTHORIZATION_EVENT_BIND"
-                  "__NATIVE_EVENT_UID_SEMANTICS_SOURCE_PROVEN"
-                  "__STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD_WITHOUT_NATIVE_CORRELATION_UID"
-                  "__NO_GENERAL_SECURITY_CLAIM"
-                  "__NO_BUSINESS_AUTHORIZATION_CLAIM"
-              ),
               "proof_bar_reduced": False,
-              "verdict": overall,
+              "claim_ceiling": (
+                  "ONE_EXACT_LIVE_PROVIDER_NATIVE_NET_OPEN_EVENT"
+                  "__METADATA_UID_CALLER_DESTINATION_POLICY_ACTION_BOUND"
+                  "__EXACT_POLICY_REVISION_AND_HASH_BOUND"
+                  "__ESS_SHORTHAND_REFERENCE_PROJECTION_BOUND"
+                  "__STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD"
+                  "__NO_GENERAL_SECURITY_CLAIM"
+              ),
+              "verdict": (
+                  "PASS_LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4__HOLD_STRICT_CROSS_EVENT_CORRELATION"
+                  if single_verdict.startswith("PASS_")
+                  else "HOLD_LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4"
+              ),
           }
 
-          canonical = json.dumps(receipt_body, sort_keys=True, separators=(",",":")).encode()
-          receipt_body["receipt_sha256"] = hashlib.sha256(canonical).hexdigest()
+          canonical = json.dumps(body, sort_keys=True, separators=(",",":")).encode()
+          body["receipt_sha256"] = hashlib.sha256(canonical).hexdigest()
+          (root / "real-receipt.json").write_text(json.dumps(body, indent=2, sort_keys=True))
 
-          (root / "real-receipt.json").write_text(
-              json.dumps(receipt_body, indent=2, sort_keys=True)
-          )
           print("ESS_RECEIPT_JSON_BEGIN")
-          print(json.dumps(receipt_body, indent=2, sort_keys=True))
+          print(json.dumps(body, indent=2, sort_keys=True))
           print("ESS_RECEIPT_JSON_END")
           PY
 
           verdict="$(jq -r '.verdict' "$WORKDIR/real-receipt.json")"
           first_missing="$(jq -r '.first_missing_proof' "$WORKDIR/real-receipt.json")"
           receipt_sha="$(jq -r '.receipt_sha256' "$WORKDIR/real-receipt.json")"
+          native_uid="$(jq -r '.provider_native_uid // empty' "$WORKDIR/real-receipt.json")"
+
           echo "VERDICT=$verdict"
           echo "FIRST_MISSING_PROOF=$first_missing"
+          echo "PROVIDER_NATIVE_UID=$native_uid"
           echo "RECEIPT_SHA256=$receipt_sha"
           echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
           echo "receipt_sha=$receipt_sha" >> "$GITHUB_OUTPUT"
@@ -848,15 +791,15 @@ jobs:
             providers.json sandbox-create.txt sandbox-before-policy.json \
             policy-update.txt policy.json sandbox-after-policy.json \
             network-exec.txt decision-line.txt security-logs.txt \
-            ocsf-enable.txt docker-ps.txt supervisor-container-id.txt supervisor-inspect.json \
-            supervisor-log-tree.txt supervisor-var-log-tree.txt ocsf-read.err \
+            ocsf-enable.txt docker-ps.txt supervisor-container-id.txt supervisor-pid.txt supervisor-inspect.json \
+            supervisor-var-log-tree.txt ocsf-read.err \
             ocsf.jsonl selected-ocsf-events.json ocsf-identity-source-proof.json \
             ocsf-source-proof-sha256.txt real-receipt.json gateway.log; do
             echo "===== $f ====="
             cat "$WORKDIR/$f" 2>/dev/null || echo "[MISSING]"
           done
 
-      - name: Fail closed on V1.3 model or single-event evidence failure
+      - name: Fail closed unless live native UID single-event bind passes
         if: always()
         shell: bash
         run: |
@@ -867,32 +810,22 @@ jobs:
           fi
 
           verdict="$(jq -r '.verdict' "$WORKDIR/real-receipt.json")"
-          single="$(jq -r '.single_event_claim.verdict' "$WORKDIR/real-receipt.json")"
+          single="$(jq -r '.single_event_verdict' "$WORKDIR/real-receipt.json")"
+          uid="$(jq -r '.provider_native_uid // empty' "$WORKDIR/real-receipt.json")"
+          container_eq="$(jq -r '.requirements.CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID' "$WORKDIR/real-receipt.json")"
+          same_event="$(jq -r '.requirements.ESS_LOG_REFERENCE_SAME_OBSERVED_EVENT' "$WORKDIR/real-receipt.json")"
           cross="$(jq -r '.strict_cross_event_claim.verdict' "$WORKDIR/real-receipt.json")"
-          proof_bar="$(jq -r '.proof_bar_reduced' "$WORKDIR/real-receipt.json")"
 
           echo "FINAL_GATE=$verdict"
           echo "SINGLE_EVENT_GATE=$single"
+          echo "PROVIDER_NATIVE_UID=$uid"
+          echo "CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID=$container_eq"
+          echo "ESS_LOG_REFERENCE_SAME_OBSERVED_EVENT=$same_event"
           echo "STRICT_CROSS_EVENT_GATE=$cross"
-          echo "PROOF_BAR_REDUCED=$proof_bar"
 
-          [ "$proof_bar" = "false" ]
-          [ "$single" = "PASS_EXACT_NET_OPEN_AUTHORIZATION_EVENT_BIND" ]
-
-          case "$cross" in
-            PASS_NATIVE_OCSF_CORRELATION_UID_BIND|HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL|HOLD_NATIVE_CORRELATION_UID_NOT_CAPTURED)
-              ;;
-            *)
-              echo "UNEXPECTED_CROSS_EVENT_STATE=$cross"
-              exit 1
-              ;;
-          esac
-
-          case "$verdict" in
-            PASS_V1_3_SINGLE_EVENT_IDENTITY_MODEL*)
-              exit 0
-              ;;
-            *)
-              exit 1
-              ;;
-          esac
+          [ "$single" = "PASS_LIVE_NATIVE_OCSF_UID_SINGLE_EVENT_BIND" ]
+          [ -n "$uid" ]
+          [ "$container_eq" = "true" ]
+          [ "$same_event" = "true" ]
+          [ "$cross" = "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL" ]
+          [ "$verdict" = "PASS_LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4__HOLD_STRICT_CROSS_EVENT_CORRELATION" ]
