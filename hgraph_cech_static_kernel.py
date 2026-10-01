@@ -7,6 +7,7 @@ from typing import Mapping
 LOCAL_SIMPLEX_VERTEX_COUNT = 20
 GLOBAL_COMPONENT_COUNT = 64
 CANONICAL_VERTICES = tuple(range(1, LOCAL_SIMPLEX_VERTEX_COUNT + 1))
+APEX_VERTEX = 1
 MAX_DEGREE = LOCAL_SIMPLEX_VERTEX_COUNT - 1
 
 Simplex = tuple[int, ...]
@@ -30,12 +31,7 @@ def global_dimension(p: int) -> int:
 
 
 def delta(p: int, cochain: Cochain) -> dict[Simplex, int | float]:
-    """Alternating Cech coboundary on the ordered 20-vertex simplex.
-
-    Missing cochain entries are interpreted as zero. The returned mapping
-    is dense on the target local simplex basis, except at top degree where
-    C^20 is zero and the result is empty.
-    """
+    """Alternating Cech coboundary on the ordered 20-vertex simplex."""
     _validate_degree(p)
     if p == MAX_DEGREE:
         return {}
@@ -48,3 +44,24 @@ def delta(p: int, cochain: Cochain) -> dict[Simplex, int | float]:
             value += (-1 if j % 2 else 1) * cochain.get(face, 0)
         out[simplex] = value
     return out
+
+
+def contracting_homotopy(p: int, cochain: Cochain) -> dict[Simplex, int | float]:
+    """Apex-1 contracting homotopy h_p: C^p -> C^(p-1), for p > 0."""
+    _validate_degree(p)
+    if p == 0:
+        raise ValueError("contracting homotopy is defined here only for positive degree")
+
+    out: dict[Simplex, int | float] = {}
+    for simplex in combinations(CANONICAL_VERTICES, p):
+        if APEX_VERTEX in simplex:
+            out[simplex] = 0
+        else:
+            out[simplex] = cochain.get((APEX_VERTEX,) + simplex, 0)
+    return out
+
+
+def h0_projection(cochain: Cochain) -> dict[Simplex, int | float]:
+    """Projection C^0 -> constants by evaluation at the apex vertex 1."""
+    value = cochain.get((APEX_VERTEX,), 0)
+    return {(vertex,): value for vertex in CANONICAL_VERTICES}
