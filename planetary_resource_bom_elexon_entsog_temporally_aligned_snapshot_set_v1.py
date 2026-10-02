@@ -46,9 +46,19 @@ def dt(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def sha256_file(path: Path) -> tuple[int, str]:
+def verified_raw(cfg: dict[str, Any]) -> tuple[Path, bytes, str]:
+    path = Path(cfg["raw_path"])
     raw = path.read_bytes()
-    return len(raw), hashlib.sha256(raw).hexdigest()
+    actual_sha = hashlib.sha256(raw).hexdigest()
+    if len(raw) != int(cfg["raw_bytes"]):
+        raise AssertionError(
+            f"raw byte length changed for {path}: {len(raw)} != {cfg['raw_bytes']}"
+        )
+    if actual_sha != cfg["raw_sha256"]:
+        raise AssertionError(
+            f"raw SHA256 changed for {path}: {actual_sha} != {cfg['raw_sha256']}"
+        )
+    return path, raw, actual_sha
 
 
 def run_gate() -> dict[str, Any]:
@@ -71,10 +81,8 @@ def run_gate() -> dict[str, Any]:
     if not recovery["recovery"]["entsog_already_satisfied"]:
         raise AssertionError("ENTSOG explicit-bound semantics regressed")
 
-    # BOM freshwater
     bom_cfg = contract["sources"]["freshwater"]
-    bom_path = Path(bom_cfg["raw_path"])
-    bom_raw = bom_path.read_bytes()
+    bom_path, bom_raw, bom_sha = verified_raw(bom_cfg)
     bom_root = ET.fromstring(bom_raw)
     bom_start = bom_root.findtext(".//gml:beginPosition", namespaces=NS)
     bom_end = bom_root.findtext(".//gml:endPosition", namespaces=NS)
@@ -82,10 +90,8 @@ def run_gate() -> dict[str, Any]:
     if not bom_start or not bom_end or not bom_value:
         raise AssertionError("BOM explicit interval/value missing")
 
-    # Elexon electricity
     elex_cfg = contract["sources"]["electricity"]
-    elex_path = Path(elex_cfg["raw_path"])
-    elex_raw = elex_path.read_bytes()
+    elex_path, elex_raw, elex_sha = verified_raw(elex_cfg)
     elex_payload = json.loads(elex_raw.decode("utf-8"))
     matches = [
         row for row in elex_payload["data"]
@@ -99,10 +105,8 @@ def run_gate() -> dict[str, Any]:
         seconds=int(elex_cfg["authoritative_duration_seconds"])
     )
 
-    # ENTSOG natural gas
     gas_cfg = contract["sources"]["natural_gas"]
-    gas_path = Path(gas_cfg["raw_path"])
-    gas_raw = gas_path.read_bytes()
+    gas_path, gas_raw, gas_sha = verified_raw(gas_cfg)
     gas_rows = list(csv.DictReader(io.StringIO(gas_raw.decode("utf-8"))))
     pattern = re.compile(
         r"Physical Flowhour"
@@ -145,10 +149,6 @@ def run_gate() -> dict[str, Any]:
     if common_end != dt("2026-09-30T12:30:00Z"):
         raise AssertionError("unexpected common-window end")
 
-    bom_len, bom_sha = sha256_file(bom_path)
-    elex_len, elex_sha = sha256_file(elex_path)
-    gas_len, gas_sha = sha256_file(gas_path)
-
     return {
         "schema_version":
             "EQUILIBRIUM_PRS_BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_RECEIPT_V1",
@@ -160,29 +160,32 @@ def run_gate() -> dict[str, Any]:
         "sources": {
             "freshwater": {
                 "provider": bom_cfg["provider"],
-                "raw_path": bom_cfg["raw_path"],
-                "raw_bytes": bom_len,
+                "source_url": bom_cfg["source_url"],
+                "raw_path": str(bom_path),
+                "raw_bytes": len(bom_raw),
                 "raw_sha256": bom_sha,
                 "interval_start": bom_start,
                 "interval_end": bom_end,
                 "published_value": bom_value,
-                "uncertainty_kind": "UNKNOWN",
+                "uncertainty_kind": bom_cfg["uncertainty_kind"],
             },
             "electricity": {
                 "provider": elex_cfg["provider"],
-                "raw_path": elex_cfg["raw_path"],
-                "raw_bytes": elex_len,
+                "source_url": elex_cfg["source_url"],
+                "raw_path": str(elex_path),
+                "raw_bytes": len(elex_raw),
                 "raw_sha256": elex_sha,
                 "record": elex_row,
                 "interval_start": elex_start.isoformat().replace("+00:00", "Z"),
                 "interval_end": elex_end.isoformat().replace("+00:00", "Z"),
                 "end_bound_basis": elex_cfg["authoritative_end_rule"],
-                "uncertainty_kind": "UNKNOWN",
+                "uncertainty_kind": elex_cfg["uncertainty_kind"],
             },
             "natural_gas": {
                 "provider": gas_cfg["provider"],
-                "raw_path": gas_cfg["raw_path"],
-                "raw_bytes": gas_len,
+                "source_url": gas_cfg["source_url"],
+                "raw_path": str(gas_path),
+                "raw_bytes": len(gas_raw),
                 "raw_sha256": gas_sha,
                 "record_id": target_gas["id"],
                 "value": target_gas["value"],
@@ -190,7 +193,7 @@ def run_gate() -> dict[str, Any]:
                 "flow_status": target_gas["flowStatus"],
                 "interval_start": gas_start.isoformat().replace("+00:00", "Z"),
                 "interval_end": gas_end.isoformat().replace("+00:00", "Z"),
-                "uncertainty_kind": "UNKNOWN",
+                "uncertainty_kind": gas_cfg["uncertainty_kind"],
             },
         },
         "three_way_intersection": {
