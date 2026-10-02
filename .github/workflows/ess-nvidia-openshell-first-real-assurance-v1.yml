@@ -190,6 +190,7 @@ jobs:
 
           echo "OPEN_SHELL_STATE=$STATE" >> "$GITHUB_ENV"
           echo "OPEN_SHELL_ENDPOINT=$ENDPOINT" >> "$GITHUB_ENV"
+          echo "OPENSHELL_GATEWAY_ENDPOINT=$ENDPOINT" >> "$GITHUB_ENV"
 
       - name: Create one real sandbox with existing minimal policy
         shell: bash
