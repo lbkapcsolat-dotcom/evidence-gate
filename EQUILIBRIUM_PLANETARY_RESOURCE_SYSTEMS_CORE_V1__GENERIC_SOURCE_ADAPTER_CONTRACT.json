@@ -56,7 +56,7 @@
       "factor_d",
       "to_gas_basis",
       "evidence_ref",
-      "chain_token"
+      "chain_tokens"
     ],
     "output": "planetary_resource_empirical_admission_v1.AdmissionReceipt"
   },
