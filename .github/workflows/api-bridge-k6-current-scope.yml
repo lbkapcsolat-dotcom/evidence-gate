@@ -105,16 +105,39 @@ jobs:
           metrics = summary.get("metrics", {})
 
           def metric_value(name, key, default=None):
-              values = metrics.get(name, {}).get("values", {})
-              return values.get(key, default)
+              m = metrics.get(name, {})
+              values = m.get("values", {}) if isinstance(m, dict) else {}
+              if key in values:
+                  return values[key]
+              if key == "count" and "count" in m:
+                  return m["count"]
+              if key == "rate" and "rate" in m:
+                  return m["rate"]
+              return default
 
-          request_count = metric_value("http_reqs", "count", 0) or 0
-          failed_rate = metric_value("http_req_failed", "rate", 1) or 0
-          checks_rate = metric_value("checks", "rate", 0) or 0
+          def raw_point_count(metric_name):
+              count = 0
+              with raw_path.open("r", encoding="utf-8", errors="replace") as f:
+                  for line in f:
+                      try:
+                          obj = json.loads(line)
+                      except Exception:
+                          continue
+                      if obj.get("type") == "Point" and obj.get("metric") == metric_name:
+                          count += 1
+              return count
+
+          request_count = metric_value("http_reqs", "count", None)
+          if not request_count:
+              request_count = raw_point_count("http_reqs")
+          failed_rate = metric_value("http_req_failed", "rate", 1)
+          checks_rate = metric_value("checks", "rate", 0)
           p50 = metric_value("http_req_duration", "med", None)
           p95 = metric_value("http_req_duration", "p(95)", None)
           p99 = metric_value("http_req_duration", "p(99)", None)
           throughput = metric_value("http_reqs", "rate", None)
+          if throughput is None and request_count:
+              throughput = request_count / 20.0
           raw_bytes = raw_path.stat().st_size
           rc = int(Path("ci/api-bridge/k6_exit_code.txt").read_text().strip())
 
