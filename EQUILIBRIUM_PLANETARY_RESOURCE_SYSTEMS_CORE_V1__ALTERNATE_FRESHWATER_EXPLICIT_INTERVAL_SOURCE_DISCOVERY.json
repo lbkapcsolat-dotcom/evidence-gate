@@ -1,0 +1,58 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_ALTERNATE_FRESHWATER_EXPLICIT_INTERVAL_SOURCE_DISCOVERY_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALTERNATE_FRESHWATER_EXPLICIT_INTERVAL_SOURCE_DISCOVERY_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_INTERVAL_SEMANTICS_EXTERNAL_AUTHORITY_RESOLUTION_V1",
+    "branch": "feature/planetary-resource-ea-interval-semantics-external-authority-resolution-v1",
+    "head_sha": "208722c4904988620963a9850ea2f8d35c376872",
+    "receipt_sha256": "ffb19d37f292fcbeb207c17c261f15dfaa9ab8b484571e81d31f591a69bf93d3"
+  },
+  "target": "FRESHWATER_ONLY",
+  "official_primary_sources_only": true,
+  "selected_source": {
+    "provider": "Australian Bureau of Meteorology",
+    "surface": "Water Data Online SOS2 / WaterML2",
+    "official_faq_url": "https://www.bom.gov.au/waterdata/wiski-web-public/faq.htm",
+    "official_service_url": "https://www.bom.gov.au/waterdata/services",
+    "station_id": "410713",
+    "station_title": "Paddys at Riverlea",
+    "procedure_id": "Pat4_C_B_1_DailyMean",
+    "procedure_title": "DMQaQc.Merged.DailyMean.24HR",
+    "observed_property": "Water Course Discharge",
+    "unit_code": "cumec",
+    "unit_semantics": "cubic metres per second",
+    "raw_path": "sources/bom/410713_discharge_daily_mean_2026-09-30.xml",
+    "raw_bytes": 2735,
+    "raw_sha256": "1fe8f1416b69377160ed6c9fced011785a46e7cb52eac46ce783a424c3e7ee14",
+    "generation_date": "2026-10-02T15:13:50.427Z",
+    "interval_start": "2026-09-30T00:00:00.000+10:00",
+    "interval_end": "2026-10-01T00:00:00.000+10:00",
+    "value": "0.378",
+    "source_native_aggregation": "DAILY_TIME_WEIGHTED_MEAN",
+    "source_waterml_interpolation_metadata": "ConstSucc"
+  },
+  "requirements": {
+    "flow_rate_or_equivalent_freshwater_rate": true,
+    "explicit_interval_start": true,
+    "explicit_interval_end": true,
+    "positive_duration_interval": true,
+    "source_provenance": true,
+    "raw_bytes": true,
+    "sha256": true,
+    "no_interpolation_by_equilibrium": true,
+    "no_imputation_by_equilibrium": true,
+    "no_inferred_boundaries": true
+  },
+  "fences": {
+    "core_patch": false,
+    "new_domain_math": false,
+    "composition": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_ALTERNATE_FRESHWATER_EXPLICIT_INTERVAL_SOURCE_DISCOVERY"
+}
