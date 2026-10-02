@@ -19,3 +19,5 @@ Acceptance requires:
 - no frozen core file is patched.
 
 The next work after this gate is deterministic replay of the integrated state, not another open-ended core-gap review.
+
+CI execution is required on both Python 3.12 and 3.13 before PASS.
