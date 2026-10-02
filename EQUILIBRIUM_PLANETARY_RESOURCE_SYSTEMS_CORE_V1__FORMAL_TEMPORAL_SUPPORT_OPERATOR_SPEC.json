@@ -1,0 +1,160 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_FORMAL_TEMPORAL_SUPPORT_OPERATOR_SPEC_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FORMAL_TEMPORAL_SUPPORT_OPERATOR_SPEC_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_V1",
+    "branch": "feature/planetary-resource-temporal-support-policy-decision-freeze-v1",
+    "head_sha": "d288163e42aa8f752502bb4290c44600f399653f",
+    "receipt_sha256": "5cfbb2feb2b7485e5f791f062794929e134981277d6c29679b7cbc12219fb6b9",
+    "verdict": "PASS_BOUNDED_TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE"
+  },
+  "target_path": "PATH_B",
+  "operator_spec": {
+    "operator_spec_id": "TEMPORAL_SUPPORT_TO_TARGET_WINDOW_OPERATOR_V1",
+    "operator_version": "V1",
+    "execution_status": "SPEC_ONLY_NOT_EXECUTABLE",
+    "signature": {
+      "notation": "T_spec(Q_source_set, S_source_partition, S_target, support_semantics_ref, uncertainty_bundle, provenance_bundle) -> Q_target_candidate OR HOLD",
+      "input_value_domain": "RATE_QUALIFIED_VALUES_ONLY",
+      "output_value_domain": "RATE_QUALIFIED_VALUE_OR_HOLD",
+      "operator_execution_defined": false
+    },
+    "source_support_domain": {
+      "time_axis": "UTC",
+      "interval_convention": "HALF_OPEN_[START,END)",
+      "explicit_start_required": true,
+      "explicit_end_required": true,
+      "positive_duration_required": true,
+      "allowed_support_relations": [
+        "EXACT_TARGET_SUPPORT",
+        "FINER_NATIVE_MEAN_PARTITION_EXACTLY_COVERS_TARGET"
+      ],
+      "containment_only_is_admissible": false,
+      "coarse_to_fine_is_admissible": false,
+      "instantaneous_samples_as_interval_means_are_admissible": false
+    },
+    "target_support_domain": {
+      "time_axis": "UTC",
+      "interval_convention": "HALF_OPEN_[START,END)",
+      "explicit_start_required": true,
+      "explicit_end_required": true,
+      "positive_duration_required": true
+    },
+    "admissibility_preconditions": {
+      "same_variable_id_required": true,
+      "same_resource_layer_required": true,
+      "same_quantity_kind_required": true,
+      "canonical_unit_conversion_must_use_frozen_empirical_contract": true,
+      "source_boundaries_must_be_explicit": true,
+      "target_boundaries_must_be_explicit": true,
+      "partition_cells_must_be_nonoverlapping": true,
+      "partition_must_cover_target_exactly_without_gaps": true,
+      "partition_cells_must_be_source_native_time_means_for_conservative_mean_operator": true,
+      "raw_sha256_required": true,
+      "source_provenance_required": true,
+      "uncertainty_required": true,
+      "operator_version_pin_required": true,
+      "path_b_activation_is_separate_gate": true
+    },
+    "conservation_semantics": {
+      "IDENTITY_EXACT_SUPPORT": {
+        "admissible_for_physical_value": true,
+        "condition": "SOURCE_SUPPORT_EQUALS_TARGET_SUPPORT",
+        "formula_id": "IDENTITY_V1",
+        "conservation_statement": "TARGET_VALUE_EQUALS_SOURCE_VALUE"
+      },
+      "CONSERVATIVE_TIME_MEAN_PARTITION": {
+        "admissible_for_physical_value": true,
+        "condition": "TARGET_IS_EXACT_UNION_OF_NONOVERLAPPING_SOURCE_NATIVE_TIME_MEAN_CELLS",
+        "formula_id": "TIME_MEAN_PARTITION_WEIGHTED_BY_EXPLICIT_DURATION_V1",
+        "formula": "x_target = SUM_i(x_i * delta_t_i) / delta_t_target",
+        "conservation_statement": "x_target * delta_t_target = SUM_i(x_i * delta_t_i)",
+        "silent_constancy_assumption": false,
+        "interpolation": false,
+        "imputation": false,
+        "downscaling": false
+      },
+      "NONCONSERVATIVE_OR_INFORMATION_INSUFFICIENT": {
+        "admissible_for_physical_value": false,
+        "physical_action": "HOLD",
+        "examples": [
+          "COARSE_MEAN_TO_STRICT_SUBINTERVAL",
+          "INSTANTANEOUS_SAMPLE_TO_INTERVAL_MEAN_WITHOUT_FORMAL_SOURCE_SEMANTICS",
+          "GAPPED_OR_OVERLAPPING_PARTITION",
+          "UNDECLARED_SUPPORT_TRANSFORM"
+        ]
+      }
+    },
+    "uncertainty_propagation": {
+      "UNKNOWN": "UNKNOWN_PROPAGATES",
+      "EXACT": "EXACT_ONLY_IF_ALL_REQUIRED_INPUTS_EXACT",
+      "INTERVAL": "POSITIVE_DURATION_WEIGHTED_INTERVAL_LINEAR_PROPAGATION",
+      "MOMENT": "REQUIRE_COVARIANCE_OR_HOLD",
+      "EMPIRICAL": "REQUIRE_SAMPLE_ALIGNMENT_REFERENCE_OR_HOLD",
+      "uncertainty_narrowing_without_evidence": false,
+      "unknown_to_exact_allowed": false
+    },
+    "provenance_transform_record": {
+      "required": true,
+      "required_fields": [
+        "operator_spec_id",
+        "operator_version",
+        "policy_receipt_sha256",
+        "variable_id",
+        "resource_layer",
+        "quantity_kind",
+        "source_raw_sha256_set",
+        "source_url_set",
+        "source_cell_intervals",
+        "target_interval",
+        "support_relation",
+        "conservation_mode",
+        "formula_id",
+        "unit_transform_chain",
+        "input_uncertainty_kinds",
+        "output_uncertainty_kind",
+        "input_evidence_refs",
+        "hold_codes"
+      ],
+      "transform_chain_append_required": true,
+      "raw_evidence_refs_must_be_preserved": true
+    },
+    "fail_closed_conditions": {
+      "HOLD_TEMPORAL_SOURCE_BOUNDARY_MISSING": "SOURCE_INTERVAL_BOUNDARY_MISSING",
+      "HOLD_TEMPORAL_TARGET_BOUNDARY_INVALID": "TARGET_INTERVAL_INVALID_OR_NONPOSITIVE",
+      "HOLD_TEMPORAL_INFORMATION_INSUFFICIENT": "SOURCE_SUPPORT_DOES_NOT_DETERMINE_TARGET_SUPPORT",
+      "HOLD_TEMPORAL_TARGET_NOT_EXACT_UNION": "SOURCE_CELLS_DO_NOT_EXACTLY_PARTITION_TARGET",
+      "HOLD_TEMPORAL_PARTITION_OVERLAP_OR_GAP": "SOURCE_PARTITION_HAS_OVERLAP_OR_GAP",
+      "HOLD_TEMPORAL_VARIABLE_MISMATCH": "VARIABLE_OR_RESOURCE_LAYER_MISMATCH",
+      "HOLD_TEMPORAL_UNIT_OR_KIND_MISMATCH": "UNIT_OR_QUANTITY_KIND_NOT_ADMISSIBLE",
+      "HOLD_TEMPORAL_CONSERVATION_UNDECLARED": "CONSERVATION_MODE_NOT_DECLARED",
+      "HOLD_TEMPORAL_NONCONSERVATIVE_PHYSICAL_ADMISSION_FORBIDDEN": "NONCONSERVATIVE_RESULT_CANNOT_ENTER_PHYSICAL_COMPOSITION",
+      "HOLD_TEMPORAL_UNCERTAINTY_OPERATOR": "UNCERTAINTY_PROPAGATION_REQUIREMENT_NOT_SATISFIED",
+      "HOLD_TEMPORAL_PROVENANCE_INCOMPLETE": "PROVENANCE_TRANSFORM_RECORD_INCOMPLETE",
+      "HOLD_TEMPORAL_OPERATOR_VERSION_UNPINNED": "OPERATOR_SPEC_OR_VERSION_NOT_PINNED",
+      "HOLD_PATH_B_NOT_ACTIVATED": "PATH_B_REQUIRES_SEPARATE_EXPLICIT_ACTIVATION_GATE"
+    }
+  },
+  "execution_state": {
+    "operator_executed": false,
+    "path_b_activated": false,
+    "value_composition_performed": false,
+    "formal_spec_only": true
+  },
+  "forbidden_behavior": {
+    "silent_downscaling": false,
+    "imputation": false,
+    "interpolation": false,
+    "assumed_constancy": false
+  },
+  "fences": {
+    "core_patch": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_FORMAL_TEMPORAL_SUPPORT_OPERATOR_SPEC"
+}
