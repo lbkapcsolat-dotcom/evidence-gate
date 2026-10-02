@@ -1,0 +1,80 @@
+name: ESS Modal Zero Spend Preflight V1
+
+on:
+  push:
+    branches:
+      - "ess-modal-first-real-deny-v1"
+    paths:
+      - ".github/workflows/ess-modal-zero-spend-preflight-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  modal-zero-spend-preflight:
+    runs-on: ubuntu-24.04
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - name: Verify Modal credential presence without disclosure
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${MODAL_TOKEN_ID:-}" ] || [ -z "${MODAL_TOKEN_SECRET:-}" ]; then
+            echo "MODAL_CREDENTIALS_PRESENT=FALSE"
+            echo "RUNTIME_CREATE=FALSE"
+            echo "PROVIDER_WRITE=FALSE"
+            echo "SPEND=0"
+            exit 41
+          fi
+          echo "MODAL_CREDENTIALS_PRESENT=TRUE"
+          echo "RUNTIME_CREATE=FALSE"
+          echo "PROVIDER_WRITE=FALSE"
+
+      - name: Install Modal CLI for read-only billing probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --quiet modal
+          python - <<'PY'
+          import modal
+          print("MODAL_SDK_VERSION=" + getattr(modal, "__version__", "UNKNOWN"))
+          PY
+
+      - name: Read current workspace billing summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          modal billing summary --for "this month" --json > "$RUNNER_TEMP/modal-billing-summary.json"
+          cat "$RUNNER_TEMP/modal-billing-summary.json"
+
+      - name: Normalize zero-spend baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from decimal import Decimal
+          p=os.path.join(os.environ["RUNNER_TEMP"],"modal-billing-summary.json")
+          d=json.load(open(p))
+          metered=Decimal(str(d["metered_cost"]))
+          billed=Decimal(str(d["billed_cost"]))
+          adjustments=d.get("adjustments") or {}
+          print("METERED_COST="+str(metered))
+          print("BILLED_COST="+str(billed))
+          print("ADJUSTMENTS="+json.dumps(adjustments,sort_keys=True,separators=(",",":")))
+          print("PRE_RUNTIME_BILLING_SNAPSHOT=PASS")
+          print("RUNTIME_CREATE=FALSE")
+          print("PROVIDER_WRITE=FALSE")
+          print("ZERO_SPEND_BASELINE_CAPTURED=TRUE")
+          PY
+
+      - name: Final preflight verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "VERDICT=PASS_MODAL_PRE_RUNTIME_BILLING_READBACK"
+          echo "NEXT_RUNTIME_ACTION_ALLOWED_ONLY_IF_POST_RUN_BILLED_COST_DELTA_ZERO"
+          echo "NO_SANDBOX_CREATED=TRUE"
