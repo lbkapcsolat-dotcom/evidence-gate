@@ -39,8 +39,49 @@ jobs:
           forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL\.json|planetary_resource_temporal_support_operator_executable_kernel_v1\.py|test_planetary_resource_temporal_support_operator_executable_kernel_v1\.py|docs/planetary_resource_temporal_support_operator_executable_kernel_v1\.md|\.github/workflows/planetary-resource-temporal-support-operator-executable-kernel\.yml)$' || true)"
           test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
 
+      - name: Compile executable kernel
+        run: |
+          python -m compileall -q \
+            planetary_resource_temporal_support_operator_executable_kernel_v1.py \
+            test_planetary_resource_temporal_support_operator_executable_kernel_v1.py
+
+      - name: Preserve formal temporal support operator spec
+        run: python -m unittest -v test_planetary_resource_formal_temporal_support_operator_spec_v1.py
+
       - name: Preserve reference-validator predecessor
         run: python -m unittest -v test_planetary_resource_temporal_support_operator_reference_validator_v1.py
 
-      - name: Run focused executable-kernel test
+      - name: Run executable-kernel tests
         run: python -m unittest -v test_planetary_resource_temporal_support_operator_executable_kernel_v1.py
+
+      - name: Build deterministic executable-kernel receipt
+        shell: bash
+        run: |
+          python planetary_resource_temporal_support_operator_executable_kernel_v1.py | tee temporal_support_executable_kernel.log
+          grep -F '"verdict":"PASS_BOUNDED_TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_RECEIPT.json
+          grep -F '"reference_replay_9_of_9":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_RECEIPT.json
+          grep -F '"mutation_checks_7_of_7":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_RECEIPT.json
+          grep -F '"path_b_status":"LOCKED_NOT_ACTIVATED"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_RECEIPT.json
+          grep -F '"real_source_input_used":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_RECEIPT.json
+          grep -F '"real_value_composition_performed":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_RECEIPT.json
+
+      - name: Preserve legacy mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Hash executable-kernel evidence
+        shell: bash
+        run: |
+          sha256sum \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL.json \
+            planetary_resource_temporal_support_operator_executable_kernel_v1.py \
+            test_planetary_resource_temporal_support_operator_executable_kernel_v1.py \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_RECEIPT.json
+
+      - name: Upload executable-kernel evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-temporal-support-executable-kernel-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_RECEIPT.json
+            temporal_support_executable_kernel.log
+          if-no-files-found: error
