@@ -56,12 +56,17 @@ class BomElexonEntsogTemporallyAlignedSnapshotSetTests(unittest.TestCase):
         self.assertEqual(s["value"], "26823568")
         self.assertEqual(s["flow_status"], "Provisional")
 
-    def test_all_raw_bytes_and_hashes_are_preserved(self):
-        for source in self.receipt["sources"].values():
-            self.assertGreater(source["raw_bytes"], 0)
-            self.assertEqual(len(source["raw_sha256"]), 64)
-        self.assertTrue(self.receipt["raw_bytes_preserved"])
-        self.assertTrue(self.receipt["sha256_preserved"])
+    def test_raw_sources_are_exactly_pinned(self):
+        expected = {
+            "freshwater": (2735, "1fe8f1416b69377160ed6c9fced011785a46e7cb52eac46ce783a424c3e7ee14"),
+            "electricity": (278348, "2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564"),
+            "natural_gas": (9519, "889e9bf2e6365893bfed18a50291a0d130559fa1e38484c71d8e278e82f64be5"),
+        }
+        for name, (size, sha) in expected.items():
+            source = self.receipt["sources"][name]
+            self.assertEqual(source["raw_bytes"], size)
+            self.assertEqual(source["raw_sha256"], sha)
+            self.assertTrue(source["source_url"].startswith("https://"))
 
     def test_unknown_uncertainty_preserved_for_all_three(self):
         self.assertTrue(self.receipt["unknown_uncertainty_preserved"])
@@ -78,9 +83,9 @@ class BomElexonEntsogTemporallyAlignedSnapshotSetTests(unittest.TestCase):
 
     def test_source_provenance_is_preserved(self):
         self.assertTrue(self.receipt["source_provenance_preserved"])
-        self.assertIn("raw_path", self.receipt["sources"]["freshwater"])
-        self.assertIn("raw_path", self.receipt["sources"]["electricity"])
-        self.assertIn("raw_path", self.receipt["sources"]["natural_gas"])
+        for source in self.receipt["sources"].values():
+            self.assertIn("source_url", source)
+            self.assertIn("raw_path", source)
 
     def test_no_composition_core_or_domain_change(self):
         self.assertFalse(self.receipt["composition_performed"])
