@@ -10,14 +10,20 @@
   "sources": {
     "freshwater": {
       "provider": "Australian Bureau of Meteorology",
+      "source_url": "https://www.bom.gov.au/waterdata/services?service=SOS&request=getobservation&datasource=0&version=2.0&featureOfInterest=http%3A%2F%2Fbom.gov.au%2Fwaterdata%2Fservices%2Fstations%2F410713&procedure=http%3A%2F%2Fbom.gov.au%2Fwaterdata%2Fservices%2Ftstypes%2FPat4_C_B_1_DailyMean&observedProperty=http%3A%2F%2Fbom.gov.au%2Fwaterdata%2Fservices%2Fparameters%2FWater%20Course%20Discharge&temporalFilter=om%3AphenomenonTime%2C2026-09-30T00%3A00%3A00%2B10%3A00%2F2026-10-01T00%3A00%3A00%2B10%3A00",
       "raw_path": "sources/bom/410713_discharge_daily_mean_2026-09-30.xml",
+      "raw_bytes": 2735,
+      "raw_sha256": "1fe8f1416b69377160ed6c9fced011785a46e7cb52eac46ce783a424c3e7ee14",
       "station_id": "410713",
       "observed_property": "Water Course Discharge",
       "uncertainty_kind": "UNKNOWN"
     },
     "electricity": {
       "provider": "Elexon Insights Solution",
+      "source_url": "https://data.elexon.co.uk/bmrs/api/v1/demand/outturn",
       "raw_path": "sources/elexon/INDO_outturn_alignment_window_2026-09-30.json",
+      "raw_bytes": 278348,
+      "raw_sha256": "2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564",
       "target_start_utc": "2026-09-30T12:00:00Z",
       "authoritative_duration_seconds": 1800,
       "authoritative_end_rule": "ELEXON_SETTLEMENT_PERIOD_START_PLUS_30_MINUTES",
@@ -25,7 +31,10 @@
     },
     "natural_gas": {
       "provider": "ENTSOG Transparency Platform",
+      "source_url": "https://transparency.entsog.eu/api/v1/operationaldatas.csv?indicator=Physical%20Flow&pointDirection=de-tso-0005itp-00188entry&from=2026-09-30&to=2026-10-01&periodType=hour&timeZone=CET&limit=-1",
       "raw_path": "sources/entsog/DE-TSO-0005_ITP-00188_entry_2026-09-30_hourly.csv",
+      "raw_bytes": 9519,
+      "raw_sha256": "889e9bf2e6365893bfed18a50291a0d130559fa1e38484c71d8e278e82f64be5",
       "operator_key": "DE-TSO-0005",
       "point_key": "ITP-00188",
       "direction": "entry",
