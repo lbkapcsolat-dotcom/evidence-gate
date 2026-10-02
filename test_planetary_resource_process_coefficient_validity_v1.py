@@ -48,7 +48,7 @@ class ProcessCoefficientValidityTests(unittest.TestCase):
                   end="2026-10-02T11:00:00Z"):
         return pv.RequestedInterval("T0",start,end)
 
-    def run(self, row=None, **kwargs):
+    def run_case(self, row=None, **kwargs):
         return pv.process_coupling_with_coefficient_validity(
             self.process(row),
             self.activity(),
@@ -59,7 +59,7 @@ class ProcessCoefficientValidityTests(unittest.TestCase):
         )["E0"]
 
     def test_full_containment_admitted(self):
-        out=self.run()
+        out=self.run_case()
         self.assertEqual(out.value,core.F(6))
         self.assertEqual(out.status,core.EpistemicStatus.IMPUTED)
         self.assertEqual(out.space,core.ValueSpace.PHYSICAL)
@@ -68,49 +68,49 @@ class ProcessCoefficientValidityTests(unittest.TestCase):
     def test_expired_rejected(self):
         row=self.row(valid_from="2026-09-01T00:00:00Z",valid_to="2026-10-02T10:00:00Z")
         with self.assertRaises(pv.ProcessCoefficientValidityHold) as cm:
-            self.run(row)
+            self.run_case(row)
         self.assertEqual(cm.exception.code,"HOLD_PROCESS_COEFFICIENT_EXPIRED")
 
     def test_not_yet_valid_rejected(self):
         row=self.row(valid_from="2026-10-02T11:00:00Z",valid_to="2026-10-04T00:00:00Z")
         with self.assertRaises(pv.ProcessCoefficientValidityHold) as cm:
-            self.run(row)
+            self.run_case(row)
         self.assertEqual(cm.exception.code,"HOLD_PROCESS_COEFFICIENT_NOT_YET_VALID")
 
     def test_partial_left_overlap_rejected(self):
         row=self.row(valid_from="2026-10-02T10:30:00Z",valid_to="2026-10-03T00:00:00Z")
         with self.assertRaises(pv.ProcessCoefficientValidityHold) as cm:
-            self.run(row)
+            self.run_case(row)
         self.assertEqual(cm.exception.code,"HOLD_PROCESS_COEFFICIENT_PARTIAL_INTERVAL_OVERLAP")
 
     def test_partial_right_overlap_rejected(self):
         row=self.row(valid_from="2026-10-01T00:00:00Z",valid_to="2026-10-02T10:30:00Z")
         with self.assertRaises(pv.ProcessCoefficientValidityHold) as cm:
-            self.run(row)
+            self.run_case(row)
         self.assertEqual(cm.exception.code,"HOLD_PROCESS_COEFFICIENT_PARTIAL_INTERVAL_OVERLAP")
 
     def test_missing_valid_from_rejected_when_required(self):
         row=self.row(valid_from=None)
         with self.assertRaises(pv.ProcessCoefficientValidityHold) as cm:
-            self.run(row)
+            self.run_case(row)
         self.assertEqual(cm.exception.code,"HOLD_PROCESS_COEFFICIENT_VALIDITY_REQUIRED")
 
     def test_missing_valid_to_rejected_when_required(self):
         row=self.row(valid_to=None)
         with self.assertRaises(pv.ProcessCoefficientValidityHold) as cm:
-            self.run(row)
+            self.run_case(row)
         self.assertEqual(cm.exception.code,"HOLD_PROCESS_COEFFICIENT_VALIDITY_REQUIRED")
 
     def test_invalid_validity_window_rejected(self):
         row=self.row(valid_from="2026-10-03T00:00:00Z",valid_to="2026-10-01T00:00:00Z")
         with self.assertRaises(pv.ProcessCoefficientValidityHold) as cm:
-            self.run(row)
+            self.run_case(row)
         self.assertEqual(cm.exception.code,"HOLD_PROCESS_COEFFICIENT_VALIDITY_INVALID")
 
     def test_naive_timestamp_rejected(self):
         row=self.row(valid_from="2026-10-01T00:00:00")
         with self.assertRaises(pv.ProcessCoefficientValidityHold) as cm:
-            self.run(row)
+            self.run_case(row)
         self.assertEqual(cm.exception.code,"HOLD_PROCESS_COEFFICIENT_VALIDITY_INVALID")
 
     def test_requested_interval_id_must_match_activity(self):
@@ -127,7 +127,7 @@ class ProcessCoefficientValidityTests(unittest.TestCase):
         row=self.row(
             uncertainty=core.IntervalUncertainty(core.F(-1),core.F(1))
         )
-        out=self.run(row)
+        out=self.run_case(row)
         self.assertIsInstance(out.uncertainty,core.IntervalUncertainty)
         self.assertEqual(
             (out.uncertainty.lower,out.uncertainty.upper),
@@ -137,16 +137,16 @@ class ProcessCoefficientValidityTests(unittest.TestCase):
     def test_dimensional_unit_check_preserved(self):
         row=self.row(unit="m3/s/activity")
         with self.assertRaises(Exception):
-            self.run(row)
+            self.run_case(row)
 
     def test_validity_visible_in_transform_chain(self):
-        out=self.run()
+        out=self.run_case()
         self.assertTrue(any(x.startswith("requested_interval:") for x in out.transform_chain))
         self.assertTrue(any(x.startswith("coefficient_validity:") for x in out.transform_chain))
 
     def test_validity_optional_only_when_explicitly_disabled(self):
         row=self.row(valid_from=None,valid_to=None)
-        out=self.run(row,validity_required=False)
+        out=self.run_case(row,validity_required=False)
         self.assertEqual(out.value,core.F(6))
 
 
