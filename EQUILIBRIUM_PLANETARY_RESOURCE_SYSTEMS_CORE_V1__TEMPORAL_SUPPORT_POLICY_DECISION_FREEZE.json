@@ -1,0 +1,65 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__NATIVE_COMMON_SUPPORT_SOURCE_REPLACEMENT_AND_INTEGRATION_RETRY_V1",
+    "branch": "feature/planetary-resource-native-common-support-replacement-and-integration-retry-v1",
+    "head_sha": "6d14b09ca12a8580edddc44641b4e59dd61f03da",
+    "receipt_sha256": "55fdd516a583bed690f728096edf901ff9763a810605d0c26ce10f5b58f89deb",
+    "verdict": "HOLD_EXACT_NATIVE_COMMON_SUPPORT_NOT_AVAILABLE"
+  },
+  "frozen_elexon": {
+    "provider": "Elexon Insights Solution",
+    "variable_id": "electricity.consumption_rate",
+    "slot": "DEMAND",
+    "interval_start": "2026-09-30T12:00:00Z",
+    "interval_end": "2026-09-30T12:30:00Z",
+    "duration_seconds": 1800,
+    "raw_sha256": "2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564",
+    "status": "READY_EXACT_INTERVAL"
+  },
+  "policy": {
+    "allowed_path_count": 2,
+    "allowed_paths_only": ["PATH_A", "PATH_B"],
+    "implicit_third_path_allowed": false,
+    "automatic_path_transition": false,
+    "automatic_path_b_activation": false,
+    "current_continuity_path": "PATH_A",
+    "future_path_b_activation_requires_explicit_successor_gate": true
+  },
+  "paths": {
+    "PATH_A": {
+      "name": "EXACT_NATIVE_INTERVALS_ONLY",
+      "exact_native_intervals_only": true,
+      "natural_gas_status": "HOLD_EXACT_NATIVE_COMMON_SUPPORT_NOT_AVAILABLE",
+      "freshwater_status": "HOLD_EXACT_NATIVE_COMMON_SUPPORT_NOT_AVAILABLE",
+      "source_search_by_default": false,
+      "value_composition_allowed": false,
+      "status": "ACTIVE_FAIL_CLOSED_CONTINUITY"
+    },
+    "PATH_B": {
+      "name": "EXPLICIT_SOURCE_SUPPORT_TO_TARGET_WINDOW_OPERATOR",
+      "declared": true,
+      "activated": false,
+      "operator_must_be_predeclared": true,
+      "operator_must_be_auditable": true,
+      "formal_temporal_semantics_required": true,
+      "silent_downscaling_allowed": false,
+      "imputation_allowed": false,
+      "interpolation_allowed": false,
+      "assumed_constancy_allowed": false,
+      "value_composition_allowed_before_formal_semantics": false,
+      "status": "DECLARED_LOCKED_PENDING_FORMAL_OPERATOR"
+    }
+  },
+  "fences": {
+    "core_patch": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE"
+}
