@@ -1,0 +1,82 @@
+name: Planetary Resource Real Three-Layer Input Composition Canary
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-real-three-layer-input-composition-canary-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  real-three-layer-composition-canary:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Enforce successor-only evidence change
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            target_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            target_sha="$GITHUB_SHA"
+          fi
+          changed="$(git diff --name-only 09ff4a10a1843fa7dd72be2231476a1030ff2d71..$target_sha)"
+          printf '%s\n' "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY\.json|planetary_resource_real_three_layer_input_composition_canary_v1\.py|test_planetary_resource_real_three_layer_input_composition_canary_v1\.py|docs/planetary_resource_real_three_layer_input_composition_canary_v1\.md|\.github/workflows/planetary-resource-real-three-layer-input-composition-canary\.yml)$' || true)"
+          test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+
+      - name: Compile canary
+        run: |
+          python -m compileall -q \
+            planetary_resource_real_three_layer_input_composition_canary_v1.py \
+            test_planetary_resource_real_three_layer_input_composition_canary_v1.py
+
+      - name: Preserve integrated predecessor
+        run: python -m unittest -v test_planetary_resource_integrated_minimal_core_v1.py
+
+      - name: Run real three-layer temporal composition canary
+        run: python -m unittest -v test_planetary_resource_real_three_layer_input_composition_canary_v1.py
+
+      - name: Build deterministic HOLD receipt
+        shell: bash
+        run: |
+          python planetary_resource_real_three_layer_input_composition_canary_v1.py | tee real_three_layer_composition_canary.log
+          grep -F '"verdict":"HOLD_NO_COMMON_FROZEN_COMPOSITION_WINDOW"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_RECEIPT.json
+          grep -F '"common_window_proven":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_RECEIPT.json
+          grep -F '"mapping_performed":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_RECEIPT.json
+          grep -F '"new_source_ingest":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_RECEIPT.json
+
+      - name: Preserve legacy mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Hash canary evidence
+        shell: bash
+        run: |
+          sha256sum \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY.json \
+            planetary_resource_real_three_layer_input_composition_canary_v1.py \
+            test_planetary_resource_real_three_layer_input_composition_canary_v1.py \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_RECEIPT.json
+
+      - name: Upload canary evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-real-three-layer-input-composition-canary-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_RECEIPT.json
+            real_three_layer_composition_canary.log
+          if-no-files-found: error
