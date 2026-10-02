@@ -1,0 +1,41 @@
+name: Planetary Resource Native Common Support Replacement And Integration Retry
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-native-common-support-replacement-and-integration-retry-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  native-common-support-replacement-and-integration-retry:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Enforce successor-only changes
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            target_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            target_sha="$GITHUB_SHA"
+          fi
+          changed="$(git diff --name-only 459d7057514e9b716ee7051ccbbae42d41b43bf9..$target_sha)"
+          printf '%s\n' "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__NATIVE_COMMON_SUPPORT_SOURCE_REPLACEMENT_AND_INTEGRATION_RETRY\.json|planetary_resource_native_common_support_replacement_and_integration_retry_v1\.py|test_planetary_resource_native_common_support_replacement_and_integration_retry_v1\.py|docs/planetary_resource_native_common_support_replacement_and_integration_retry_v1\.md|\.github/workflows/planetary-resource-native-common-support-replacement-and-integration-retry\.yml)$' || true)"
+          test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+      - name: Preserve aligned integration HOLD predecessor
+        run: python -m unittest -v test_planetary_resource_aligned_real_input_integration_canary_v1.py
+      - name: Run focused replacement retry test
+        run: python -m unittest -v test_planetary_resource_native_common_support_replacement_and_integration_retry_v1.py
