@@ -1,0 +1,90 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_ENVIRONMENT_AGENCY_INTERVAL_SEMANTICS_EXTERNAL_AUTHORITY_RESOLUTION_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_INTERVAL_SEMANTICS_EXTERNAL_AUTHORITY_RESOLUTION_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_V1",
+    "branch": "feature/planetary-resource-environment-agency-explicit-interval-source-surface-recovery-v1",
+    "head_sha": "36a4d855872ad106f4a84110a6bf8ce84b62130c",
+    "receipt_sha256": "b06b7a528c4f32631f116b92b8cb11387c066608ea68c3fae1b8fda7f3902f4f"
+  },
+  "target": "ENVIRONMENT_AGENCY_ONLY",
+  "accepted_authority_classes": [
+    "OFFICIAL_EA_PRIMARY_DOCUMENT",
+    "OFFICIAL_EA_SCHEMA",
+    "OFFICIAL_EA_WRITTEN_CLARIFICATION"
+  ],
+  "authority_audit": [
+    {
+      "authority_class": "OFFICIAL_EA_PRIMARY_DOCUMENT",
+      "url": "https://environment.data.gov.uk/flood-monitoring/doc/reference",
+      "scope": "FLOW_MEAN_READINGS",
+      "facts": {
+        "reading_datetime_semantics": "DATE_TIME_AT_WHICH_READING_OCCURRED_OR_APPLIES",
+        "period_semantics": "PERIOD_BETWEEN_SUCCESSIVE_READINGS_SECONDS",
+        "mean_semantics": "MEAN_VALUE_OVER_MEASUREMENT_PERIOD"
+      },
+      "explicit_boundary_classification": "UNSPECIFIED",
+      "accepted_boundary_rule": false
+    },
+    {
+      "authority_class": "OFFICIAL_EA_PRIMARY_DOCUMENT",
+      "url": "https://environment.data.gov.uk/hydrology/doc/reference",
+      "scope": "HYDROLOGY_FLOW_TIME_SERIES",
+      "facts": {
+        "flow_15min": "INSTANTANEOUS",
+        "flow_daily": "MEAN_MIN_MAX",
+        "reading_fields_include": ["date", "dateTime", "value"]
+      },
+      "explicit_boundary_classification": "UNSPECIFIED_FOR_POSITIVE_DURATION_FLOW_MEAN",
+      "accepted_boundary_rule": false
+    },
+    {
+      "authority_class": "OFFICIAL_EA_SCHEMA",
+      "url": "https://environment.data.gov.uk/hydrology/doc/oas",
+      "scope": "HYDROLOGY_OPENAPI",
+      "facts": {
+        "official_schema_surface_present": true,
+        "no_start_end_boundary_rule_identified_for_flow_mean": true
+      },
+      "explicit_boundary_classification": "UNSPECIFIED",
+      "accepted_boundary_rule": false
+    }
+  ],
+  "written_clarification": {
+    "official_ea_written_clarification_present_in_audited_evidence": false,
+    "boundary_classification": "NONE"
+  },
+  "question": {
+    "for_flow_mean_readings_does_datetime_identify": [
+      "PERIOD_START",
+      "PERIOD_END",
+      "PERIOD_CENTER",
+      "OTHER_EXPLICIT_BOUNDARY"
+    ],
+    "resolved_answer": "NO_AUTHORITATIVE_CLASSIFICATION_FOUND"
+  },
+  "requirements": {
+    "no_assumption": true,
+    "no_empirical_inference": true,
+    "no_new_source_ingest": true,
+    "pass_only_if_authoritative_boundary_rule_obtained": true,
+    "otherwise_final_hold_for_this_source_family": true
+  },
+  "frozen_external_semantics": {
+    "elexon_recovered": true,
+    "entsog_satisfied": true
+  },
+  "fences": {
+    "new_source_ingest": false,
+    "core_patch": false,
+    "new_domain_math": false,
+    "composition": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "FINAL_HOLD_FOR_EA_SOURCE_FAMILY__NO_AUTHORITATIVE_INTERVAL_BOUNDARY_RULE"
+}
