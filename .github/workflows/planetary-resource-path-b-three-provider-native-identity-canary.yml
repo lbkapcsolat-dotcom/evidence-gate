@@ -39,8 +39,62 @@ jobs:
           forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY\.json|planetary_resource_path_b_three_provider_native_identity_canary_v1\.py|test_planetary_resource_path_b_three_provider_native_identity_canary_v1\.py|docs/planetary_resource_path_b_three_provider_native_identity_canary_v1\.md|\.github/workflows/planetary-resource-path-b-three-provider-native-identity-canary\.yml)$' || true)"
           test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
 
+      - name: Independently verify all three pinned raw byte counts and SHA256
+        shell: bash
+        run: |
+          e="sources/elexon/INDO_outturn_alignment_window_2026-09-30.json"
+          g="sources/entsog/DE-TSO-0005_ITP-00188_entry_2026-09-30_hourly.csv"
+          w="sources/bom/410713_discharge_daily_mean_2026-09-30.xml"
+          test "$(wc -c < "$e")" -eq 278348
+          test "$(wc -c < "$g")" -eq 9519
+          test "$(wc -c < "$w")" -eq 2735
+          printf '%s  %s\n' "2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564" "$e" | sha256sum -c -
+          printf '%s  %s\n' "889e9bf2e6365893bfed18a50291a0d130559fa1e38484c71d8e278e82f64be5" "$g" | sha256sum -c -
+          printf '%s  %s\n' "1fe8f1416b69377160ed6c9fced011785a46e7cb52eac46ce783a424c3e7ee14" "$w" | sha256sum -c -
+
+      - name: Compile three-provider canary
+        run: |
+          python -m compileall -q \
+            planetary_resource_path_b_three_provider_native_identity_canary_v1.py \
+            test_planetary_resource_path_b_three_provider_native_identity_canary_v1.py
+
       - name: Preserve Elexon identity predecessor
         run: python -m unittest -v test_planetary_resource_path_b_real_source_identity_activation_canary_v1.py
 
-      - name: Run focused three-provider native identity canary test
+      - name: Run three-provider native identity canary tests
         run: python -m unittest -v test_planetary_resource_path_b_three_provider_native_identity_canary_v1.py
+
+      - name: Build deterministic three-provider receipt
+        shell: bash
+        run: |
+          python planetary_resource_path_b_three_provider_native_identity_canary_v1.py | tee path_b_three_provider_native_identity.log
+          grep -F '"verdict":"PASS_BOUNDED_PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_RECEIPT.json
+          grep -F '"three_of_three_pass_identity":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_RECEIPT.json
+          grep -F '"pass_identity_count":3' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_RECEIPT.json
+          grep -F '"common_window_computed":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_RECEIPT.json
+          grep -F '"raw_sha256_provenance_bound_3_of_3":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_RECEIPT.json
+          grep -F '"global_activation":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_RECEIPT.json
+
+      - name: Preserve legacy mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Hash three-provider canary evidence
+        shell: bash
+        run: |
+          sha256sum \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY.json \
+            planetary_resource_path_b_three_provider_native_identity_canary_v1.py \
+            test_planetary_resource_path_b_three_provider_native_identity_canary_v1.py \
+            sources/elexon/INDO_outturn_alignment_window_2026-09-30.json \
+            sources/entsog/DE-TSO-0005_ITP-00188_entry_2026-09-30_hourly.csv \
+            sources/bom/410713_discharge_daily_mean_2026-09-30.xml \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_RECEIPT.json
+
+      - name: Upload three-provider identity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-path-b-three-provider-native-identity-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_RECEIPT.json
+            path_b_three_provider_native_identity.log
+          if-no-files-found: error
