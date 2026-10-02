@@ -1,0 +1,198 @@
+name: API Bridge k6 Current Scope
+# bounded capacity replay trigger: 2026-10-03
+
+on:
+  pull_request:
+    paths:
+      - "ci/api-bridge/**"
+      - ".github/workflows/api-bridge-k6-current-scope.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  k6-capacity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reassemble exact preserved runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d ci/api-bridge/runtime.zip.b64 > ci/api-bridge/runtime.zip
+          test "$(wc -c < ci/api-bridge/runtime.zip)" -eq 27954
+          echo "1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df  ci/api-bridge/runtime.zip" | sha256sum -c -
+          unzip -t ci/api-bridge/runtime.zip
+          unzip -q ci/api-bridge/runtime.zip -d ci/api-bridge/runtime
+
+      - name: Install runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ="$(find ci/api-bridge/runtime -path '*/extracted_ESS_API_BRIDGE_V1_1/requirements.txt' -print -quit)"
+          test -n "$REQ"
+          python -m pip install --upgrade pip
+          python -m pip install -r "$REQ"
+
+      - name: Start exact ESS FastAPI runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPDIR="$(find ci/api-bridge/runtime -type d -name extracted_ESS_API_BRIDGE_V1_1 -print -quit)"
+          test -n "$APPDIR"
+          nohup python -m uvicorn ess_api_bridge_v1_1:app --app-dir "$APPDIR" --host 127.0.0.1 --port 8001 > ci/api-bridge/k6_uvicorn.log 2>&1 &
+          echo $! > ci/api-bridge/k6_uvicorn.pid
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(60):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8001/health", timeout=1) as r:
+                      if r.status == 200:
+                          print(r.read().decode())
+                          raise SystemExit(0)
+              except Exception:
+                  time.sleep(1)
+          raise SystemExit("runtime health timeout")
+          PY
+
+      - name: Pull and verify k6 0.54.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="grafana/k6:0.54.0"
+          docker pull "$IMAGE"
+          docker image inspect "$IMAGE" --format '{{json .RepoDigests}}' | tee ci/api-bridge/k6_image_digests.json
+          docker run --rm "$IMAGE" version | tee ci/api-bridge/k6_version.txt
+          grep -Eq 'k6 v0\.54\.0|0\.54\.0' ci/api-bridge/k6_version.txt
+
+      - name: Execute bounded k6 API capacity smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod -R a+rwX ci/api-bridge
+          IMAGE="grafana/k6:0.54.0"
+          set +e
+          docker run --rm --network=host \
+            -e BASE_URL=http://127.0.0.1:8001 \
+            -v "$PWD/ci/api-bridge:/scripts:rw" \
+            "$IMAGE" run \
+              --summary-export /scripts/k6_summary.json \
+              --out json=/scripts/k6_raw.jsonl \
+              /scripts/k6_current_scope_api_bridge.js \
+            2>&1 | tee ci/api-bridge/k6_stdout.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" | tee ci/api-bridge/k6_exit_code.txt
+          test "$rc" -eq 0
+
+      - name: Audit k6 result with bounded capacity gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          summary_path = Path("ci/api-bridge/k6_summary.json")
+          raw_path = Path("ci/api-bridge/k6_raw.jsonl")
+          summary = json.loads(summary_path.read_text())
+          metrics = summary.get("metrics", {})
+
+          def metric_value(name, key, default=None):
+              values = metrics.get(name, {}).get("values", {})
+              return values.get(key, default)
+
+          request_count = metric_value("http_reqs", "count", 0) or 0
+          failed_rate = metric_value("http_req_failed", "rate", 1) or 0
+          checks_rate = metric_value("checks", "rate", 0) or 0
+          p50 = metric_value("http_req_duration", "med", None)
+          p95 = metric_value("http_req_duration", "p(95)", None)
+          p99 = metric_value("http_req_duration", "p(99)", None)
+          throughput = metric_value("http_reqs", "rate", None)
+          raw_bytes = raw_path.stat().st_size
+          rc = int(Path("ci/api-bridge/k6_exit_code.txt").read_text().strip())
+
+          assert rc == 0, f"k6 exit code {rc}"
+          assert raw_bytes > 0, "k6 raw JSONL is empty"
+          assert request_count > 0, "no k6 requests recorded"
+          assert failed_rate < 0.01, f"http_req_failed rate too high: {failed_rate}"
+          assert checks_rate == 1, f"check pass rate not 1.0: {checks_rate}"
+          assert p95 is not None and p95 < 1000, f"p95 latency too high or missing: {p95}"
+          assert p99 is not None and p99 < 2000, f"p99 latency too high or missing: {p99}"
+
+          receipt = {
+              "verdict": "PASS_PROVIDER_NATIVE_K6_0_54_0_BOUNDED_CURRENT_SCOPE_API_CAPACITY_SMOKE",
+              "runtime_package_sha256": "1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df",
+              "k6_version": "0.54.0",
+              "target": "LOCALHOST_CURRENT_SCOPE_ESS_FASTAPI",
+              "scan_type": "K6_CAPACITY_SMOKE_CONSTANT_VUS",
+              "vus": 2,
+              "duration": "20s",
+              "endpoint_mix": [
+                  "GET /health",
+                  "POST /api/v1/telemetry/evaluate SAFE",
+                  "POST /api/v1/telemetry/evaluate VIOLATION",
+                  "POST /api/v1/telemetry/intervene APPLY"
+              ],
+              "k6_exit_code": rc,
+              "sample_count": request_count,
+              "error_rate": failed_rate,
+              "checks_rate": checks_rate,
+              "latency_p50_ms": p50,
+              "latency_p95_ms": p95,
+              "latency_p99_ms": p99,
+              "throughput_requests_per_second": throughput,
+              "raw_result_bytes": raw_bytes,
+              "summary_file": "k6_summary.json",
+              "raw_file": "k6_raw.jsonl",
+              "claim_ceiling": "BOUNDED_PROVIDER_NATIVE_K6_API_CAPACITY_SMOKE_ONLY__NOT_PRODUCTION_CAPACITY_CERTIFICATION__NOT_PRODUCTION_READINESS",
+              "capacity_certification": False,
+              "security_certification": False,
+              "production_readiness": False,
+              "runtime_admission": False,
+              "production_promotion": False,
+              "pointer_promotion": False,
+              "global_bind": False
+          }
+          Path("ci/api-bridge/k6_audit_receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          print(json.dumps(receipt))
+          PY
+
+      - name: Hash k6 capacity evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum \
+            ci/api-bridge/runtime.zip \
+            ci/api-bridge/k6_current_scope_api_bridge.js \
+            ci/api-bridge/k6_version.txt \
+            ci/api-bridge/k6_image_digests.json \
+            ci/api-bridge/k6_summary.json \
+            ci/api-bridge/k6_raw.jsonl \
+            ci/api-bridge/k6_stdout.log \
+            ci/api-bridge/k6_exit_code.txt \
+            ci/api-bridge/k6_audit_receipt.json \
+            ci/api-bridge/k6_uvicorn.log \
+            > ci/api-bridge/K6_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-bridge-current-scope-k6-0.54.0
+          path: |
+            ci/api-bridge/runtime.zip
+            ci/api-bridge/k6_current_scope_api_bridge.js
+            ci/api-bridge/k6_version.txt
+            ci/api-bridge/k6_image_digests.json
+            ci/api-bridge/k6_summary.json
+            ci/api-bridge/k6_raw.jsonl
+            ci/api-bridge/k6_stdout.log
+            ci/api-bridge/k6_exit_code.txt
+            ci/api-bridge/k6_audit_receipt.json
+            ci/api-bridge/K6_SHA256SUMS.txt
+            ci/api-bridge/k6_uvicorn.log
