@@ -1,0 +1,65 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_TEMPORALLY_ALIGNED_THREE_SOURCE_SNAPSHOT_SET_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORALLY_ALIGNED_THREE_SOURCE_SNAPSHOT_SET_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_V1",
+    "branch": "feature/planetary-resource-real-three-layer-input-composition-canary-v1",
+    "head_sha": "72448cd06e4b9bd643ac8283b33b58563e3ab59e",
+    "receipt_sha256": "eb28b3eb2a495497a53fe416e30dda9c72a090b3766f955f926c6a4616ee9e26"
+  },
+  "source_semantics_preflight": {
+    "environment_agency": {
+      "official_reference_url": "https://environment.data.gov.uk/flood-monitoring/doc/reference",
+      "period_semantics": "PERIOD_BETWEEN_SUCCESSIVE_READINGS",
+      "datetime_semantics": "DATETIME_AT_WHICH_READING_APPLIES",
+      "mean_semantics": "MEAN_OVER_MEASUREMENT_PERIOD",
+      "explicit_timestamp_anchor_to_period_boundary_documented": false,
+      "existing_binding_timestamp_semantics": "SOURCE_DATETIME_WITH_PERIOD_900_VALUE_TYPE_MEAN__NO_INFERRED_START_BOUNDARY"
+    },
+    "elexon": {
+      "official_reference_url": "https://developer.data.elexon.co.uk/",
+      "dataset": "INDO",
+      "existing_record_has_start_time": true,
+      "existing_record_has_explicit_end_time": false,
+      "existing_semantics": "HALF_HOUR_AVERAGE_WITH_START_TIME_AND_SETTLEMENT_PERIOD"
+    },
+    "entsog": {
+      "official_reference_url": "https://transparency.entsog.eu/api/archiveDirectories/8/api-manual/ENTSOG_TP_API_UserManual_v3.0.pdf",
+      "existing_record_has_period_from": true,
+      "existing_record_has_period_to": true,
+      "eligible_for_explicit_bounds": true
+    }
+  },
+  "requirements": {
+    "allow_new_source_ingest_for_alignment_only": true,
+    "require_explicit_interval_bounds_for_all_three": true,
+    "require_positive_duration_common_window": true,
+    "require_no_interpolation": true,
+    "require_no_imputation": true,
+    "require_no_cross_interval_aggregation": true,
+    "reuse_existing_generic_adapter": true,
+    "reuse_existing_provider_bindings": true,
+    "preserve_raw_bytes": true,
+    "preserve_sha256": true,
+    "preserve_source_provenance": true,
+    "preserve_unknown_uncertainty": true,
+    "require_exact_three_source_window_receipt": true,
+    "require_deterministic_replay": true
+  },
+  "preflight_policy": {
+    "do_not_ingest_new_records_until_all_source_interval_semantics_can_satisfy_explicit_bounds": true,
+    "fail_closed_on_missing_interval_anchor": true
+  },
+  "fences": {
+    "composition": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false,
+    "new_domain_math": false,
+    "core_patch": false
+  },
+  "hold_verdict": "HOLD_SOURCE_INTERVAL_SEMANTICS_UNPROVEN"
+}
