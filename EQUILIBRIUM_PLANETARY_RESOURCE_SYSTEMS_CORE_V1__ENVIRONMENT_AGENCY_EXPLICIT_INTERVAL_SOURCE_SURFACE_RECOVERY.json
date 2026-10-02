@@ -1,0 +1,101 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_INTERVAL_SEMANTICS_RECOVERY_V1",
+    "branch": "feature/planetary-resource-source-interval-semantics-recovery-v1",
+    "head_sha": "8e22a5aa6f257c9080e4f30a750f892e467a7ea9",
+    "receipt_sha256": "1094ac15a21253b6e867bfd783cdd8daa27750e3a57c821440e624efa36da70b"
+  },
+  "target": "ENVIRONMENT_AGENCY_ONLY",
+  "official_primary_documentation_only": true,
+  "candidate_source_surfaces": [
+    {
+      "id": "EA_FLOOD_MONITORING_FLOW_MEAN",
+      "url": "https://environment.data.gov.uk/flood-monitoring/doc/reference",
+      "variable_family": "freshwater_flow",
+      "surface": "near_real_time_flow_mean",
+      "source_fields": ["dateTime", "period", "valueType", "value"],
+      "official_semantics": {
+        "dateTime": "date/time at which the reading occurred/applies",
+        "period": "period between successive readings in seconds",
+        "mean": "mean value over the measurement period"
+      },
+      "explicit_start_time": false,
+      "explicit_end_time": false,
+      "authoritative_timestamp_boundary_rule": false,
+      "eligible": false,
+      "rejection_code": "HOLD_EA_FLOOD_MONITORING_MEAN_BOUNDARY_ANCHOR_UNPROVEN"
+    },
+    {
+      "id": "EA_HYDROLOGY_FLOW_15MIN_INSTANTANEOUS",
+      "url": "https://environment.data.gov.uk/hydrology/doc/reference",
+      "variable_family": "freshwater_flow",
+      "surface": "hydrology_15min_flow",
+      "official_semantics": {
+        "periodName": "15min",
+        "valueType": "instantaneous",
+        "unitName": "m3/s"
+      },
+      "explicit_start_time": false,
+      "explicit_end_time": false,
+      "authoritative_timestamp_boundary_rule": true,
+      "timestamp_rule_scope": "INSTANTANEOUS_OBSERVATION_ONLY",
+      "positive_duration_interval": false,
+      "eligible": false,
+      "rejection_code": "HOLD_EA_HYDROLOGY_15MIN_FLOW_IS_INSTANTANEOUS_NOT_INTERVAL"
+    },
+    {
+      "id": "EA_HYDROLOGY_FLOW_DAILY_MEAN",
+      "url": "https://environment.data.gov.uk/hydrology/doc/reference",
+      "variable_family": "freshwater_flow",
+      "surface": "hydrology_daily_mean_flow",
+      "official_semantics": {
+        "periodName": "daily",
+        "valueType": "mean",
+        "period_seconds": 86400,
+        "reading_fields": ["date", "dateTime", "value", "quality", "completeness"]
+      },
+      "explicit_start_time": false,
+      "explicit_end_time": false,
+      "authoritative_timestamp_boundary_rule": false,
+      "eligible": false,
+      "rejection_code": "HOLD_EA_HYDROLOGY_DAILY_MEAN_BOUNDARY_ANCHOR_UNPROVEN"
+    },
+    {
+      "id": "EA_TIDE_GAUGE_15MIN_MEAN",
+      "url": "https://environment.data.gov.uk/flood-monitoring/doc/tidegauge",
+      "variable_family": "tidal_water_level",
+      "surface": "tide_gauge_15min_mean",
+      "official_semantics": {
+        "value": "mean sea level within each 15 minute window",
+        "timestamp": "dateTime for when the reading applies"
+      },
+      "eligible": false,
+      "rejection_code": "HOLD_EA_TIDE_GAUGE_WRONG_PHYSICAL_VARIABLE_FOR_FRESHWATER_FLOW"
+    }
+  ],
+  "requirements": {
+    "search_for_explicit_start_and_end_or_authoritative_boundary_rule": true,
+    "no_assumed_15_minute_window": true,
+    "no_datetime_minus_period_inference": true,
+    "no_center_window_inference": true,
+    "elexon_recovered_frozen": true,
+    "entsog_satisfied_frozen": true,
+    "no_new_data_ingest_yet": true,
+    "pass_only_if_ea_interval_bounds_become_source_provable": true
+  },
+  "fences": {
+    "new_source_ingest": false,
+    "core_patch": false,
+    "new_domain_math": false,
+    "composition": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "HOLD_NO_ELIGIBLE_ENVIRONMENT_AGENCY_FRESHWATER_FLOW_INTERVAL_SURFACE"
+}

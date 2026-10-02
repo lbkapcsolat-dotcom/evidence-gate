@@ -1,0 +1,82 @@
+name: Planetary Resource Environment Agency Explicit Interval Source Surface Recovery
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-environment-agency-explicit-interval-source-surface-recovery-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ea-explicit-interval-source-surface-recovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Enforce EA-recovery successor-only changes
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            target_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            target_sha="$GITHUB_SHA"
+          fi
+          changed="$(git diff --name-only 8e22a5aa6f257c9080e4f30a750f892e467a7ea9..$target_sha)"
+          printf '%s\n' "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY\.json|planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1\.py|test_planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1\.py|docs/planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1\.md|\.github/workflows/planetary-resource-environment-agency-explicit-interval-source-surface-recovery\.yml)$' || true)"
+          test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+
+      - name: Compile EA source-surface recovery
+        run: |
+          python -m compileall -q \
+            planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1.py \
+            test_planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1.py
+
+      - name: Preserve source-interval semantics recovery predecessor
+        run: python -m unittest -v test_planetary_resource_source_interval_semantics_recovery_v1.py
+
+      - name: Run EA explicit interval source-surface recovery tests
+        run: python -m unittest -v test_planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1.py
+
+      - name: Build deterministic EA source-surface HOLD receipt
+        shell: bash
+        run: |
+          python planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1.py | tee ea_explicit_interval_source_surface_recovery.log
+          grep -F '"verdict":"HOLD_NO_ELIGIBLE_ENVIRONMENT_AGENCY_FRESHWATER_FLOW_INTERVAL_SURFACE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_RECEIPT.json
+          grep -F '"eligible_freshwater_flow_interval_surface_count":0' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_RECEIPT.json
+          grep -F '"new_source_records_ingested":0' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_RECEIPT.json
+          grep -F '"datetime_minus_period_inference_used":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_RECEIPT.json
+
+      - name: Preserve legacy mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Hash EA recovery evidence
+        shell: bash
+        run: |
+          sha256sum \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY.json \
+            planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1.py \
+            test_planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1.py \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_RECEIPT.json
+
+      - name: Upload EA recovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-ea-explicit-interval-source-surface-recovery-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_EXPLICIT_INTERVAL_SOURCE_SURFACE_RECOVERY_RECEIPT.json
+            ea_explicit_interval_source_surface_recovery.log
+          if-no-files-found: error
