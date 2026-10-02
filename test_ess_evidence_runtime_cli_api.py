@@ -9,18 +9,18 @@ class T(unittest.TestCase):
     def test_cli_admit_and_replay(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"in.json"; p.write_text(json.dumps(BASE))
-            r=subprocess.run([sys.executable,"ess_evidence_runtime_cli.py","admit",str(p)],capture_output=True,text=True)
+            r=subprocess.run([sys.executable,"ess_evidence_runtime_cli.py","admit",str(p)],capture_output=True,text=True,timeout=10)
             self.assertEqual(r.returncode,0)
             receipt=json.loads(r.stdout); self.assertEqual(receipt["admission"],"PASS")
             q=Path(d)/"r.json"; q.write_text(json.dumps(receipt))
-            rr=subprocess.run([sys.executable,"ess_evidence_runtime_cli.py","replay",str(q)],capture_output=True,text=True)
+            rr=subprocess.run([sys.executable,"ess_evidence_runtime_cli.py","replay",str(q)],capture_output=True,text=True,timeout=10)
             self.assertEqual(rr.returncode,0); self.assertTrue(json.loads(rr.stdout)["valid"])
     def test_api_uses_same_receipt_engine(self):
         server=ThreadingHTTPServer(("127.0.0.1",0),Handler)
         th=threading.Thread(target=server.serve_forever,daemon=True); th.start()
         try:
             req=urllib.request.Request(f"http://127.0.0.1:{server.server_port}/v1/admit",data=json.dumps(BASE).encode(),headers={"Content-Type":"application/json"},method="POST")
-            with urllib.request.urlopen(req) as resp: out=json.load(resp)
+            with urllib.request.urlopen(req, timeout=5) as resp: out=json.load(resp)
             self.assertEqual(out["admission"],"PASS")
             self.assertFalse(out["runtime_admission"])
         finally:

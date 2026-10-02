@@ -114,14 +114,14 @@ class CognitiveOversightRuntimeTests(unittest.TestCase):
         direct=build_receipt(payload)
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"in.json"; p.write_text(json.dumps(payload),encoding="utf-8")
-            r=subprocess.run([sys.executable,"cognitive_oversight_runtime_cli.py","admit",str(p)],capture_output=True,text=True,cwd=Path(__file__).parent)
+            r=subprocess.run([sys.executable,"cognitive_oversight_runtime_cli.py","admit",str(p)],capture_output=True,text=True,cwd=Path(__file__).parent,timeout=10)
             self.assertEqual(r.returncode,0)
             self.assertEqual(json.loads(r.stdout),direct)
         server=ThreadingHTTPServer(("127.0.0.1",0),Handler)
         th=threading.Thread(target=server.serve_forever,daemon=True); th.start()
         try:
             req=urllib.request.Request(f"http://127.0.0.1:{server.server_port}/v1/cognitive-oversight/admit",data=json.dumps(payload).encode(),headers={"Content-Type":"application/json"},method="POST")
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 api=json.load(resp)
             self.assertEqual(api,direct)
         finally:
