@@ -39,8 +39,51 @@ jobs:
           forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET\.json|planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1\.py|test_planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1\.py|docs/planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1\.md|sources/elexon/INDO_outturn_alignment_window_2026-09-30.json|sources/entsog/DE-TSO-0005_ITP-00188_entry_2026-09-30_hourly.csv|\.github/workflows/planetary-resource-bom-elexon-entsog-temporally-aligned-snapshot-set\.yml)$' || true)"
           test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
 
+      - name: Compile alignment gate
+        run: |
+          python -m compileall -q \
+            planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1.py \
+            test_planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1.py
+
       - name: Preserve alternate freshwater predecessor
         run: python -m unittest -v test_planetary_resource_alternate_freshwater_explicit_interval_source_discovery_v1.py
 
-      - name: Run focused three-source alignment test
+      - name: Run three-source alignment tests
         run: python -m unittest -v test_planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1.py
+
+      - name: Build deterministic three-source window receipt
+        shell: bash
+        run: |
+          python planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1.py | tee bom_elexon_entsog_alignment.log
+          grep -F '"verdict":"PASS_BOUNDED_BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_RECEIPT.json
+          grep -F '"start_utc":"2026-09-30T12:00:00Z"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_RECEIPT.json
+          grep -F '"end_utc":"2026-09-30T12:30:00Z"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_RECEIPT.json
+          grep -F '"duration_seconds":1800' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_RECEIPT.json
+          grep -F '"composition_performed":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_RECEIPT.json
+
+      - name: Preserve legacy mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Hash raw sources and alignment evidence
+        shell: bash
+        run: |
+          sha256sum \
+            sources/bom/410713_discharge_daily_mean_2026-09-30.xml \
+            sources/elexon/INDO_outturn_alignment_window_2026-09-30.json \
+            sources/entsog/DE-TSO-0005_ITP-00188_entry_2026-09-30_hourly.csv \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET.json \
+            planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1.py \
+            test_planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1.py \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_RECEIPT.json
+
+      - name: Upload three-source alignment evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-bom-elexon-entsog-alignment-py${{ matrix.python-version }}
+          path: |
+            sources/bom/410713_discharge_daily_mean_2026-09-30.xml
+            sources/elexon/INDO_outturn_alignment_window_2026-09-30.json
+            sources/entsog/DE-TSO-0005_ITP-00188_entry_2026-09-30_hourly.csv
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_RECEIPT.json
+            bom_elexon_entsog_alignment.log
+          if-no-files-found: error
