@@ -1,0 +1,103 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_V1",
+    "branch": "feature/planetary-resource-path-b-real-source-identity-activation-canary-v1",
+    "head_sha": "9d570e518ae0027357fe8fe4c554ca3f62a8b692",
+    "receipt_sha256": "9a0c62c606a8c688ea535b02f2a6ba390e4a6d4f61fe7698ff7a09546d3c70af",
+    "verdict": "PASS_BOUNDED_PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY"
+  },
+  "operator": {
+    "operator_spec_id": "TEMPORAL_SUPPORT_TO_TARGET_WINDOW_OPERATOR_V1",
+    "operator_version": "V1",
+    "allowed_relation": "EXACT_TARGET_SUPPORT",
+    "partition_aggregation_allowed": false
+  },
+  "activation": {
+    "target_path": "PATH_B",
+    "scope": "CANARY_LOCAL_THREE_PROVIDER_IDENTITY_ONLY",
+    "active_during_canary": true,
+    "global_activation": false,
+    "runtime_admission": false,
+    "post_canary_global_state": "LOCKED_NOT_GLOBALLY_ACTIVATED"
+  },
+  "sources": {
+    "electricity": {
+      "provider": "Elexon Insights Solution",
+      "dataset": "INDO",
+      "resource_layer": "ELECTRICITY",
+      "variable_id": "electricity.consumption_rate",
+      "source_url": "https://data.elexon.co.uk/bmrs/api/v1/demand/outturn",
+      "raw_path": "sources/elexon/INDO_outturn_alignment_window_2026-09-30.json",
+      "raw_bytes": 278348,
+      "raw_sha256": "2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564",
+      "target_start_utc": "2026-09-30T12:00:00Z",
+      "authoritative_duration_seconds": 1800,
+      "record_field": "initialDemandOutturn",
+      "source_unit": "MW",
+      "uncertainty_kind": "UNKNOWN",
+      "native_time_mean_flag": false
+    },
+    "natural_gas": {
+      "provider": "ENTSOG Transparency Platform",
+      "dataset": "Physical Flow",
+      "resource_layer": "NATURAL_GAS",
+      "variable_id": "natural_gas.import_rate",
+      "source_url": "https://transparency.entsog.eu/api/v1/operationaldatas.csv?indicator=Physical%20Flow&pointDirection=de-tso-0005itp-00188entry&from=2026-09-30&to=2026-10-01&periodType=hour&timeZone=CET&limit=-1",
+      "raw_path": "sources/entsog/DE-TSO-0005_ITP-00188_entry_2026-09-30_hourly.csv",
+      "raw_bytes": 9519,
+      "raw_sha256": "889e9bf2e6365893bfed18a50291a0d130559fa1e38484c71d8e278e82f64be5",
+      "operator_key": "DE-TSO-0005",
+      "point_key": "ITP-00188",
+      "direction": "entry",
+      "target_period_from_utc": "2026-09-30T12:00:00Z",
+      "target_period_to_utc": "2026-09-30T13:00:00Z",
+      "source_unit": "kWh/h",
+      "uncertainty_kind": "UNKNOWN",
+      "native_time_mean_flag": false
+    },
+    "freshwater": {
+      "provider": "Australian Bureau of Meteorology",
+      "dataset": "Water Course Discharge DailyMean",
+      "resource_layer": "FRESHWATER",
+      "variable_id": "freshwater.internal_flow_rate",
+      "source_url": "https://www.bom.gov.au/waterdata/services",
+      "raw_path": "sources/bom/410713_discharge_daily_mean_2026-09-30.xml",
+      "raw_bytes": 2735,
+      "raw_sha256": "1fe8f1416b69377160ed6c9fced011785a46e7cb52eac46ce783a424c3e7ee14",
+      "station_id": "410713",
+      "observed_property": "Water Course Discharge",
+      "source_unit": "cumec",
+      "uncertainty_kind": "UNKNOWN",
+      "native_time_mean_flag": true
+    }
+  },
+  "requirements": {
+    "three_of_three_pass_identity": true,
+    "each_provider_keeps_own_native_interval": true,
+    "no_common_window": true,
+    "output_equals_input_exactly": true,
+    "unknown_uncertainty_preserved": true,
+    "raw_sha256_provenance_bind_per_source": true,
+    "deterministic_replay": true
+  },
+  "forbidden_behavior": {
+    "partition_aggregation": false,
+    "cross_source_composition": false,
+    "temporal_alignment_between_providers": false,
+    "interpolation": false,
+    "imputation": false,
+    "coarse_to_fine": false
+  },
+  "fences": {
+    "core_patch": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_PATH_B_THREE_PROVIDER_NATIVE_IDENTITY_CANARY"
+}
