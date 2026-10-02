@@ -1,0 +1,63 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALTERNATE_FRESHWATER_EXPLICIT_INTERVAL_SOURCE_DISCOVERY_V1",
+    "branch": "feature/planetary-resource-alternate-freshwater-explicit-interval-source-discovery-v1",
+    "head_sha": "b4eef1a8e63053d1de3eca3410cfbfcabd169294",
+    "receipt_sha256": "236dcdcf8669a9a64251722af55c31eda04cee9f7bd30383cdafe883bdfea42a"
+  },
+  "sources": {
+    "freshwater": {
+      "provider": "Australian Bureau of Meteorology",
+      "raw_path": "sources/bom/410713_discharge_daily_mean_2026-09-30.xml",
+      "station_id": "410713",
+      "observed_property": "Water Course Discharge",
+      "uncertainty_kind": "UNKNOWN"
+    },
+    "electricity": {
+      "provider": "Elexon Insights Solution",
+      "raw_path": "sources/elexon/INDO_outturn_alignment_window_2026-09-30.json",
+      "target_start_utc": "2026-09-30T12:00:00Z",
+      "authoritative_duration_seconds": 1800,
+      "authoritative_end_rule": "ELEXON_SETTLEMENT_PERIOD_START_PLUS_30_MINUTES",
+      "uncertainty_kind": "UNKNOWN"
+    },
+    "natural_gas": {
+      "provider": "ENTSOG Transparency Platform",
+      "raw_path": "sources/entsog/DE-TSO-0005_ITP-00188_entry_2026-09-30_hourly.csv",
+      "operator_key": "DE-TSO-0005",
+      "point_key": "ITP-00188",
+      "direction": "entry",
+      "target_period_from_utc": "2026-09-30T12:00:00Z",
+      "target_period_to_utc": "2026-09-30T13:00:00Z",
+      "uncertainty_kind": "UNKNOWN"
+    }
+  },
+  "requirements": {
+    "source_explicit_interval_bounds": true,
+    "positive_duration_three_way_intersection": true,
+    "no_interpolation": true,
+    "no_imputation": true,
+    "no_cross_interval_aggregation": true,
+    "no_inferred_boundaries": true,
+    "preserve_raw_bytes": true,
+    "preserve_sha256": true,
+    "preserve_source_provenance": true,
+    "preserve_unknown_uncertainty": true,
+    "require_one_exact_three_source_window_receipt": true,
+    "require_deterministic_replay": true
+  },
+  "fences": {
+    "composition": false,
+    "core_patch": false,
+    "new_domain_math": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET"
+}
