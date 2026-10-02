@@ -7,7 +7,7 @@ except ModuleNotFoundError:
 
 
 class AlignedRealInputIntegrationCanaryTests(unittest.TestCase):
-    def test_real_inputs_enter_the_correct_frozen_core_slots(self):
+    def test_common_window_integration_fails_closed_on_temporal_support_mismatch(self):
         observed = (
             gate.run_gate()["verdict"]
             if gate is not None
@@ -15,7 +15,7 @@ class AlignedRealInputIntegrationCanaryTests(unittest.TestCase):
         )
         self.assertEqual(
             observed,
-            "PASS_BOUNDED_ALIGNED_REAL_INPUT_INTEGRATION_CANARY",
+            "HOLD_BOUNDED_ALIGNED_REAL_INPUT_INTEGRATION_TEMPORAL_SUPPORT_MISMATCH",
         )
 
 
