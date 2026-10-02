@@ -1,0 +1,312 @@
+name: ESS NVIDIA OpenShell First Real Assurance V1
+
+on:
+  push:
+    branches:
+      - "ess-nvidia-openshell-landlock-probe-v1"
+    paths:
+      - ".github/workflows/ess-nvidia-openshell-first-real-assurance-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  first-real-assurance:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Re-prove execution-host Landlock capability
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONFIG="/boot/config-$(uname -r)"
+          test -r "$CONFIG"
+          grep '^CONFIG_SECURITY_LANDLOCK=y$' "$CONFIG"
+
+          cat > /tmp/landlock_probe.c <<'EOF'
+          #define _GNU_SOURCE
+          #include <errno.h>
+          #include <linux/landlock.h>
+          #include <stdio.h>
+          #include <string.h>
+          #include <sys/syscall.h>
+          #include <unistd.h>
+          int main(void) {
+              errno = 0;
+              long abi = syscall(__NR_landlock_create_ruleset, NULL, 0,
+                                 LANDLOCK_CREATE_RULESET_VERSION);
+              printf("LANDLOCK_ABI=%ld\n", abi);
+              printf("LANDLOCK_ABI_ERRNO=%d\n", errno);
+              if (abi < 3) return 32;
+              struct landlock_ruleset_attr attr = {
+                  .handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE
+                                     | LANDLOCK_ACCESS_FS_READ_DIR
+                                     | LANDLOCK_ACCESS_FS_EXECUTE
+              };
+              errno = 0;
+              long fd = syscall(__NR_landlock_create_ruleset,
+                                &attr, sizeof(attr), 0);
+              printf("LANDLOCK_RULESET_FD=%ld\n", fd);
+              printf("LANDLOCK_RULESET_ERRNO=%d\n", errno);
+              if (fd < 0) return 33;
+              close((int)fd);
+              puts("HOST_CAPABILITY_PROOF=PASS");
+              return 0;
+          }
+          EOF
+          cc -O2 -Wall -Wextra -o /tmp/landlock_probe /tmp/landlock_probe.c
+          /tmp/landlock_probe
+
+      - name: Verify Docker execution prerequisite
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker version
+          docker info >/tmp/docker-info.txt
+          grep -E 'Cgroup Version|Storage Driver|Operating System|Kernel Version' /tmp/docker-info.txt || true
+
+      - name: Install pinned OpenShell 0.1.2 release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/ess-openshell-v0.1.2"
+          mkdir -p "$ROOT/cli" "$ROOT/gateway"
+
+          curl -fsSL             -o "$ROOT/openshell-cli.tar.gz"             "https://github.com/NVIDIA/OpenShell/releases/download/v0.1.2/openshell-x86_64-unknown-linux-musl.tar.gz"
+          echo "7eb6917285331a09e3300266a0558616481a5e9927cae2612ea07c4045b6dd6f  $ROOT/openshell-cli.tar.gz" | sha256sum -c -
+
+          curl -fsSL             -o "$ROOT/openshell-gateway.tar.gz"             "https://github.com/NVIDIA/OpenShell/releases/download/v0.1.2/openshell-gateway-x86_64-unknown-linux-gnu.tar.gz"
+          echo "218d887845b3a020ab7535c9985eb9c666d6938f144044957f8b82b42892aadb  $ROOT/openshell-gateway.tar.gz" | sha256sum -c -
+
+          tar -xzf "$ROOT/openshell-cli.tar.gz" -C "$ROOT/cli"
+          tar -xzf "$ROOT/openshell-gateway.tar.gz" -C "$ROOT/gateway"
+
+          CLI="$(find "$ROOT/cli" -type f -name openshell | head -1)"
+          GATEWAY="$(find "$ROOT/gateway" -type f -name openshell-gateway | head -1)"
+          test -n "$CLI"
+          test -n "$GATEWAY"
+          chmod +x "$CLI" "$GATEWAY"
+
+          "$CLI" --version | tee "$ROOT/cli-version.txt"
+          "$GATEWAY" --version | tee "$ROOT/gateway-version.txt"
+          grep -q '0.1.2' "$ROOT/cli-version.txt"
+          grep -q '0.1.2' "$ROOT/gateway-version.txt"
+
+          echo "OPEN_SHELL_ROOT=$ROOT" >> "$GITHUB_ENV"
+          echo "OPEN_SHELL_CLI=$CLI" >> "$GITHUB_ENV"
+          echo "OPEN_SHELL_GATEWAY=$GATEWAY" >> "$GITHUB_ENV"
+
+      - name: Pull pinned runtime images
+        shell: bash
+        run: |
+          set -euo pipefail
+          SANDBOX_IMAGE="ghcr.io/nvidia/openshell/sandbox@sha256:bf4797b6c511f2d8ba02955dbba4bf76c1f0dd6d83531420c5408d5f1fb9d72f"
+          SUPERVISOR_IMAGE="ghcr.io/nvidia/openshell/supervisor@sha256:d7b5264bb6bc56f4796e6fa3617b8e4a8d785be0b7293542efd8cc250b0fb67a"
+          WORKLOAD_IMAGE="docker.io/library/alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc"
+
+          docker pull "$SANDBOX_IMAGE"
+          docker pull "$SUPERVISOR_IMAGE"
+          docker pull "$WORKLOAD_IMAGE"
+
+          echo "SANDBOX_IMAGE=$SANDBOX_IMAGE" >> "$GITHUB_ENV"
+          echo "SUPERVISOR_IMAGE=$SUPERVISOR_IMAGE" >> "$GITHUB_ENV"
+          echo "WORKLOAD_IMAGE=$WORKLOAD_IMAGE" >> "$GITHUB_ENV"
+
+      - name: Start bounded local OpenShell gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/ess-openshell-state"
+          JWT="$STATE/tls/jwt"
+          mkdir -p "$JWT"
+
+          umask 077
+          openssl genpkey -algorithm Ed25519 -out "$JWT/signing.pem"
+          openssl pkey -in "$JWT/signing.pem" -pubout -out "$JWT/public.pem"
+          openssl rand -hex 16 > "$JWT/kid"
+
+          cat > "$STATE/gateway.toml" <<EOF
+          [openshell]
+          version = 2
+
+          [openshell.gateway]
+          name = "ess-gha-v1"
+          bind_address = "127.0.0.1:17670"
+          log_level = "info"
+          compute_driver = "docker"
+          disable_tls = true
+
+          [openshell.gateway.auth]
+          allow_unauthenticated_users = true
+
+          [openshell.gateway.gateway_jwt]
+          signing_key_path = "$JWT/signing.pem"
+          public_key_path = "$JWT/public.pem"
+          kid_path = "$JWT/kid"
+          gateway_id = "ess-gha-v1"
+          ttl_secs = 3600
+
+          [openshell.drivers.docker]
+          default_image = "$WORKLOAD_IMAGE"
+          supervisor_image = "$SUPERVISOR_IMAGE"
+          sandbox_runtime_image = "$SANDBOX_IMAGE"
+          image_pull_policy = "if_not_present"
+          sandbox_label = "ess-gha-v1"
+          grpc_endpoint = "http://127.0.0.1:17670"
+          app_armor_profile = "Unconfined"
+          EOF
+
+          cat > "$STATE/policy.yaml" <<'EOF'
+          version: 1
+
+          filesystem_policy:
+            include_workdir: true
+            read_only: [/bin, /usr, /lib, /proc, /dev/urandom, /app, /etc, /var/log]
+            read_write: [/sandbox, /tmp, /dev/null]
+
+          landlock:
+            compatibility: best_effort
+
+          network_policies: {}
+          EOF
+
+          nohup "$OPEN_SHELL_GATEWAY"             --config "$STATE/gateway.toml"             --port 17670             --log-level info             --compute-driver docker             --disable-tls             --db-url "sqlite:$STATE/gateway.db?mode=rwc"             >"$STATE/gateway.log" 2>&1 &
+          echo $! > "$STATE/gateway.pid"
+
+          ENDPOINT="http://127.0.0.1:17670"
+          READY=0
+          for i in $(seq 1 45); do
+            if "$OPEN_SHELL_CLI" status --gateway-endpoint "$ENDPOINT" >"$STATE/status.txt" 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          cat "$STATE/status.txt" || true
+          if [ "$READY" != "1" ]; then
+            cat "$STATE/gateway.log"
+            exit 41
+          fi
+
+          echo "OPEN_SHELL_STATE=$STATE" >> "$GITHUB_ENV"
+          echo "OPEN_SHELL_ENDPOINT=$ENDPOINT" >> "$GITHUB_ENV"
+
+      - name: Create one real sandbox with existing minimal policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          NAME="ess-gha-assurance-v1"
+
+          set +e
+          "$OPEN_SHELL_CLI" sandbox create             --gateway-endpoint "$OPEN_SHELL_ENDPOINT"             --name "$NAME"             --from "$WORKLOAD_IMAGE"             --policy "$OPEN_SHELL_STATE/policy.yaml"             --detach             -- sleep 600             >"$OPEN_SHELL_STATE/create.txt" 2>&1
+          RC=$?
+          set -e
+          cat "$OPEN_SHELL_STATE/create.txt"
+          if [ "$RC" -ne 0 ]; then
+            echo "CREATE_RC=$RC"
+            cat "$OPEN_SHELL_STATE/gateway.log"
+            exit "$RC"
+          fi
+
+          "$OPEN_SHELL_CLI" sandbox get "$NAME"             --gateway-endpoint "$OPEN_SHELL_ENDPOINT"             -o json > "$OPEN_SHELL_STATE/sandbox.json"
+
+          "$OPEN_SHELL_CLI" policy list "$NAME"             --gateway-endpoint "$OPEN_SHELL_ENDPOINT"             --output json > "$OPEN_SHELL_STATE/policy-list.json"
+
+          cat "$OPEN_SHELL_STATE/sandbox.json"
+          cat "$OPEN_SHELL_STATE/policy-list.json"
+
+          test "$(jq -r '.phase' "$OPEN_SHELL_STATE/sandbox.json")" = "Ready"
+          test "$(jq -r '.conditions[] | select(.type=="ConfigurationReady") | .status' "$OPEN_SHELL_STATE/sandbox.json")" = "True"
+          test "$(jq -r '.configuration_admission.policy_version' "$OPEN_SHELL_STATE/sandbox.json")" -gt 0
+          test -n "$(jq -r '.configuration_admission.policy_hash' "$OPEN_SHELL_STATE/sandbox.json")"
+          test "$(jq -r '.revisions[0].status' "$OPEN_SHELL_STATE/policy-list.json")" = "loaded"
+
+          echo "SANDBOX_NAME=$NAME" >> "$GITHUB_ENV"
+
+      - name: Capture one real deny decision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          "$OPEN_SHELL_CLI" sandbox exec "$SANDBOX_NAME"             --gateway-endpoint "$OPEN_SHELL_ENDPOINT"             -- /bin/sh -lc 'set +e; wget -T 2 -O- http://203.0.113.1:9 >/tmp/net.out 2>/tmp/net.err; rc=$?; echo NETWORK_ATTEMPT_EXIT=$rc; cat /tmp/net.err; exit 0'             | tee "$OPEN_SHELL_STATE/network-attempt.txt"
+
+          sleep 2
+
+          "$OPEN_SHELL_CLI" logs "$SANDBOX_NAME"             --gateway-endpoint "$OPEN_SHELL_ENDPOINT"             > "$OPEN_SHELL_STATE/sandbox-logs.txt"
+
+          cat "$OPEN_SHELL_STATE/sandbox-logs.txt"
+
+          EVENT_LINE="$(grep -E 'NET:OPEN.*DENIED|network connections not allowed by policy' "$OPEN_SHELL_STATE/sandbox-logs.txt" | tail -1 || true)"
+          echo "REAL_NETWORK_EVENT=$EVENT_LINE"
+          test -n "$EVENT_LINE"
+          printf '%s\n' "$EVENT_LINE" > "$OPEN_SHELL_STATE/real-network-event.txt"
+
+      - name: Build first real assurance receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json, hashlib, os, pathlib
+
+          state = pathlib.Path(os.environ["OPEN_SHELL_STATE"])
+          sb = json.loads((state / "sandbox.json").read_text())
+          hist = json.loads((state / "policy-list.json").read_text())
+          event = (state / "real-network-event.txt").read_text().strip()
+
+          receipt = {
+              "gate": "ESS__NVIDIA_OPENSHELL__ZERO_SPEND_LANDLOCK_CAPABLE_EXECUTION_HOST_PROOF_V1",
+              "execution_surface": "github_actions_ubuntu_24_04",
+              "openshell_version": "0.1.2",
+              "sandbox_id": sb["id"],
+              "sandbox_name": sb["name"],
+              "phase": sb["phase"],
+              "configuration_ready": next(
+                  c["status"] for c in sb["conditions"] if c["type"] == "ConfigurationReady"
+              ),
+              "configuration_admission": sb["configuration_admission"],
+              "policy_revision": hist["revisions"][0],
+              "real_network_event": event,
+              "event_class": "DENY",
+              "zero_spend": True,
+              "provider_credentials_used": False,
+              "verdict": "PASS_FIRST_REAL_OPENSHELL_ASSURANCE_RECEIPT"
+          }
+
+          raw = json.dumps(receipt, sort_keys=True, indent=2).encode()
+          (state / "first-real-assurance-receipt.json").write_bytes(raw)
+          sha = hashlib.sha256(raw).hexdigest()
+          (state / "first-real-assurance-receipt.sha256").write_text(
+              sha + "  first-real-assurance-receipt.json\n"
+          )
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          print("RECEIPT_SHA256=" + sha)
+          PY
+
+          echo "===== RECEIPT SHA256 ====="
+          cat "$OPEN_SHELL_STATE/first-real-assurance-receipt.sha256"
+
+      - name: Final bounded verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "VERDICT=PASS_FIRST_REAL_OPENSHELL_ASSURANCE_RECEIPT"
+          echo "ZERO_SPEND=TRUE"
+          echo "NO_PROVIDER_CREDENTIALS=TRUE"
+          echo "NO_GLOBAL_BIND=TRUE"
+
+      - name: Failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          echo "===== docker ps -a ====="
+          docker ps -a
+          echo "===== gateway log ====="
+          cat "$OPEN_SHELL_STATE/gateway.log" 2>/dev/null || true
+          echo "===== create ====="
+          cat "$OPEN_SHELL_STATE/create.txt" 2>/dev/null || true
+          echo "===== sandbox json ====="
+          cat "$OPEN_SHELL_STATE/sandbox.json" 2>/dev/null || true
+          echo "===== sandbox logs ====="
+          cat "$OPEN_SHELL_STATE/sandbox-logs.txt" 2>/dev/null || true
