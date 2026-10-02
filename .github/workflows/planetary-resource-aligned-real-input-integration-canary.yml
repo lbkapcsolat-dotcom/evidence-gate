@@ -39,11 +39,52 @@ jobs:
           forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY\.json|planetary_resource_aligned_real_input_integration_canary_v1\.py|test_planetary_resource_aligned_real_input_integration_canary_v1\.py|docs/planetary_resource_aligned_real_input_integration_canary_v1\.md|\.github/workflows/planetary-resource-aligned-real-input-integration-canary\.yml)$' || true)"
           test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
 
+      - name: Compile canary
+        run: |
+          python -m compileall -q \
+            planetary_resource_aligned_real_input_integration_canary_v1.py \
+            test_planetary_resource_aligned_real_input_integration_canary_v1.py
+
       - name: Preserve aligned snapshot predecessor
         run: python -m unittest -v test_planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1.py
 
-      - name: Preserve integrated minimal core guards
+      - name: Preserve frozen empirical admission contract
+        run: python -m unittest -v test_planetary_resource_empirical_admission_v1.py
+
+      - name: Preserve gas GCV-HHV semantic adapter
+        run: python -m unittest -v test_planetary_resource_third_real_source_gas_canary_v1.py
+
+      - name: Preserve integrated minimal version-validity-topology guards
         run: python -m unittest -v test_planetary_resource_integrated_minimal_core_v1.py
 
-      - name: Run focused aligned real-input integration test
+      - name: Run aligned real-input integration tests
         run: python -m unittest -v test_planetary_resource_aligned_real_input_integration_canary_v1.py
+
+      - name: Build deterministic HOLD receipt
+        shell: bash
+        run: |
+          python planetary_resource_aligned_real_input_integration_canary_v1.py | tee aligned_real_input_integration.log
+          grep -F '"verdict":"HOLD_BOUNDED_ALIGNED_REAL_INPUT_INTEGRATION_TEMPORAL_SUPPORT_MISMATCH"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY_RECEIPT.json
+          grep -F '"admitted":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY_RECEIPT.json
+          grep -F '"hold_code":"HOLD_TEMPORAL_METHOD_INVALID"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY_RECEIPT.json
+
+      - name: Preserve legacy mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Hash canary evidence
+        shell: bash
+        run: |
+          sha256sum \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY.json \
+            planetary_resource_aligned_real_input_integration_canary_v1.py \
+            test_planetary_resource_aligned_real_input_integration_canary_v1.py \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY_RECEIPT.json
+
+      - name: Upload aligned integration evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-aligned-real-input-integration-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY_RECEIPT.json
+            aligned_real_input_integration.log
+          if-no-files-found: error
