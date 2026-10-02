@@ -1,0 +1,77 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_SOURCE_INTERVAL_SEMANTICS_RECOVERY_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_INTERVAL_SEMANTICS_RECOVERY_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORALLY_ALIGNED_THREE_SOURCE_SNAPSHOT_SET_V1",
+    "branch": "feature/planetary-resource-temporally-aligned-three-source-snapshot-set-v1",
+    "head_sha": "0b5e5012f24f7bec7fa07ab69bfd5b8c3b1bc43d",
+    "receipt_sha256": "cbb021e22b5df3cb0700ca1c3db4352e82ecba2012d8f519d73f47bec46dd581"
+  },
+  "targets": {
+    "environment_agency": {
+      "required_proof": "DATETIME_TO_MEAN_PERIOD_BOUNDARY",
+      "official_primary_sources": [
+        {
+          "url": "https://environment.data.gov.uk/flood-monitoring/doc/reference",
+          "authority": "Environment Agency",
+          "evidence": {
+            "reading_datetime": "dateTime is the date/time at which the reading occurred/applies",
+            "period": "period is the period between successive readings in seconds",
+            "mean": "mean represents the mean value over the measurement period"
+          }
+        }
+      ],
+      "explicit_boundary_anchor_found": false,
+      "status": "HOLD_UNPROVEN"
+    },
+    "elexon": {
+      "required_proof": "AUTHORITATIVE_SETTLEMENT_PERIOD_END_BOUND",
+      "official_primary_sources": [
+        {
+          "url": "https://bscdocs.elexon.co.uk/interface-definition-documents/neta-interface-definition-and-design-document-part-1-interfaces-with-bsc-parties-and-their-agents",
+          "authority": "Elexon Digital BSC",
+          "evidence": {
+            "indo": "INDO is published per Settlement Period and Demand Out-turn is average demand in MW",
+            "time_field": "Initial National Demand Out-Turn uses Start Time of 1/2 Hour Period"
+          }
+        },
+        {
+          "url": "https://www.elexon.co.uk/bsc/glossary/settlement-period/",
+          "authority": "Elexon BSC",
+          "evidence": {
+            "definition": "Settlement Period is a 30 minute period beginning on the hour or half-hour"
+          }
+        },
+        {
+          "url": "https://www.elexon.co.uk/bsc/glossary/spot-time/",
+          "authority": "Elexon BSC",
+          "evidence": {
+            "end_rule": "A Settlement Period ends exactly thirty minutes after its starting spot time"
+          }
+        }
+      ],
+      "authoritative_end_bound_found": true,
+      "end_bound_rule": "END_UTC = START_TIME_UTC + 30_MINUTES",
+      "status": "PROVEN"
+    }
+  },
+  "requirements": {
+    "official_primary_documentation_only": true,
+    "no_inferred_boundaries": true,
+    "no_new_data_ingest_yet": true,
+    "entsog_already_satisfied": true
+  },
+  "fences": {
+    "new_source_ingest": false,
+    "core_patch": false,
+    "new_domain_math": false,
+    "composition": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "HOLD_SOURCE_INTERVAL_SEMANTICS_RECOVERY_PARTIAL__ELEXON_PROVEN__EA_UNPROVEN"
+}
