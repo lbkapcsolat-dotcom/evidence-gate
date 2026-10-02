@@ -16,13 +16,16 @@ jobs:
       matrix:
         python-version: ["3.12", "3.13"]
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Enforce successor-only changes
         shell: bash
         run: |
@@ -35,7 +38,45 @@ jobs:
           printf '%s\n' "$changed"
           forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE\.json|planetary_resource_temporal_support_policy_decision_freeze_v1\.py|test_planetary_resource_temporal_support_policy_decision_freeze_v1\.py|docs/planetary_resource_temporal_support_policy_decision_freeze_v1\.md|\.github/workflows/planetary-resource-temporal-support-policy-decision-freeze\.yml)$' || true)"
           test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+
+      - name: Compile policy freeze
+        run: |
+          python -m compileall -q \
+            planetary_resource_temporal_support_policy_decision_freeze_v1.py \
+            test_planetary_resource_temporal_support_policy_decision_freeze_v1.py
+
       - name: Preserve native common-support HOLD predecessor
         run: python -m unittest -v test_planetary_resource_native_common_support_replacement_and_integration_retry_v1.py
-      - name: Run focused temporal policy freeze test
+
+      - name: Run temporal support policy freeze tests
         run: python -m unittest -v test_planetary_resource_temporal_support_policy_decision_freeze_v1.py
+
+      - name: Build deterministic policy freeze receipt
+        shell: bash
+        run: |
+          python planetary_resource_temporal_support_policy_decision_freeze_v1.py | tee temporal_support_policy_freeze.log
+          grep -F '"verdict":"PASS_BOUNDED_TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_RECEIPT.json
+          grep -F '"allowed_path_count":2' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_RECEIPT.json
+          grep -F '"continuity_path":"PATH_A"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_RECEIPT.json
+          grep -F '"activated":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_RECEIPT.json
+
+      - name: Preserve legacy mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Hash policy freeze evidence
+        shell: bash
+        run: |
+          sha256sum \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE.json \
+            planetary_resource_temporal_support_policy_decision_freeze_v1.py \
+            test_planetary_resource_temporal_support_policy_decision_freeze_v1.py \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_RECEIPT.json
+
+      - name: Upload policy freeze evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-temporal-support-policy-freeze-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_POLICY_DECISION_FREEZE_RECEIPT.json
+            temporal_support_policy_freeze.log
+          if-no-files-found: error
