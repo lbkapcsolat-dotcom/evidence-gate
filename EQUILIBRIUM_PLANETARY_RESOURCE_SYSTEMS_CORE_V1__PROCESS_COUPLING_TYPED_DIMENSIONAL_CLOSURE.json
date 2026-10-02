@@ -1,0 +1,58 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_V1",
+  "predecessor_pins": {
+    "core_reentry_review_receipt_sha256": "28911c425975183a1fd5878b717e804638416b949f571467064aa4bda891d90b",
+    "python_core_sha256": "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae",
+    "cpp_kernel_sha256": "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f",
+    "source_adapter_freeze_receipt_sha256": "7509be3fbb45e9949d159a67b16c648edecb1f606e998d572731ed1d255a150f"
+  },
+  "implementation_mode": "ADDITIVE_SUCCESSOR_TYPED_BOUNDARY_OVER_PINNED_CORE",
+  "reason_for_additive_successor": "The predecessor core is already evidence-pinned. This gate closes the process ingress by adding a typed successor boundary while preserving predecessor bytes and baselines.",
+  "typed_process_contribution": {
+    "type": "QualifiedValue",
+    "required_unit": "canonical target-layer RATE unit",
+    "required_space": "PHYSICAL",
+    "interval": "must equal requested interval_id",
+    "status": "preserve activity epistemic status",
+    "uncertainty": "scale activity uncertainty by process coefficient",
+    "evidence_refs": "preserve activity refs and append process source/method/coefficient evidence",
+    "transform_chain": "preserve activity chain and append explicit process/coefficient transforms",
+    "hold_codes": "preserve activity hold codes",
+    "freshness": "preserve activity freshness"
+  },
+  "dimensional_rules": {
+    "activity_unit": "activity.unit.symbol must exactly equal process.activity_unit",
+    "coefficient_unit": "row.coefficient_unit must exactly equal <canonical_target_rate_symbol>/<process.activity_unit>",
+    "target_unit": "output UnitTag must exactly equal canonical_unit(target_layer,RATE), including gas basis",
+    "raw_process_fraction": "prohibited at typed balance ingress"
+  },
+  "hold_codes": [
+    "HOLD_PROCESS_ACTIVITY_UNIT_MISMATCH",
+    "HOLD_PROCESS_COEFFICIENT_DIMENSION_MISMATCH",
+    "HOLD_PROCESS_TYPED_VALUE_REQUIRED",
+    "HOLD_PROCESS_TARGET_UNIT_MISMATCH"
+  ],
+  "acceptance": {
+    "legacy_python_matrix": "40/40 unchanged",
+    "legacy_cpp_matrix": "40/40 unchanged",
+    "typed_successor_tests": "all pass",
+    "raw_fraction_injection_rejected": true,
+    "coefficient_unit_mismatch_rejected": true,
+    "activity_unit_mismatch_rejected": true,
+    "target_unit_mismatch_rejected": true,
+    "metadata_preserved": true
+  },
+  "fences": {
+    "provider_work": false,
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE"
+}
