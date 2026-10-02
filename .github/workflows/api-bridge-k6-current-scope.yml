@@ -97,6 +97,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import json
+          import math
           from pathlib import Path
 
           summary_path = Path("ci/api-bridge/k6_summary.json")
@@ -115,26 +116,60 @@ jobs:
                   return m["rate"]
               return default
 
-          def raw_point_count(metric_name):
-              count = 0
+          def raw_values(metric_name):
+              vals = []
               with raw_path.open("r", encoding="utf-8", errors="replace") as f:
                   for line in f:
                       try:
                           obj = json.loads(line)
                       except Exception:
                           continue
-                      if obj.get("type") == "Point" and obj.get("metric") == metric_name:
-                          count += 1
-              return count
+                      if obj.get("type") != "Point" or obj.get("metric") != metric_name:
+                          continue
+                      data = obj.get("data", {}) or {}
+                      value = data.get("value")
+                      if isinstance(value, bool):
+                          vals.append(1.0 if value else 0.0)
+                      elif isinstance(value, (int, float)):
+                          vals.append(float(value))
+              return vals
+
+          def percentile(vals, pct):
+              if not vals:
+                  return None
+              xs = sorted(vals)
+              if len(xs) == 1:
+                  return xs[0]
+              rank = (pct / 100.0) * (len(xs) - 1)
+              lo = math.floor(rank)
+              hi = math.ceil(rank)
+              if lo == hi:
+                  return xs[int(rank)]
+              return xs[lo] + (xs[hi] - xs[lo]) * (rank - lo)
+
+          http_reqs_vals = raw_values("http_reqs")
+          failed_vals = raw_values("http_req_failed")
+          checks_vals = raw_values("checks")
+          duration_vals = raw_values("http_req_duration")
 
           request_count = metric_value("http_reqs", "count", None)
           if not request_count:
-              request_count = raw_point_count("http_reqs")
-          failed_rate = metric_value("http_req_failed", "rate", 1)
-          checks_rate = metric_value("checks", "rate", 0)
+              request_count = len(http_reqs_vals)
+          failed_rate = metric_value("http_req_failed", "rate", None)
+          if failed_rate is None:
+              failed_rate = (sum(failed_vals) / len(failed_vals)) if failed_vals else 1
+          checks_rate = metric_value("checks", "rate", None)
+          if checks_rate is None:
+              checks_rate = (sum(checks_vals) / len(checks_vals)) if checks_vals else 0
           p50 = metric_value("http_req_duration", "med", None)
+          if p50 is None:
+              p50 = percentile(duration_vals, 50)
           p95 = metric_value("http_req_duration", "p(95)", None)
+          if p95 is None:
+              p95 = percentile(duration_vals, 95)
           p99 = metric_value("http_req_duration", "p(99)", None)
+          if p99 is None:
+              p99 = percentile(duration_vals, 99)
           throughput = metric_value("http_reqs", "rate", None)
           if throughput is None and request_count:
               throughput = request_count / 20.0
