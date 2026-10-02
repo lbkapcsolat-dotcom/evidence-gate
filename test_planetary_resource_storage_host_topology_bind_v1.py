@@ -19,12 +19,17 @@ class StorageHostTopologyBindTests(unittest.TestCase):
             node_version,
             (core.NodeManifest("E0",node_layer,"ELECTRICITY_ZONE",node_version),),
         )
-        loss=core.qv(
-            1,st.layer,interval_id=tb.interval_id,
-            status=core.EpistemicStatus.IMPUTED,
-            uncertainty=core.IntervalUncertainty(core.F("-0.5"),core.F("0.5")),
-            evidence_refs=("EV:self-loss",),
-            transform_chain=("imputation:self-loss",),
+        loss=core.QualifiedValue(
+            core.F(1),
+            core.canonical_unit(st.layer,core.QuantityKind.RATE),
+            tb.interval_id,
+            core.EpistemicStatus.IMPUTED,
+            core.IntervalUncertainty(core.F("-0.5"),core.F("0.5")),
+            ("EV:self-loss",),
+            ("imputation:self-loss",),
+            (),
+            "fresh",
+            core.ValueSpace.PHYSICAL,
         )
         return st,topology,tb,stock,charge,discharge,loss
 
