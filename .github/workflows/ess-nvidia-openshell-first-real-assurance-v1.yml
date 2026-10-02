@@ -195,7 +195,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          NAME="ess-gha-assurance-v1"
+          NAME="ess-gha-v1"
 
           set +e
           "$OPEN_SHELL_CLI" sandbox create             --gateway-endpoint "$OPEN_SHELL_ENDPOINT"             --name "$NAME"             --from "$WORKLOAD_IMAGE"             --policy "$OPEN_SHELL_STATE/policy.yaml"             --detach             -- sleep 600             >"$OPEN_SHELL_STATE/create.txt" 2>&1
