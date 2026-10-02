@@ -1,0 +1,85 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_NATIVE_COMMON_SUPPORT_SOURCE_REPLACEMENT_AND_INTEGRATION_RETRY_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__NATIVE_COMMON_SUPPORT_SOURCE_REPLACEMENT_AND_INTEGRATION_RETRY_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY_V1",
+    "branch": "feature/planetary-resource-aligned-real-input-integration-canary-v1",
+    "head_sha": "459d7057514e9b716ee7051ccbbae42d41b43bf9",
+    "receipt_sha256": "da2473f8272c137e5c8315706677c459cbd9a0690819c10a71654bf336635437"
+  },
+  "target_window": {
+    "start_utc": "2026-09-30T12:00:00Z",
+    "end_utc": "2026-09-30T12:30:00Z",
+    "duration_seconds": 1800
+  },
+  "fixed_electricity": {
+    "provider": "Elexon Insights Solution",
+    "variable_id": "electricity.consumption_rate",
+    "slot": "DEMAND",
+    "native_interval_start": "2026-09-30T12:00:00Z",
+    "native_interval_end": "2026-09-30T12:30:00Z",
+    "raw_sha256": "2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564",
+    "status": "READY_EXACT_INTERVAL"
+  },
+  "bounded_discovery": {
+    "natural_gas": [
+      {
+        "provider": "National Gas Transmission",
+        "surface": "Instantaneous Flow REST API",
+        "official_url": "https://data.nationalgas.com/apis/rest-apis",
+        "native_semantics": "2-minute captured instantaneous flow samples published in 12-minute sets",
+        "exact_30_minute_interval_product_proven": false
+      },
+      {
+        "provider": "ENTSOG Transparency Platform",
+        "surface": "Previously pinned Physical Flow hourly source family",
+        "official_url": "https://transparency.entsog.eu/",
+        "native_semantics": "hourly Physical Flow for the tested source family",
+        "exact_30_minute_interval_product_proven": false
+      }
+    ],
+    "freshwater": [
+      {
+        "provider": "Australian Bureau of Meteorology",
+        "surface": "Water Data Online SOS2 GetCapabilities",
+        "official_url": "https://www.bom.gov.au/waterdata/services?service=SOS&version=2.0&request=GetCapabilities",
+        "native_semantics": "relevant published offerings include AsStored, HourlyMean and DailyMean; no 30-minute Water Course Discharge mean offering was proven",
+        "exact_30_minute_interval_product_proven": false
+      },
+      {
+        "provider": "Environment Agency",
+        "surface": "Previously proven flow mean source family",
+        "official_url": "https://environment.data.gov.uk/",
+        "native_semantics": "15-minute mean source family previously proven in-repo",
+        "exact_30_minute_interval_product_proven": false
+      }
+    ]
+  },
+  "temporal_rules": {
+    "require_native_source_interval_exactly_equal_target": true,
+    "interval_containment_is_alignment": false,
+    "interpolation": false,
+    "imputation": false,
+    "aggregation": false,
+    "downscaling": false,
+    "inferred_boundaries": false
+  },
+  "requirements": {
+    "keep_elexon_fixed": true,
+    "gas_replacement_exact_native_required": true,
+    "freshwater_replacement_exact_native_required": true,
+    "rerun_integration_only_if_both_replacements_ready": true,
+    "deterministic_receipt": true
+  },
+  "fences": {
+    "core_patch": false,
+    "new_domain_math": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_if_missing": "HOLD_EXACT_NATIVE_COMMON_SUPPORT_NOT_AVAILABLE"
+}
