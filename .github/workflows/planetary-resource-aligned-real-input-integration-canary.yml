@@ -1,0 +1,49 @@
+name: Planetary Resource Aligned Real Input Integration Canary
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-aligned-real-input-integration-canary-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  aligned-real-input-integration-canary:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Enforce successor-only changes
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            target_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            target_sha="$GITHUB_SHA"
+          fi
+          changed="$(git diff --name-only 2c317726519317a65ce95728d08f8a837aa9b32b..$target_sha)"
+          printf '%s\n' "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY\.json|planetary_resource_aligned_real_input_integration_canary_v1\.py|test_planetary_resource_aligned_real_input_integration_canary_v1\.py|docs/planetary_resource_aligned_real_input_integration_canary_v1\.md|\.github/workflows/planetary-resource-aligned-real-input-integration-canary\.yml)$' || true)"
+          test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+
+      - name: Preserve aligned snapshot predecessor
+        run: python -m unittest -v test_planetary_resource_bom_elexon_entsog_temporally_aligned_snapshot_set_v1.py
+
+      - name: Preserve integrated minimal core guards
+        run: python -m unittest -v test_planetary_resource_integrated_minimal_core_v1.py
+
+      - name: Run focused aligned real-input integration test
+        run: python -m unittest -v test_planetary_resource_aligned_real_input_integration_canary_v1.py
