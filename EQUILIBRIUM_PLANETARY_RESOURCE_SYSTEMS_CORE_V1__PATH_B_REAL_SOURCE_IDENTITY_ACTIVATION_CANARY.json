@@ -1,0 +1,70 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_V1",
+    "branch": "feature/planetary-resource-temporal-support-operator-executable-kernel-v1",
+    "head_sha": "801bbf18be64995f7f5ebef155bf310dc35da231",
+    "receipt_sha256": "3383f715a41126f7218b79e52d1ca7bcd6946effa9b70fa5a1af237b2f38e18b",
+    "verdict": "PASS_BOUNDED_TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL"
+  },
+  "operator": {
+    "operator_spec_id": "TEMPORAL_SUPPORT_TO_TARGET_WINDOW_OPERATOR_V1",
+    "operator_version": "V1",
+    "allowed_relation": "EXACT_TARGET_SUPPORT",
+    "partition_aggregation_allowed": false
+  },
+  "activation": {
+    "target_path": "PATH_B",
+    "scope": "CANARY_LOCAL_IDENTITY_ONLY",
+    "active_during_canary": true,
+    "global_activation": false,
+    "runtime_admission": false,
+    "post_canary_global_state": "LOCKED_NOT_GLOBALLY_ACTIVATED"
+  },
+  "source": {
+    "provider": "Elexon Insights Solution",
+    "dataset": "INDO",
+    "variable_id": "electricity.consumption_rate",
+    "source_url": "https://data.elexon.co.uk/bmrs/api/v1/demand/outturn",
+    "raw_path": "sources/elexon/INDO_outturn_alignment_window_2026-09-30.json",
+    "raw_bytes": 278348,
+    "raw_sha256": "2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564",
+    "record_field": "initialDemandOutturn",
+    "source_unit": "MW",
+    "uncertainty_kind": "UNKNOWN",
+    "authoritative_end_rule": "ELEXON_SETTLEMENT_PERIOD_START_PLUS_30_MINUTES"
+  },
+  "target_window": {
+    "start_utc": "2026-09-30T12:00:00Z",
+    "end_utc": "2026-09-30T12:30:00Z",
+    "duration_seconds": 1800
+  },
+  "requirements": {
+    "exact_target_support": true,
+    "output_equals_input_exactly": true,
+    "unknown_uncertainty_preserved": true,
+    "real_raw_sha256_provenance_bind": true,
+    "operator_transform_record": true,
+    "deterministic_replay": true
+  },
+  "forbidden_behavior": {
+    "partition_aggregation": false,
+    "gas": false,
+    "freshwater": false,
+    "cross_source_composition": false,
+    "coarse_to_fine": false,
+    "interpolation": false,
+    "imputation": false
+  },
+  "fences": {
+    "core_patch": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY"
+}

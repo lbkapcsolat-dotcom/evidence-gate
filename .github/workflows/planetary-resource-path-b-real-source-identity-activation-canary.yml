@@ -1,0 +1,93 @@
+name: Planetary Resource PATH B Real Source Identity Activation Canary
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-path-b-real-source-identity-activation-canary-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  path-b-real-source-identity-activation-canary:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Enforce successor-only changes
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            target_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            target_sha="$GITHUB_SHA"
+          fi
+          changed="$(git diff --name-only 801bbf18be64995f7f5ebef155bf310dc35da231..$target_sha)"
+          printf '%s\n' "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY\.json|planetary_resource_path_b_real_source_identity_activation_canary_v1\.py|test_planetary_resource_path_b_real_source_identity_activation_canary_v1\.py|docs/planetary_resource_path_b_real_source_identity_activation_canary_v1\.md|\.github/workflows/planetary-resource-path-b-real-source-identity-activation-canary\.yml)$' || true)"
+          test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+
+      - name: Independently verify pinned Elexon raw bytes and SHA256
+        shell: bash
+        run: |
+          raw="sources/elexon/INDO_outturn_alignment_window_2026-09-30.json"
+          test "$(wc -c < "$raw")" -eq 278348
+          printf '%s  %s\n' \
+            "2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564" \
+            "$raw" | sha256sum -c -
+
+      - name: Compile real-source identity canary
+        run: |
+          python -m compileall -q \
+            planetary_resource_path_b_real_source_identity_activation_canary_v1.py \
+            test_planetary_resource_path_b_real_source_identity_activation_canary_v1.py
+
+      - name: Preserve executable-kernel predecessor
+        run: python -m unittest -v test_planetary_resource_temporal_support_operator_executable_kernel_v1.py
+
+      - name: Run PATH B real-source identity canary tests
+        run: python -m unittest -v test_planetary_resource_path_b_real_source_identity_activation_canary_v1.py
+
+      - name: Build deterministic real-source identity receipt
+        shell: bash
+        run: |
+          python planetary_resource_path_b_real_source_identity_activation_canary_v1.py | tee path_b_real_source_identity_canary.log
+          grep -F '"verdict":"PASS_BOUNDED_PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_RECEIPT.json
+          grep -F '"support_relation":"EXACT_TARGET_SUPPORT"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_RECEIPT.json
+          grep -F '"raw_sha256":"2a91d6b47379b47e4d8cfdb220d90c890ce416ebcd094b9810de70d47db12564"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_RECEIPT.json
+          grep -F '"unknown_uncertainty_preserved":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_RECEIPT.json
+          grep -F '"global_activation":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_RECEIPT.json
+
+      - name: Preserve legacy mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Hash canary evidence
+        shell: bash
+        run: |
+          sha256sum \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY.json \
+            planetary_resource_path_b_real_source_identity_activation_canary_v1.py \
+            test_planetary_resource_path_b_real_source_identity_activation_canary_v1.py \
+            sources/elexon/INDO_outturn_alignment_window_2026-09-30.json \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_RECEIPT.json
+
+      - name: Upload real-source identity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-path-b-real-source-identity-canary-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PATH_B_REAL_SOURCE_IDENTITY_ACTIVATION_CANARY_RECEIPT.json
+            path_b_real_source_identity_canary.log
+          if-no-files-found: error
