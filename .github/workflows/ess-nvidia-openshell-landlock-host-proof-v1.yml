@@ -1,0 +1,108 @@
+name: ESS NVIDIA OpenShell Landlock Host Proof V1
+
+on:
+  push:
+    branches:
+      - "ess-nvidia-openshell-landlock-probe-v1"
+    paths:
+      - ".github/workflows/ess-nvidia-openshell-landlock-host-proof-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  landlock-proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Prove kernel Landlock configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "KERNEL=$(uname -r)"
+          echo "UNAME=$(uname -a)"
+
+          CONFIG_LINE=""
+          CONFIG_SOURCE=""
+
+          if [ -r /proc/config.gz ]; then
+            CONFIG_LINE="$(zgrep '^CONFIG_SECURITY_LANDLOCK=' /proc/config.gz || true)"
+            CONFIG_SOURCE="/proc/config.gz"
+          fi
+
+          if [ -z "$CONFIG_LINE" ] && [ -r "/boot/config-$(uname -r)" ]; then
+            CONFIG_LINE="$(grep '^CONFIG_SECURITY_LANDLOCK=' "/boot/config-$(uname -r)" || true)"
+            CONFIG_SOURCE="/boot/config-$(uname -r)"
+          fi
+
+          echo "CONFIG_SOURCE=$CONFIG_SOURCE"
+          echo "CONFIG_SECURITY_LANDLOCK_LINE=$CONFIG_LINE"
+
+          if [ "$CONFIG_LINE" != "CONFIG_SECURITY_LANDLOCK=y" ]; then
+            echo "VERDICT=HOLD_CONFIG_SECURITY_LANDLOCK_NOT_Y"
+            exit 21
+          fi
+
+      - name: Prove Landlock syscall and ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/landlock_probe.c <<'EOF'
+          #define _GNU_SOURCE
+          #include <errno.h>
+          #include <linux/landlock.h>
+          #include <stdio.h>
+          #include <string.h>
+          #include <sys/syscall.h>
+          #include <unistd.h>
+
+          int main(void) {
+              errno = 0;
+              long abi = syscall(__NR_landlock_create_ruleset, NULL, 0,
+                                 LANDLOCK_CREATE_RULESET_VERSION);
+              printf("LANDLOCK_ABI=%ld\n", abi);
+              printf("LANDLOCK_ABI_ERRNO=%d\n", errno);
+              if (abi < 0) {
+                  printf("LANDLOCK_ABI_ERROR=%s\n", strerror(errno));
+                  return 31;
+              }
+              if (abi < 3) {
+                  printf("VERDICT=HOLD_LANDLOCK_ABI_LT_3\n");
+                  return 32;
+              }
+
+              struct landlock_ruleset_attr attr = {
+                  .handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE
+                                     | LANDLOCK_ACCESS_FS_READ_DIR
+                                     | LANDLOCK_ACCESS_FS_EXECUTE
+              };
+              errno = 0;
+              long fd = syscall(__NR_landlock_create_ruleset,
+                                &attr, sizeof(attr), 0);
+              printf("LANDLOCK_RULESET_FD=%ld\n", fd);
+              printf("LANDLOCK_RULESET_ERRNO=%d\n", errno);
+              if (fd < 0) {
+                  printf("LANDLOCK_RULESET_ERROR=%s\n", strerror(errno));
+                  return 33;
+              }
+              close((int)fd);
+              printf("LANDLOCK_CREATE_RULESET_WORKS=TRUE\n");
+              printf("LANDLOCK_ABI_GE_3=TRUE\n");
+              printf("VERDICT=PASS_LANDLOCK_CAPABLE_HOST\n");
+              return 0;
+          }
+          EOF
+
+          cc -O2 -Wall -Wextra -o /tmp/landlock_probe /tmp/landlock_probe.c
+          /tmp/landlock_probe
+
+      - name: Emit bounded proof marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ESS_NVIDIA_OPENSHELL_HOST_PROOF=PASS"
+          echo "NO_OPENSHELL_INSTALL=TRUE"
+          echo "NO_PROVIDER_CREDENTIALS=TRUE"
+          echo "NO_EXTERNAL_API=TRUE"
+          echo "ZERO_SPEND_INTENT=TRUE"
