@@ -229,7 +229,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          "$OPEN_SHELL_CLI" sandbox exec "$SANDBOX_NAME"             --gateway-endpoint "$OPEN_SHELL_ENDPOINT"             -- /bin/sh -lc 'set +e; wget -T 2 -O- http://203.0.113.1:9 >/tmp/net.out 2>/tmp/net.err; rc=$?; echo NETWORK_ATTEMPT_EXIT=$rc; cat /tmp/net.err; exit 0'             | tee "$OPEN_SHELL_STATE/network-attempt.txt"
+          "$OPEN_SHELL_CLI" sandbox exec --name "$SANDBOX_NAME"             --gateway-endpoint "$OPEN_SHELL_ENDPOINT"             -- /bin/sh -lc 'set +e; wget -T 2 -O- http://203.0.113.1:9 >/tmp/net.out 2>/tmp/net.err; rc=$?; echo NETWORK_ATTEMPT_EXIT=$rc; cat /tmp/net.err; exit 0'             | tee "$OPEN_SHELL_STATE/network-attempt.txt"
 
           sleep 2
 
