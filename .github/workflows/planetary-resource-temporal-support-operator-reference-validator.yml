@@ -1,0 +1,46 @@
+name: Planetary Resource Temporal Support Operator Reference Validator
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-temporal-support-operator-reference-validator-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  temporal-support-operator-reference-validator:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Enforce successor-only changes
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            target_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            target_sha="$GITHUB_SHA"
+          fi
+          changed="$(git diff --name-only ce1d2d9f4c86c9c2118797768efb6656b9580f94..$target_sha)"
+          printf '%s\n' "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_REFERENCE_VALIDATOR\.json|planetary_resource_temporal_support_operator_reference_validator_v1\.py|test_planetary_resource_temporal_support_operator_reference_validator_v1\.py|docs/planetary_resource_temporal_support_operator_reference_validator_v1\.md|\.github/workflows/planetary-resource-temporal-support-operator-reference-validator\.yml)$' || true)"
+          test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+
+      - name: Preserve formal temporal support operator spec predecessor
+        run: python -m unittest -v test_planetary_resource_formal_temporal_support_operator_spec_v1.py
+
+      - name: Run focused reference validator test
+        run: python -m unittest -v test_planetary_resource_temporal_support_operator_reference_validator_v1.py
