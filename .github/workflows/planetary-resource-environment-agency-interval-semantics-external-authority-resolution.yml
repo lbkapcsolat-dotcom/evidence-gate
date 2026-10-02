@@ -1,0 +1,46 @@
+name: Planetary Resource EA Interval Semantics External Authority Resolution
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-ea-interval-semantics-external-authority-resolution-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ea-interval-semantics-external-authority-resolution:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Enforce successor-only changes
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            target_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            target_sha="$GITHUB_SHA"
+          fi
+          changed="$(git diff --name-only 36a4d855872ad106f4a84110a6bf8ce84b62130c..$target_sha)"
+          printf '%s\n' "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ENVIRONMENT_AGENCY_INTERVAL_SEMANTICS_EXTERNAL_AUTHORITY_RESOLUTION\.json|planetary_resource_environment_agency_interval_semantics_external_authority_resolution_v1\.py|test_planetary_resource_environment_agency_interval_semantics_external_authority_resolution_v1\.py|docs/planetary_resource_environment_agency_interval_semantics_external_authority_resolution_v1\.md|\.github/workflows/planetary-resource-environment-agency-interval-semantics-external-authority-resolution\.yml)$' || true)"
+          test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+
+      - name: Preserve EA source-surface predecessor
+        run: python -m unittest -v test_planetary_resource_environment_agency_explicit_interval_source_surface_recovery_v1.py
+
+      - name: Run focused external-authority resolution test
+        run: python -m unittest -v test_planetary_resource_environment_agency_interval_semantics_external_authority_resolution_v1.py
