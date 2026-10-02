@@ -1,0 +1,165 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_TEMPORAL_SUPPORT_OPERATOR_REFERENCE_VALIDATOR_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_REFERENCE_VALIDATOR_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FORMAL_TEMPORAL_SUPPORT_OPERATOR_SPEC_V1",
+    "branch": "feature/planetary-resource-formal-temporal-support-operator-spec-v1",
+    "head_sha": "ce1d2d9f4c86c9c2118797768efb6656b9580f94",
+    "receipt_sha256": "f8c9d8eebacd3fbc19111fe4d9e5600eb6555ce58709666652e06b6beff5ca5a",
+    "verdict": "PASS_BOUNDED_FORMAL_TEMPORAL_SUPPORT_OPERATOR_SPEC"
+  },
+  "target_path": "PATH_B",
+  "execution_policy": {
+    "path_b_remains_locked": true,
+    "reference_validator_only": true,
+    "real_source_transformation": false,
+    "operator_activation": false,
+    "real_value_composition": false
+  },
+  "target_interval": {
+    "start_utc": "2026-09-30T12:00:00Z",
+    "end_utc": "2026-09-30T12:30:00Z",
+    "duration_seconds": 1800
+  },
+  "fixtures": [
+    {
+      "fixture_id": "EXACT_SUPPORT_IDENTITY",
+      "operator_version": "V1",
+      "provenance_complete": true,
+      "uncertainty_kind": "EXACT",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T12:00:00Z", "end_utc": "2026-09-30T12:30:00Z", "value_n": 7, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "PASS_IDENTITY",
+      "expected_value_n": 7,
+      "expected_value_d": 1,
+      "expected_uncertainty_kind": "EXACT"
+    },
+    {
+      "fixture_id": "TWO_15MIN_NATIVE_MEANS_TO_ONE_30MIN_TARGET",
+      "operator_version": "V1",
+      "provenance_complete": true,
+      "uncertainty_kind": "EXACT",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T12:00:00Z", "end_utc": "2026-09-30T12:15:00Z", "value_n": 10, "value_d": 1, "native_time_mean": true},
+        {"start_utc": "2026-09-30T12:15:00Z", "end_utc": "2026-09-30T12:30:00Z", "value_n": 20, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "PASS_CONSERVATIVE",
+      "expected_value_n": 15,
+      "expected_value_d": 1,
+      "expected_uncertainty_kind": "EXACT",
+      "expected_conservation_lhs_n": 27000,
+      "expected_conservation_lhs_d": 1,
+      "expected_conservation_rhs_n": 27000,
+      "expected_conservation_rhs_d": 1
+    },
+    {
+      "fixture_id": "ONE_60MIN_MEAN_TO_30MIN_TARGET",
+      "operator_version": "V1",
+      "provenance_complete": true,
+      "uncertainty_kind": "EXACT",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T11:45:00Z", "end_utc": "2026-09-30T12:45:00Z", "value_n": 100, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "HOLD",
+      "expected_hold_code": "HOLD_TEMPORAL_INFORMATION_INSUFFICIENT"
+    },
+    {
+      "fixture_id": "PARTITION_WITH_GAP",
+      "operator_version": "V1",
+      "provenance_complete": true,
+      "uncertainty_kind": "EXACT",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T12:00:00Z", "end_utc": "2026-09-30T12:10:00Z", "value_n": 10, "value_d": 1, "native_time_mean": true},
+        {"start_utc": "2026-09-30T12:15:00Z", "end_utc": "2026-09-30T12:30:00Z", "value_n": 20, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "HOLD",
+      "expected_hold_code": "HOLD_TEMPORAL_PARTITION_OVERLAP_OR_GAP"
+    },
+    {
+      "fixture_id": "PARTITION_WITH_OVERLAP",
+      "operator_version": "V1",
+      "provenance_complete": true,
+      "uncertainty_kind": "EXACT",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T12:00:00Z", "end_utc": "2026-09-30T12:20:00Z", "value_n": 10, "value_d": 1, "native_time_mean": true},
+        {"start_utc": "2026-09-30T12:15:00Z", "end_utc": "2026-09-30T12:30:00Z", "value_n": 20, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "HOLD",
+      "expected_hold_code": "HOLD_TEMPORAL_PARTITION_OVERLAP_OR_GAP"
+    },
+    {
+      "fixture_id": "UNKNOWN_UNCERTAINTY",
+      "operator_version": "V1",
+      "provenance_complete": true,
+      "uncertainty_kind": "UNKNOWN",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T12:00:00Z", "end_utc": "2026-09-30T12:30:00Z", "value_n": 9, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "PASS_IDENTITY",
+      "expected_value_n": 9,
+      "expected_value_d": 1,
+      "expected_uncertainty_kind": "UNKNOWN"
+    },
+    {
+      "fixture_id": "MOMENT_WITHOUT_COVARIANCE",
+      "operator_version": "V1",
+      "provenance_complete": true,
+      "uncertainty_kind": "MOMENT",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T12:00:00Z", "end_utc": "2026-09-30T12:15:00Z", "value_n": 10, "value_d": 1, "native_time_mean": true},
+        {"start_utc": "2026-09-30T12:15:00Z", "end_utc": "2026-09-30T12:30:00Z", "value_n": 20, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "HOLD",
+      "expected_hold_code": "HOLD_TEMPORAL_UNCERTAINTY_OPERATOR"
+    },
+    {
+      "fixture_id": "INCOMPLETE_PROVENANCE",
+      "operator_version": "V1",
+      "provenance_complete": false,
+      "uncertainty_kind": "EXACT",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T12:00:00Z", "end_utc": "2026-09-30T12:30:00Z", "value_n": 7, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "HOLD",
+      "expected_hold_code": "HOLD_TEMPORAL_PROVENANCE_INCOMPLETE"
+    },
+    {
+      "fixture_id": "UNPINNED_OPERATOR_VERSION",
+      "operator_version": "V2_UNPINNED",
+      "provenance_complete": true,
+      "uncertainty_kind": "EXACT",
+      "covariance_provided": false,
+      "cells": [
+        {"start_utc": "2026-09-30T12:00:00Z", "end_utc": "2026-09-30T12:30:00Z", "value_n": 7, "value_d": 1, "native_time_mean": true}
+      ],
+      "expected_decision": "HOLD",
+      "expected_hold_code": "HOLD_TEMPORAL_OPERATOR_VERSION_UNPINNED"
+    }
+  ],
+  "requirements": {
+    "conservation_identity_exact": true,
+    "deterministic_replay": true,
+    "all_required_fixtures_present": true
+  },
+  "fences": {
+    "operator_activation": false,
+    "real_value_composition": false,
+    "core_patch": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_TEMPORAL_SUPPORT_OPERATOR_REFERENCE_VALIDATOR"
+}
