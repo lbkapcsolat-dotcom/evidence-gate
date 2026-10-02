@@ -454,7 +454,7 @@ def run_gate() -> dict[str, Any]:
                 "raw_sha256": w_src["raw_sha256"],
                 "source_url": w_src["source_url"],
                 "uncertainty_kind": "UNKNOWN",
-                "relabel_as_production_or_demand": false
+                "relabel_as_production_or_demand": False
             },
         },
         "topology_extension": {
