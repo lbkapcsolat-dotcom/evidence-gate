@@ -1,0 +1,59 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__REAL_THREE_LAYER_INPUT_COMPOSITION_CANARY_V1",
+  "predecessor": {
+    "branch": "feature/planetary-resource-integrated-minimal-core-v1",
+    "head_sha": "09ff4a10a1843fa7dd72be2231476a1030ff2d71",
+    "integrated_state_sha256": "116967bace6297b8d7e7ff8886aa1cbaea6f883339c96c7ff342d1f8488a7fc0",
+    "integrated_receipt_sha256": "bef3b597d8c27e49c591c245e4745ba23e9f8fa3e7aa8d2a2def95ca213cc367"
+  },
+  "proven_bindings": {
+    "freshwater": {
+      "provider": "Environment Agency",
+      "variable_id": "freshwater.internal_flow_rate",
+      "canary_receipt_sha256": "697857c063c2cd6d7514e2b9dd79c46d7fe59a5efe0588579e9c4fd306b12c93",
+      "raw_sha256": "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29"
+    },
+    "electricity": {
+      "provider": "Elexon Insights Solution",
+      "variable_id": "electricity.consumption_rate",
+      "canary_receipt_sha256": "9a996daea1a702e1654264a13cc72d0dcba760f8945528b24ce854c2392bca29",
+      "raw_sha256": "831ed964ef11527f0d8db767665289b59f5ef7b32fac02cd7667ad4b949a7242"
+    },
+    "natural_gas": {
+      "provider": "ENTSOG Transparency Platform",
+      "variable_id": "natural_gas.import_rate",
+      "canary_receipt_sha256": "f0629b99245af4dacea863f91b71faf5938b10ed6e1c7069f4c1f829b5a1c406",
+      "raw_sha256": "a7f15400b518ec51ac0f6a97696bd7cd261e64730d1a348dc1a2ad0be0956928"
+    }
+  },
+  "composition_policy": {
+    "one_frozen_common_composition_window": true,
+    "require_positive_duration_common_window": true,
+    "allow_interpolation": false,
+    "allow_imputation": false,
+    "allow_aggregation": false,
+    "allow_inferred_interval_boundary": false,
+    "allow_new_source_ingest": false,
+    "map_values_only_after_common_window_proven": true
+  },
+  "guard_policy": {
+    "preserve_uncertainty": true,
+    "preserve_source_provenance": true,
+    "preserve_process_version_guard": true,
+    "preserve_process_validity_guard": true,
+    "preserve_storage_topology_guard": true
+  },
+  "fences": {
+    "new_source_ingest": false,
+    "new_domain_math": false,
+    "core_patch": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "hold_verdict": "HOLD_NO_COMMON_FROZEN_COMPOSITION_WINDOW"
+}
