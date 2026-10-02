@@ -1,0 +1,73 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_ALIGNED_REAL_INPUT_INTEGRATION_CANARY_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALIGNED_REAL_INPUT_INTEGRATION_CANARY_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__BOM_ELEXON_ENTSOG_TEMPORALLY_ALIGNED_SNAPSHOT_SET_V1",
+    "branch": "feature/planetary-resource-bom-elexon-entsog-temporally-aligned-snapshot-set-v1",
+    "head_sha": "2c317726519317a65ce95728d08f8a837aa9b32b",
+    "receipt_sha256": "37c126d316fb6bec50fb9357dfd485ea7b5f31c4f523508891567f785e21f672"
+  },
+  "target_common_window": {
+    "interval_id": "REAL_COMMON_2026-09-30T12_00_12_30Z",
+    "start_utc": "2026-09-30T12:00:00Z",
+    "end_utc": "2026-09-30T12:30:00Z"
+  },
+  "mappings": {
+    "electricity": {
+      "variable_id": "electricity.consumption_rate",
+      "slot": "DEMAND",
+      "source_unit": "MW",
+      "target_node_id": "E0"
+    },
+    "natural_gas": {
+      "variable_id": "natural_gas.import_rate",
+      "slot": "BOUNDARY_IMPORT",
+      "source_unit_adapter": "kWh/h_GCV->kW_HHV:factor=1",
+      "contract_source_unit": "kW_HHV",
+      "target_node_id": "G0"
+    },
+    "freshwater": {
+      "variable_id": "freshwater.internal_flow_rate",
+      "slot": "INTERNAL_FLOW",
+      "source_unit": "m3/s",
+      "source_node_id": "W0",
+      "target_node_id": "W1",
+      "edge_id": "W_REAL_INTERNAL_0",
+      "relabel_as_production_or_demand": false
+    }
+  },
+  "topology_extension": {
+    "allowed": true,
+    "integration_fixture_only": true,
+    "freshwater_nodes": ["W0", "W1"],
+    "freshwater_internal_edges": 1,
+    "core_patch": false
+  },
+  "temporal_policy": {
+    "exact_interval_required": true,
+    "interval_containment_is_not_exact_alignment": true,
+    "interpolation": false,
+    "imputation": false,
+    "cross_interval_aggregation": false,
+    "implicit_downscaling": false
+  },
+  "requirements": {
+    "preserve_raw_sha256": true,
+    "preserve_source_provenance": true,
+    "preserve_unknown_uncertainty": true,
+    "preserve_version_validity_topology_guards": true,
+    "require_one_integrated_real_input_receipt": true,
+    "require_deterministic_replay": true
+  },
+  "fences": {
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false,
+    "core_patch": false,
+    "new_domain_math": false
+  },
+  "verdict_target": "HOLD_BOUNDED_ALIGNED_REAL_INPUT_INTEGRATION_TEMPORAL_SUPPORT_MISMATCH"
+}
