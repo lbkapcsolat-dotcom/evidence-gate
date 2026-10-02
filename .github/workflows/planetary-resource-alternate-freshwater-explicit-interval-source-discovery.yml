@@ -1,0 +1,46 @@
+name: Planetary Resource Alternate Freshwater Explicit Interval Source Discovery
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-alternate-freshwater-explicit-interval-source-discovery-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  alternate-freshwater-explicit-interval-source-discovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Enforce successor-only changes
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            target_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            target_sha="$GITHUB_SHA"
+          fi
+          changed="$(git diff --name-only 208722c4904988620963a9850ea2f8d35c376872..$target_sha)"
+          printf '%s\n' "$changed"
+          forbidden="$(printf '%s\n' "$changed" | grep -vE '^(EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__ALTERNATE_FRESHWATER_EXPLICIT_INTERVAL_SOURCE_DISCOVERY\.json|planetary_resource_alternate_freshwater_explicit_interval_source_discovery_v1\.py|test_planetary_resource_alternate_freshwater_explicit_interval_source_discovery_v1\.py|docs/planetary_resource_alternate_freshwater_explicit_interval_source_discovery_v1\.md|sources/bom/410713_discharge_daily_mean_2026-09-30.xml|\.github/workflows/planetary-resource-alternate-freshwater-explicit-interval-source-discovery\.yml)$' || true)"
+          test -z "$forbidden" || { echo "Forbidden predecessor/core change:"; echo "$forbidden"; exit 1; }
+
+      - name: Preserve EA FINAL_HOLD predecessor
+        run: python -m unittest -v test_planetary_resource_environment_agency_interval_semantics_external_authority_resolution_v1.py
+
+      - name: Run focused alternate-source discovery test
+        run: python -m unittest -v test_planetary_resource_alternate_freshwater_explicit_interval_source_discovery_v1.py
