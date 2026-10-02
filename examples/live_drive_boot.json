@@ -1,0 +1,28 @@
+{
+  "scope_name": "ALPHA active boot package identity",
+  "required_artifacts": [
+    {
+      "drive_file_id": "1Y965Pm3M7Ug7m5Ksyd7-FenDJFn57Pde",
+      "expected": {
+        "name": "ALPHA_SYSTEM_MASTER_BOOT_INTEGRATION_V1_PACKAGE.zip",
+        "mime_type": "application/zip",
+        "size_bytes": 7074,
+        "sha256": "fbd90fdcbcd23d5fd5c806b4f17a1446d2a264435cac43768bfbba133f54eee8",
+        "parent_id": "1L5WnfzkX43bnjVBF7epJvj8T5Ll_uQXH"
+      }
+    }
+  ],
+  "drive_records": [
+    {
+      "drive_file_id": "1Y965Pm3M7Ug7m5Ksyd7-FenDJFn57Pde",
+      "retrieval_status": "ok",
+      "name": "ALPHA_SYSTEM_MASTER_BOOT_INTEGRATION_V1_PACKAGE.zip",
+      "mime_type": "application/zip",
+      "size_bytes": 7074,
+      "sha256": "fbd90fdcbcd23d5fd5c806b4f17a1446d2a264435cac43768bfbba133f54eee8",
+      "parent_ids": [
+        "1L5WnfzkX43bnjVBF7epJvj8T5Ll_uQXH"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "repository": "lbkapcsolat-dotcom/evidence-gate",
+  "head_sha": "d5e49db0739112a4cbb7b2a3dc86cfbcf6e4b537",
+  "required_workflows": [
+    "ESS-15 Adversarial Validation",
+    "Evidence Bound Authority CI",
+    "Cognitive Oversight Runtime",
+    "ESS Evidence Runtime CI"
+  ],
+  "workflow_runs": [
+    {
+      "run_id": 36609795299,
+      "run_number": 7,
+      "name": "ESS-15 Adversarial Validation",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 36609795221,
+      "run_number": 9,
+      "name": "Evidence Bound Authority CI",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 36609795185,
+      "run_number": 4,
+      "name": "Cognitive Oversight Runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 36609795361,
+      "run_number": 22,
+      "name": "ESS Evidence Runtime CI",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}
