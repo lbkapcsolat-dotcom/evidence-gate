@@ -1,0 +1,93 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_V1",
+  "predecessor": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__TEMPORAL_SUPPORT_OPERATOR_REFERENCE_VALIDATOR_V1",
+    "branch": "feature/planetary-resource-temporal-support-operator-reference-validator-v1",
+    "head_sha": "cc0ddb1eabc19941348e7639fb5506a5863596ad",
+    "receipt_sha256": "152ecba00cfcb9e22f767b654bd04631222fb73a3d4666d9ce4e635647267973",
+    "verdict": "PASS_BOUNDED_TEMPORAL_SUPPORT_OPERATOR_REFERENCE_VALIDATOR"
+  },
+  "formal_spec": {
+    "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FORMAL_TEMPORAL_SUPPORT_OPERATOR_SPEC_V1",
+    "receipt_sha256": "f8c9d8eebacd3fbc19111fe4d9e5600eb6555ce58709666652e06b6beff5ca5a",
+    "operator_spec_id": "TEMPORAL_SUPPORT_TO_TARGET_WINDOW_OPERATOR_V1",
+    "operator_version": "V1",
+    "policy_receipt_sha256": "5cfbb2feb2b7485e5f791f062794929e134981277d6c29679b7cbc12219fb6b9"
+  },
+  "kernel": {
+    "kernel_id": "TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL_V1",
+    "implementation_basis": "FROZEN_FORMAL_SPEC_ONLY",
+    "arithmetic": "EXACT_RATIONAL_FRACTION",
+    "supported_relations": [
+      "EXACT_TARGET_SUPPORT",
+      "FINER_NATIVE_MEAN_PARTITION_EXACTLY_COVERS_TARGET"
+    ],
+    "path_b_remains_locked": true,
+    "synthetic_fixture_execution_only": true,
+    "real_source_input_allowed": false,
+    "real_value_composition_allowed": false
+  },
+  "requirements": {
+    "exact_rational_arithmetic": true,
+    "conservation_identity": true,
+    "uncertainty_propagation": true,
+    "provenance_transform_record": true,
+    "fail_closed_hold_codes": true,
+    "replay_all_reference_fixtures": true,
+    "require_9_of_9_expected_outcomes": true,
+    "mutation_tests_required": true,
+    "deterministic_replay": true
+  },
+  "required_mutations": [
+    "GAP",
+    "OVERLAP",
+    "COARSE_TO_FINE",
+    "UNKNOWN_TO_EXACT",
+    "MISSING_COVARIANCE",
+    "MISSING_PROVENANCE",
+    "UNPINNED_VERSION"
+  ],
+  "uncertainty_probe": {
+    "probe_id": "TWO_15MIN_INTERVAL_UNCERTAINTY_TO_30MIN",
+    "target_start_utc": "2026-09-30T12:00:00Z",
+    "target_end_utc": "2026-09-30T12:30:00Z",
+    "cells": [
+      {
+        "start_utc": "2026-09-30T12:00:00Z",
+        "end_utc": "2026-09-30T12:15:00Z",
+        "value_n": 10,
+        "value_d": 1,
+        "native_time_mean": true,
+        "uncertainty": {"kind": "INTERVAL", "lower_n": 9, "lower_d": 1, "upper_n": 11, "upper_d": 1}
+      },
+      {
+        "start_utc": "2026-09-30T12:15:00Z",
+        "end_utc": "2026-09-30T12:30:00Z",
+        "value_n": 20,
+        "value_d": 1,
+        "native_time_mean": true,
+        "uncertainty": {"kind": "INTERVAL", "lower_n": 18, "lower_d": 1, "upper_n": 22, "upper_d": 1}
+      }
+    ],
+    "expected_value_n": 15,
+    "expected_value_d": 1,
+    "expected_lower_n": 27,
+    "expected_lower_d": 2,
+    "expected_upper_n": 33,
+    "expected_upper_d": 2
+  },
+  "fences": {
+    "path_b_activation": false,
+    "real_source_input": false,
+    "real_value_composition": false,
+    "core_patch": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_TEMPORAL_SUPPORT_OPERATOR_EXECUTABLE_KERNEL"
+}
