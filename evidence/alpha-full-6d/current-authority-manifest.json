@@ -1,0 +1,63 @@
+{
+  "claim_ceiling": {
+    "global_bind": false,
+    "merge": false,
+    "production_admission": false,
+    "repo_manifest_only": true,
+    "runtime_admission": false
+  },
+  "drive_pointer": {
+    "authority": "A3709_BOOT2332",
+    "boot_authority": "BOOT2332",
+    "close_seal_id": "1YfEMU6t6T_1-bHNWSp569m2Z6Q5PghERqOmkZLoFNeI",
+    "content_proof_drive_id": "171YVJ4Pe2OKJw2Rano9cm2TXNLNtrlfE",
+    "content_proof_sha256": "95706b0f5875bae91c06a652533889356bafacac6fe88d87b81fff9fab1b84cf",
+    "export_receipt_drive_id": "1lumWk-ylVPF2fUSf-9PxlVERiXDs9h2V",
+    "final_readback": "PASS_MASTER_A3709_17_OF_17__BOOT2332_9_OF_9__POINTER_TOP_A3709_BOOT2332__CLOSE_SEAL_FULL_CONTENT__RAW_SHA256_CONTENT_AND_HASH_EXPORTS",
+    "hash_verification_drive_id": "1L5daq7D02Kx9gfmJp1vFUjDVWp-56w4g",
+    "hash_verification_sha256": "6eb523905840051b037c1209f3906c7e91a7a687d5a7182facf869dff16db24e",
+    "lineage_id": "S004__UBRH_V2__CARRYFORWARD__2026-05-20",
+    "master_authority": "A3709",
+    "pointer_id": "1k3JcN-C-xEm8DkFcu7Ioa0N5-Hg7pNLaxstS_eQr6YI",
+    "pointer_title": "00_START_HERE__ESS_CURRENT_POINTER_V1"
+  },
+  "generated_at_local": "2026-10-03T23:12:00+02:00",
+  "github_k6_evidence": {
+    "github_k6_artifact_digest": "sha256:88b33495632310fc1bd60f66c3db242a7e8b7a5fdaad7cf6a7881effaabdd661",
+    "github_k6_artifact_id": 11258550325,
+    "github_k6_artifact_name": "api-bridge-current-scope-k6-0.54.0",
+    "github_k6_artifact_size_bytes": 416110,
+    "github_k6_head_branch": "api-bridge-ci-replay-v1",
+    "github_k6_head_sha": "ebb5072415e6c166b371eb56ee62b63abf2dcc9f",
+    "github_k6_run_id": 37080021863
+  },
+  "latest_support_close_A3711_BOOT2334": {
+    "current_pointer_authority": "A3709_BOOT2332",
+    "inventory_drive_id": "1qKLuHE6pnp_BTQ1jsSVffiT_4R4n4BAr",
+    "inventory_sha256": "1f9ef3f58c95199ba09615968c8dd9021e6d691e003b0ae38c08946a91fb8615",
+    "raw_snapshot_drive_id": "1sQtyY4bzdHNFLvJTiDF8_DSZR94mb6Em",
+    "raw_snapshot_zip_bytes": 590222,
+    "raw_snapshot_zip_sha256": "04eb25b6e4b5540bbbfb319e1fde52a2b6aca0bafe474c36d5a90d01d4d4182d",
+    "read_only_lock": "TRUE__FINAL_READBACK_PASS__A3711_BOOT2334__POINTER_A3709_BOOT2332_UNCHANGED__NO_GLOBAL_BIND",
+    "support_close_seal_id": "1fXGVlKpt0yEmckkfeFeK2jHuvmLfMPx2ZVow6c_Gve8",
+    "support_only": true,
+    "target_boot": "BOOT2334",
+    "target_master": "A3711",
+    "window_artifact_count": 26,
+    "window_artifact_root_sha256": "164daced57d2a697123b7cd00d29ee6caa7d9e3cad32edb44625a17794fbcc7c"
+  },
+  "repository": {
+    "branch": "main",
+    "full_name": "lbkapcsolat-dotcom/evidence-gate",
+    "path": "evidence/alpha-full-6d/current-authority-manifest.json"
+  },
+  "schema": "A3713_GITHUB_REPO_PERSISTENCE_MANIFEST_BIND_V1",
+  "status": "repo_level_persistence_manifest",
+  "verification": {
+    "a3711_support_close_readback": "PASS",
+    "drive_pointer_readback": "PASS",
+    "github_k6_artifact_readback": "PASS",
+    "json_equality_required_after_commit": true,
+    "repo_manifest_write_intent": "CREATE_OR_UPDATE_SINGLE_FILE"
+  }
+}
