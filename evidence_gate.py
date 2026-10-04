@@ -62,6 +62,10 @@ def classify_claim(claim: str, evidence: Iterable[Mapping[str, Any]]) -> Classif
                 f"evidence[{index}].assessment must be one of: {allowed}"
             )
 
+        if item.get("source_class") == "SIGNAL_SOURCE":
+            insufficient += 1
+            continue
+
         if normalized == "supports":
             supporting += 1
         elif normalized == "contradicts":

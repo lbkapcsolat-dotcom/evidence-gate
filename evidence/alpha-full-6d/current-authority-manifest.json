@@ -1,0 +1,96 @@
+{
+  "claim_ceiling": {
+    "external_validation": false,
+    "global_bind": false,
+    "merge": false,
+    "private_authority_mirror": false,
+    "production_admission": false,
+    "public_safe_only": true,
+    "repo_manifest_only": true,
+    "runtime_admission": false
+  },
+  "drive_control_plane": {
+    "authority_ref": "DRIVE_CONTROL_PLANE_AUTHORITY_REDACTED",
+    "close_seal_id": "REDACTED_PRIVATE_DRIVE_ID",
+    "content_proof_drive_id": "REDACTED_PRIVATE_DRIVE_ID",
+    "export_receipt_drive_id": "REDACTED_PRIVATE_DRIVE_ID",
+    "hash_verification_drive_id": "REDACTED_PRIVATE_DRIVE_ID",
+    "master_boot_full_content": "NOT_PUBLISHED",
+    "pointer_id": "REDACTED_PRIVATE_DRIVE_ID",
+    "private_links": "NOT_PUBLISHED",
+    "raw_receipts": "NOT_PUBLISHED",
+    "readback_status": "PASS_REDACTED_PUBLIC_SUMMARY_ONLY",
+    "role": "private_authority_control_plane"
+  },
+  "field_classification": {
+    "kept_public_safe": [
+      "repository path",
+      "github manifest input commit sha",
+      "github k6 workflow run id",
+      "github k6 artifact id",
+      "github k6 artifact digest",
+      "github k6 head sha",
+      "claim ceiling"
+    ],
+    "private_forbidden_publication": [
+      "emails",
+      "credentials",
+      "tokens",
+      "private Google Docs links",
+      "private Drive file ids",
+      "raw ZIP packages",
+      "full Master/Boot dumps",
+      "non-public operational notes"
+    ],
+    "redacted_private_metadata": [
+      "Google Drive pointer id",
+      "Google Drive close seal id",
+      "Google Drive content proof id",
+      "Google Drive hash verification id",
+      "Google Drive export receipt id",
+      "Google Drive support close id",
+      "Google Drive raw snapshot id",
+      "Google Drive inventory id",
+      "internal Master/Boot full records",
+      "raw internal receipts",
+      "private Drive links",
+      "private Drive-bound SHA256 values"
+    ]
+  },
+  "generated_at_local": "2026-10-03T23:12:00+02:00",
+  "latest_support_close": {
+    "artifact_count_summary": 26,
+    "inventory_drive_id": "REDACTED_PRIVATE_DRIVE_ID",
+    "private_sha256_values": "NOT_PUBLISHED",
+    "raw_snapshot_drive_id": "REDACTED_PRIVATE_DRIVE_ID",
+    "raw_snapshot_zip": "NOT_PUBLISHED",
+    "role": "private_support_close_summary",
+    "support_close_id": "REDACTED_PRIVATE_DRIVE_ID",
+    "support_only": true,
+    "support_ref": "LATEST_SUPPORT_CLOSE_REDACTED"
+  },
+  "public_evidence": {
+    "github_k6_artifact_digest": "sha256:88b33495632310fc1bd60f66c3db242a7e8b7a5fdaad7cf6a7881effaabdd661",
+    "github_k6_artifact_id": 11258550325,
+    "github_k6_head_branch": "api-bridge-ci-replay-v1",
+    "github_k6_head_sha": "ebb5072415e6c166b371eb56ee62b63abf2dcc9f",
+    "github_k6_run_id": 37080021863,
+    "github_manifest_input_commit_sha": "17389e15c8db1879ecb68bcac20df39fe42a1427"
+  },
+  "repository": {
+    "branch": "main",
+    "full_name": "lbkapcsolat-dotcom/evidence-gate",
+    "path": "evidence/alpha-full-6d/current-authority-manifest.json"
+  },
+  "schema": "A3713_PUBLIC_METADATA_REDACTION_PATCH_V1",
+  "status": "public_safe_repo_manifest",
+  "verification": {
+    "json_equality_required_after_commit": true,
+    "no_google_drive_file_ids_published": true,
+    "no_master_boot_dump": true,
+    "no_private_drive_links": true,
+    "no_raw_receipts": true,
+    "private_metadata_redaction": "PASS",
+    "source_manifest_readback": "PASS"
+  }
+}

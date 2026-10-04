@@ -43,6 +43,21 @@ class EvidenceGateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             classify_claim("A claim", [{"assessment": "maybe"}])
 
+    def test_signal_source_cannot_directly_support_a_claim(self):
+        result = classify_claim(
+            "A signal-only claim.",
+            [
+                {
+                    "source": "Newsify:trend-123",
+                    "source_class": "SIGNAL_SOURCE",
+                    "assessment": "supports",
+                }
+            ],
+        )
+        self.assertEqual(result.status, EvidenceStatus.INSUFFICIENT)
+        self.assertEqual(result.supporting_count, 0)
+        self.assertEqual(result.insufficient_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
