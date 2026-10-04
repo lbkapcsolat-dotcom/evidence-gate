@@ -1,0 +1,136 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_THIRD_REAL_SOURCE_GAS_CANARY_MANIFEST_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_V1",
+  "counts": {
+    "measurement_sources": 1,
+    "variables": 1,
+    "nodes": 1,
+    "intervals": 1,
+    "records": 1,
+    "normative_support_refs": 3
+  },
+  "predecessor": {
+    "first_canary_receipt_sha256": "697857c063c2cd6d7514e2b9dd79c46d7fe59a5efe0588579e9c4fd306b12c93",
+    "second_canary_receipt_sha256": "9a996daea1a702e1654264a13cc72d0dcba760f8945528b24ce854c2392bca29",
+    "empirical_contract_sha256": "592570140b8465cc4e9c38c84a9da5c1f6be73e9894bc1aad0a99e6ad023e9b3",
+    "empirical_validator_sha256": "3fc420678148149cdfca9fae03088b2f54e5987bf29278d1e94497534a4151c2"
+  },
+  "measurement_source": {
+    "source_id": "ENTSOG_GUD_DORNUM_NETRA_ENTRY_PHYSICAL_FLOW_2026-10-01T21-22Z",
+    "provider": "ENTSOG Transparency Platform",
+    "operator_label": "Gasunie Deutschland ",
+    "operator_key": "DE-TSO-0005",
+    "tso_eic_code": "21X-DE-D-A0A0A-K",
+    "point_key": "ITP-00188",
+    "point_label": "Dornum / NETRA (GUD)",
+    "tso_item_identifier": "21Z000000000053Y",
+    "direction": "entry",
+    "indicator": "Physical Flow",
+    "period_type": "hour",
+    "source_url": "https://transparency.entsog.eu/api/v1/operationaldatas.csv?indicator=Physical%20Flow&pointDirection=de-tso-0005itp-00188entry&from=2026-10-01&to=2026-10-02&periodType=hour&timeZone=CET&limit=3&offset=18",
+    "scrape_id": "01a0f9e1-fca0-76af-9102-14915edc2360",
+    "retrieved_at": "2026-10-01T23:51:25Z",
+    "raw_file": "sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html",
+    "raw_sha256": "a7f15400b518ec51ac0f6a97696bd7cd261e64730d1a348dc1a2ad0be0956928",
+    "raw_byte_length": 931,
+    "citation": "ENTSOG Transparency Platform, Physical Flow, Gasunie Deutschland, Dornum / NETRA (GUD), entry",
+    "access_class": "PUBLIC"
+  },
+  "normative_support": [
+    {
+      "authority": "ENTSOG",
+      "url": "https://transparency.entsog.eu/pdf/TRA158_ENTSOG%20TP%20Data%20Publication%20Format_v3%2017052016.pdf",
+      "claim": "Actual Physical Flow is published in kWh/d or kWh/h."
+    },
+    {
+      "authority": "European Commission / EUR-Lex",
+      "url": "https://eur-lex.europa.eu/eli/reg/2015/703/oj/eng",
+      "claim": "For gas data exchange/publication, energy is expressed in kWh based on GCV; GCV is expressed in kWh/m3."
+    },
+    {
+      "authority": "ISO",
+      "url": "https://www.iso.org/standard/55842.html",
+      "claim": "For ISO 6976 terminology, gross calorific value is synonymous with higher calorific/heating value for this contract mapping."
+    }
+  ],
+  "record": {
+    "id": "1Physical Flowhour2026-10-01 21:00:00 +00:002026-10-01 22:00:00 +00:00DE-TSO-0005ITP-00188entrykWh/h",
+    "period_from_utc": "2026-10-01T21:00:00Z",
+    "period_to_utc": "2026-10-01T22:00:00Z",
+    "period_from_source_display": "2026-10-01 23:00",
+    "period_to_source_display": "2026-10-02 00:00",
+    "unit": "kWh/h",
+    "value": "28669751",
+    "last_update_source_display": "2026-10-02 01:04",
+    "flow_status": "Provisional"
+  },
+  "energy_basis": {
+    "source_energy_unit": "kWh/h",
+    "source_energy_basis": "GCV",
+    "core_basis_label": "HHV",
+    "equivalence_basis": "GCV_IS_GROSS_AND_GROSS_IS_HIGHER_HEATING_VALUE_PER_ISO_6976",
+    "volume_to_energy_conversion_performed": false,
+    "calorific_value_assumed": false
+  },
+  "admission": {
+    "variable_id": "natural_gas.import_rate",
+    "source_layer": "NATURAL_GAS",
+    "source_quantity_kind": "RATE",
+    "source_status": "OBSERVED",
+    "source_unit_raw": "kWh/h",
+    "source_unit_adapter": "kW_HHV",
+    "source_gas_basis": "HHV",
+    "adapter_transform": {
+      "from": "kWh/h_GCV",
+      "to": "kW_HHV",
+      "factor_n": 1,
+      "factor_d": 1,
+      "rationale": "1 kWh/h = 1 kW; GCV maps to HHV label via authoritative terminology evidence"
+    },
+    "empirical_contract_transform": {
+      "from": "kW_HHV",
+      "to": "W_th",
+      "factor_n": 1000,
+      "factor_d": 1
+    },
+    "target_node_id": "ENTSOG_DE_TSO_0005_ITP_00188_ENTRY_SOURCE_LOCAL_GAS_ZONE",
+    "target_node_class": "GAS_ZONE",
+    "spatial_method": "NODE_LOOKUP",
+    "spatial_method_ref": "ENTSOG_OPERATOR_POINT_DIRECTION_TO_SOURCE_LOCAL_GAS_ZONE_V1",
+    "spatial_claim_ceiling": "SOURCE_LOCAL_ENTSOG_ENTRY_FLOW_ONLY__NOT_GERMAN_TOTAL_GAS_IMPORT",
+    "interval_id": "ENTSOG_DE_TSO_0005_ITP_00188_ENTRY_2026-10-01T21-22Z",
+    "temporal_method": "EXACT_INTERVAL",
+    "temporal_method_ref": "ENTSOG_PERIOD_FROM_TO_EXPLICIT_UTC_ID_V1",
+    "as_of": "2026-10-01T23:51:25Z",
+    "observed_at_for_freshness": "2026-10-01T22:00:00Z",
+    "freshness_semantics": "USE_COMPLETED_INTERVAL_END_FOR_HOURLY_MEAN_FLOW",
+    "max_age_seconds": 10800,
+    "expected_freshness_age_seconds": 6685,
+    "uncertainty": {
+      "kind": "UNKNOWN",
+      "method_ref": ""
+    },
+    "missingness": {
+      "value_present": true,
+      "reason": "",
+      "zero_is_missing": false
+    },
+    "sign_semantics_declared": true
+  },
+  "fences": {
+    "preserve_water_canary": true,
+    "preserve_electricity_canary": true,
+    "same_admission_contract": true,
+    "one_measurement_source_only": true,
+    "no_volume_to_energy_conversion": true,
+    "no_silent_calorific_value_assumption": true,
+    "multi_source_fusion": false,
+    "aggregation": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  }
+}
