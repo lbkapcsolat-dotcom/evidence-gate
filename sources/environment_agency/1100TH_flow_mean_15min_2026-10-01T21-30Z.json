@@ -1,0 +1,36 @@
+{ 
+  "@context" : "http://environment.data.gov.uk/flood-monitoring/meta/context.jsonld" ,
+  "meta" : { 
+    "publisher" : "Environment Agency" ,
+    "licence" : "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" ,
+    "documentation" : "http://environment.data.gov.uk/flood-monitoring/doc/reference" ,
+    "version" : "0.9" ,
+    "comment" : "Status: Beta service" ,
+    "hasFormat" : [ "http://environment.data.gov.uk/flood-monitoring/id/measures/1100TH-flow--Mean-15_min-m3_s/readings.csv?_view=full&_sorted&_limit=1", "http://environment.data.gov.uk/flood-monitoring/id/measures/1100TH-flow--Mean-15_min-m3_s/readings.rdf?_view=full&_sorted&_limit=1", "http://environment.data.gov.uk/flood-monitoring/id/measures/1100TH-flow--Mean-15_min-m3_s/readings.ttl?_view=full&_sorted&_limit=1", "http://environment.data.gov.uk/flood-monitoring/id/measures/1100TH-flow--Mean-15_min-m3_s/readings.html?_view=full&_sorted&_limit=1" ] ,
+    "limit" : 1
+  }
+   ,
+  "items" : [ { 
+    "@id" : "http://environment.data.gov.uk/flood-monitoring/data/readings/1100TH-flow--Mean-15_min-m3_s/2026-10-01T21-30-00Z" ,
+    "date" : "2026-10-01" ,
+    "dateTime" : "2026-10-01T21:30:00Z" ,
+    "measure" : { 
+      "@id" : "http://environment.data.gov.uk/flood-monitoring/id/measures/1100TH-flow--Mean-15_min-m3_s" ,
+      "parameter" : "flow" ,
+      "period" : 900 ,
+      "qualifier" : "" ,
+      "station" : { 
+        "@id" : "http://environment.data.gov.uk/flood-monitoring/id/stations/1100TH" ,
+        "label" : "Farmoor"
+      }
+       ,
+      "stationReference" : "1100TH" ,
+      "unitName" : "m3/s" ,
+      "valueType" : "mean"
+    }
+     ,
+    "value" : 0.832
+  }
+   ]
+}
+
