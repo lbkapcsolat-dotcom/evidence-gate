@@ -1,0 +1,85 @@
+name: Planetary Resource Storage Host Topology Bind
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-storage-host-topology-bind-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  storage-host-topology-bind:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify pinned predecessor bytes
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f  planetary_resource_cpp_kernel_v1.cpp" | sha256sum -c -
+          echo "33a58010315be8a4e2b5cdf3bcb831b8e3a67e901ebedf38dd5780d758fb97b2  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_SELF_LOSS_TYPED_PHYSICAL_RATE.json" | sha256sum -c -
+          echo "746d8ea6c015a003ecba701a4eab8e80f97df71deb959a7f4ea58d178286ae43  planetary_resource_storage_self_loss_typed_v1.py" | sha256sum -c -
+          echo "8f60b0f50d4873d62cf063d64289757f5d915c2a7a667cda529fa3a6be1034cd  planetary_resource_storage_self_loss_typed_gate_v1.py" | sha256sum -c -
+          echo "f5bd19e476885390a488d57301eb0c17e6a17858e92ca1bd2a5f11aed9229dcf  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_MANIFEST_VERSION_ENFORCEMENT.json" | sha256sum -c -
+          echo "bd1cea6138fbcceaf872eb24fd42b7253a5cd6a4994e4b7dbff265d1e973493c  planetary_resource_process_manifest_version_v1.py" | sha256sum -c -
+          echo "1e4d5bff35218976e902bd4260831712551980326f89fd7d4730cc9d69c01fd5  planetary_resource_process_manifest_version_gate_v1.py" | sha256sum -c -
+
+      - name: Compile storage topology successor
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_storage_self_loss_typed_v1.py             planetary_resource_storage_self_loss_typed_gate_v1.py             planetary_resource_process_manifest_version_v1.py             planetary_resource_process_manifest_version_gate_v1.py             planetary_resource_storage_host_topology_bind_v1.py             planetary_resource_storage_host_topology_bind_gate_v1.py             test_planetary_resource_storage_host_topology_bind_v1.py
+
+      - name: Preserve legacy Python core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve typed storage self-loss
+        run: python -m unittest -v test_planetary_resource_storage_self_loss_typed_v1.py
+
+      - name: Preserve process manifest version
+        run: python -m unittest -v test_planetary_resource_process_manifest_version_v1.py
+
+      - name: Run storage host topology bind tests
+        run: python -m unittest -v test_planetary_resource_storage_host_topology_bind_v1.py
+
+      - name: Build deterministic storage topology receipt
+        shell: bash
+        run: |
+          python planetary_resource_storage_host_topology_bind_gate_v1.py | tee storage_host_topology_bind.log
+          grep -F '"active_topology_bind_required":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_HOST_NODE_TOPOLOGY_BIND_RECEIPT.json
+          grep -F '"storage_uncertainty_preserved":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_HOST_NODE_TOPOLOGY_BIND_RECEIPT.json
+          grep -F '"typed_self_loss_preserved":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_HOST_NODE_TOPOLOGY_BIND_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_STORAGE_HOST_NODE_TOPOLOGY_BIND"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_HOST_NODE_TOPOLOGY_BIND_RECEIPT.json
+
+      - name: Preserve independent C++ baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash storage topology evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_HOST_NODE_TOPOLOGY_BIND.json             planetary_resource_storage_host_topology_bind_v1.py             planetary_resource_storage_host_topology_bind_gate_v1.py             test_planetary_resource_storage_host_topology_bind_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_HOST_NODE_TOPOLOGY_BIND_RECEIPT.json
+
+      - name: Upload storage topology evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-storage-host-topology-bind-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_HOST_NODE_TOPOLOGY_BIND_RECEIPT.json
+            storage_host_topology_bind.log
+            cpp_baseline.log
+          if-no-files-found: error

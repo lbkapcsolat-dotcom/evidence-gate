@@ -1,0 +1,93 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_SECOND_REAL_SOURCE_CANARY_MANIFEST_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SECOND_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_V1",
+  "counts": {
+    "sources": 1,
+    "variables": 1,
+    "nodes": 1,
+    "intervals": 1,
+    "records": 1
+  },
+  "predecessor": {
+    "first_canary_branch": "feature/planetary-resource-first-real-source-canary-v1",
+    "first_canary_head": "ba29be4bf4ace9aa389e0871903e9ef487633824",
+    "first_canary_receipt_sha256": "697857c063c2cd6d7514e2b9dd79c46d7fe59a5efe0588579e9c4fd306b12c93",
+    "empirical_contract_sha256": "592570140b8465cc4e9c38c84a9da5c1f6be73e9894bc1aad0a99e6ad023e9b3",
+    "empirical_validator_sha256": "3fc420678148149cdfca9fae03088b2f54e5987bf29278d1e94497534a4151c2"
+  },
+  "source": {
+    "source_id": "ELEXON_INDO_LATEST_2026-10-01T22-00Z",
+    "provider": "Elexon Insights Solution",
+    "underlying_data_source": "National Energy System Operator (NESO)",
+    "dataset_id": "INDO",
+    "dataset_name": "Initial National Demand outturn",
+    "dataset_version": "ELEXON_INSIGHTS_API_V1",
+    "source_url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/INDO?format=json",
+    "documentation_url": "https://bmrs.elexon.co.uk/demand",
+    "api_portal_url": "https://developer.data.elexon.co.uk/",
+    "license_or_terms_ref": "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/",
+    "scrape_id": "01a0f9a4-ff2d-7321-b77b-21b28a8e51b6",
+    "retrieved_at": "2026-10-01T22:45:14Z",
+    "raw_file": "sources/elexon/INDO_2026-10-01T22-00Z.json",
+    "raw_sha256": "831ed964ef11527f0d8db767665289b59f5ef7b32fac02cd7667ad4b949a7242",
+    "citation": "Elexon Insights Solution, Initial National Demand outturn (INDO), National Energy System Operator source data",
+    "access_class": "PUBLIC"
+  },
+  "record": {
+    "dataset": "INDO",
+    "publish_time": "2026-10-01T22:30:00Z",
+    "start_time": "2026-10-01T22:00:00Z",
+    "settlement_date": "2026-10-01",
+    "settlement_period": 47,
+    "demand": "22557",
+    "source_unit": "MW",
+    "source_semantics": "half-hour average Initial National Demand Outturn at national level"
+  },
+  "admission": {
+    "variable_id": "electricity.consumption_rate",
+    "source_layer": "ELECTRICITY",
+    "source_quantity_kind": "RATE",
+    "source_status": "OBSERVED",
+    "target_node_id": "ELEXON_INDO_NATIONAL_SOURCE_LOCAL_ELECTRICITY_ZONE",
+    "target_node_class": "ELECTRICITY_ZONE",
+    "spatial_method": "NODE_LOOKUP",
+    "spatial_method_ref": "ELEXON_INDO_NATIONAL_LEVEL_TO_SOURCE_LOCAL_ELECTRICITY_ZONE_V1",
+    "spatial_claim_ceiling": "ELEXON_INDO_NATIONAL_DEMAND_ACCOUNTING_ONLY__NOT_TOTAL_FINAL_ELECTRICITY_CONSUMPTION",
+    "interval_id": "ELEXON_INDO_2026-10-01T22-00Z_SP47_1800S",
+    "temporal_method": "EXACT_INTERVAL",
+    "temporal_method_ref": "ELEXON_INDO_SETTLEMENT_PERIOD_HALF_HOUR_AVERAGE_V1",
+    "timestamp_semantics": "startTime=2026-10-01T22:00:00Z__settlementPeriod=47__half-hour average demand",
+    "unit_transform": {
+      "source_unit": "MW",
+      "canonical_unit": "W_e",
+      "factor_n": 1000000,
+      "factor_d": 1
+    },
+    "as_of": "2026-10-01T22:45:14Z",
+    "max_age_seconds": 7200,
+    "expected_freshness_age_seconds": 2714,
+    "uncertainty": {
+      "kind": "UNKNOWN",
+      "method_ref": ""
+    },
+    "missingness": {
+      "value_present": true,
+      "reason": "",
+      "zero_is_missing": false
+    },
+    "sign_semantics_declared": true
+  },
+  "fences": {
+    "different_resource_layer": true,
+    "first_canary_preserved": true,
+    "same_admission_contract": true,
+    "multi_source_fusion": false,
+    "aggregation": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  }
+}

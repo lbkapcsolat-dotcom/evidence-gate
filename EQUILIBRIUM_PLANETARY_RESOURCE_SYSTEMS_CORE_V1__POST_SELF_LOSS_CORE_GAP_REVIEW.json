@@ -1,0 +1,118 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_POST_SELF_LOSS_CORE_GAP_REVIEW_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_SELF_LOSS_CORE_GAP_REVIEW_V1",
+  "predecessor_pins": {
+    "python_core_sha256": "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae",
+    "cpp_kernel_sha256": "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f",
+    "typed_process_contract_sha256": "3fb00e16cbca443063bda520510377d5b4fa78672009dfc2fc8fa9d86dc2748d",
+    "typed_process_module_sha256": "6590802c509f14e37f783a3e8243b756b8f2a3eb88fbb936772a6c039d2b69e2",
+    "typed_process_receipt_sha256": "aba5715cd942f8da3d533c37e8d5c64de2f8d1d937cec47508fa1c22c4971fe5",
+    "e2e_uncertainty_contract_sha256": "e6f1fe330a43ead1ee3d0cc6394ff7b15748e6cecbc4166001680ee316b39cfc",
+    "e2e_uncertainty_module_sha256": "c62af9bc715ce4d088112c650f0c7794d9c2758a69088417135084740e2fb46c",
+    "e2e_uncertainty_receipt_sha256": "e7c131d890aedf397afa5065c74bcbab9b0d57febb6cb2386720fe4f2d1b5dbd",
+    "typed_self_loss_contract_sha256": "33a58010315be8a4e2b5cdf3bcb831b8e3a67e901ebedf38dd5780d758fb97b2",
+    "typed_self_loss_module_sha256": "746d8ea6c015a003ecba701a4eab8e80f97df71deb959a7f4ea58d178286ae43",
+    "typed_self_loss_receipt_sha256": "7a769a23db4d7ac5edbbf4921f954856cecced3b7eda65ff4ea846a8b4f60091"
+  },
+  "reviews": {
+    "storage_host_node_scope": {
+      "status": "PASS_BOUNDED_LOCAL_TRANSITION_WITH_HOST_SCOPE_GAP",
+      "proven": [
+        "StorageManifest carries host_node_id",
+        "typed storage self-loss successor enforces storage-layer, rate-kind, interval, value-space and nonnegative self-loss semantics"
+      ],
+      "unresolved": [
+        "storage_transition and typed self-loss successor receive no topology node set and therefore cannot prove host_node_id exists in the active storage-layer topology",
+        "a StorageManifest with an arbitrary nonexistent host_node_id is accepted by the local transition"
+      ],
+      "priority_note": "Important topology-binding gap, but the local transition does not itself route storage to a different node. Selection priority remains below a parameter uncertainty gap that directly understates physical output uncertainty."
+    },
+    "storage_parameter_uncertainty": {
+      "status": "PASS_BOUNDED_EXACT_PARAMETER_MODEL_WITH_UNCERTAINTY_GAP",
+      "proven": [
+        "capacity, max charge/discharge rates, eta_charge and eta_discharge are explicit StorageManifest parameters",
+        "their deterministic bounds and nominal arithmetic are tested"
+      ],
+      "unresolved": [
+        "capacity, max_charge_rate, max_discharge_rate, eta_charge and eta_discharge are raw Fraction fields without uncertainty, evidence refs or validity interval",
+        "current end-to-end storage uncertainty treats all storage manifest parameters as exact constants"
+      ],
+      "priority_note": "Material model-parameter gap. Not selected first because process coefficients are already evidence-bearing physical conversion parameters and their missing uncertainty propagates directly into every typed process contribution."
+    },
+    "process_coefficient_uncertainty": {
+      "status": "HOLD_UNREPRESENTED_PHYSICAL_COEFFICIENT_UNCERTAINTY",
+      "proven": [
+        "typed process successor checks coefficient evidence_ref",
+        "typed process successor checks coefficient_unit dimensionally",
+        "typed process output is a QualifiedValue and preserves activity metadata"
+      ],
+      "unresolved": [
+        "ProcessCoefficient.coefficient is a raw Fraction with no uncertainty representation",
+        "typed process successor scales only activity uncertainty and implicitly treats coefficient uncertainty as EXACT",
+        "with exact activity the process output uncertainty is ExactUncertainty even though the coefficient has no mechanism to express uncertainty"
+      ],
+      "executable_gap_probes": [
+        "ProcessCoefficient dataclass has no uncertainty field",
+        "an exact activity and evidence-bound coefficient produce ExactUncertainty output solely because coefficient uncertainty is unrepresentable"
+      ]
+    },
+    "process_coefficient_validity_interval": {
+      "status": "HOLD_NO_COEFFICIENT_VALIDITY_INTERVAL",
+      "proven": [
+        "ProcessCoefficient carries layer, node, coefficient, evidence_ref and coefficient_unit"
+      ],
+      "unresolved": [
+        "ProcessCoefficient has no valid_from or valid_to field",
+        "coefficient applicability cannot be fail-closed against the requested interval"
+      ],
+      "priority_note": "Must be closed before time-varying process coefficients are admitted, but current V1 process fixtures are static synthetic coefficients."
+    },
+    "process_manifest_version_enforcement": {
+      "status": "HOLD_UNENFORCED_TYPED_PROCESS_MANIFEST_VERSION",
+      "proven": [
+        "ProcessManifest carries manifest_version"
+      ],
+      "unresolved": [
+        "typed process successor does not compare process.manifest_version to an expected active manifest version",
+        "a V99 process manifest can currently be accepted against V1 target nodes when all other guards pass"
+      ],
+      "priority_note": "Important configuration-consistency gap, but coefficient uncertainty has a direct quantitative effect on the physical uncertainty envelope."
+    },
+    "audit_vector_provenance_typing": {
+      "status": "PASS_BOUNDED_SEPARATE_BUT_NOT_PROVENANCE_TYPED",
+      "proven": [
+        "L1-L4 remain separate bounded components",
+        "aggregate Equilibrium score remains prohibited",
+        "audit/evidence values are excluded from physical QualifiedValue paths"
+      ],
+      "unresolved": [
+        "audit_vector_l1_l4 returns a bare tuple without provenance, evidence refs, uncertainty, validity or typed audit object semantics"
+      ],
+      "priority_note": "Governance metadata gap, not selected first because audit vectors do not currently mutate physical state or physical uncertainty."
+    }
+  },
+  "next_single_unproven_core_capability": {
+    "id": "PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_V1",
+    "selected": true,
+    "rationale": [
+      "ProcessCoefficient is a direct physical conversion parameter already admitted into typed process arithmetic",
+      "its uncertainty is currently unrepresentable and therefore silently treated as exact",
+      "this can understate the end-to-end physical uncertainty envelope even though activity uncertainty is preserved",
+      "closing coefficient uncertainty extends the existing no-silent-uncertainty-loss invariant to process conversion parameters without broadening into validity or topology work"
+    ],
+    "successor_gate": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_V1",
+    "implementation_not_authorized_by_this_review": true
+  },
+  "fences": {
+    "provider_work": false,
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_POST_SELF_LOSS_CORE_REVIEW__NEXT_GAP_PROCESS_COEFFICIENT_UNCERTAINTY"
+}
