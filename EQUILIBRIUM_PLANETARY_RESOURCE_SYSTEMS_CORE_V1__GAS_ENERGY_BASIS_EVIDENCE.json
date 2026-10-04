@@ -1,0 +1,35 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_GAS_ENERGY_BASIS_EVIDENCE_V1",
+  "verified_at": "2026-10-01T23:51:25Z",
+  "measurement_source_count": 1,
+  "support_authority_count": 3,
+  "evidence": [
+    {
+      "authority": "ENTSOG",
+      "document": "ENTSOG Transparency Platform Data Publication Format",
+      "url": "https://transparency.entsog.eu/pdf/TRA158_ENTSOG%20TP%20Data%20Publication%20Format_v3%2017052016.pdf",
+      "section_claim": "Actual Physical Flow is published in kWh/d or kWh/h.",
+      "role": "SOURCE_UNIT_SEMANTICS"
+    },
+    {
+      "authority": "European Commission / EUR-Lex",
+      "document": "Commission Regulation (EU) 2015/703, Article 13",
+      "url": "https://eur-lex.europa.eu/eli/reg/2015/703/oj/eng",
+      "section_claim": "Gas energy is expressed in kWh based on gross calorific value (GCV).",
+      "role": "ENERGY_BASIS"
+    },
+    {
+      "authority": "ISO",
+      "document": "ISO 6976:2016 terminology",
+      "url": "https://www.iso.org/standard/55842.html",
+      "section_claim": "Gross calorific/heating value is synonymous with higher calorific/heating value for terminology mapping.",
+      "role": "GCV_TO_HHV_LABEL_EQUIVALENCE"
+    }
+  ],
+  "inference_limits": {
+    "infer_calorific_value_numeric": false,
+    "volume_to_energy_conversion": false,
+    "infer_lhv": false,
+    "measurement_uncertainty_assumed": false
+  }
+}
