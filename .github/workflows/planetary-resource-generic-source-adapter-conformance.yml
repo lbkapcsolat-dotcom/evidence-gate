@@ -1,0 +1,135 @@
+name: Planetary Resource Generic Adapter Conformance
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-generic-source-adapter-conformance-v1"
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_SCHEMA.json
+      - planetary_resource_generic_source_adapter_conformance_v1.py
+      - test_planetary_resource_generic_source_adapter_conformance_v1.py
+      - docs/planetary_resource_generic_source_adapter_conformance_v1.md
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONTRACT.json
+      - planetary_resource_generic_source_adapter_v1.py
+      - planetary_resource_generic_source_bindings_v1.py
+      - planetary_resource_generic_source_adapter_gate_v1.py
+      - test_planetary_resource_generic_source_adapter_v1.py
+      - planetary_resource_first_real_source_canary_v1.py
+      - planetary_resource_second_real_source_canary_v1.py
+      - planetary_resource_third_real_source_gas_canary_v1.py
+      - planetary_resource_empirical_admission_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-generic-source-adapter-conformance.yml
+  pull_request:
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_SCHEMA.json
+      - planetary_resource_generic_source_adapter_conformance_v1.py
+      - test_planetary_resource_generic_source_adapter_conformance_v1.py
+      - docs/planetary_resource_generic_source_adapter_conformance_v1.md
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONTRACT.json
+      - planetary_resource_generic_source_adapter_v1.py
+      - planetary_resource_generic_source_bindings_v1.py
+      - planetary_resource_generic_source_adapter_gate_v1.py
+      - test_planetary_resource_generic_source_adapter_v1.py
+      - planetary_resource_first_real_source_canary_v1.py
+      - planetary_resource_second_real_source_canary_v1.py
+      - planetary_resource_third_real_source_gas_canary_v1.py
+      - planetary_resource_empirical_admission_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-generic-source-adapter-conformance.yml
+
+permissions:
+  contents: read
+
+jobs:
+  generic-adapter-conformance:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Freeze tested generic interface
+        shell: bash
+        run: |
+          echo "607ded5e0a1b046004e776303ed0e4b7cb0e3a7cb8d16ecae5be667fa01d5a46  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONTRACT.json" | sha256sum -c -
+          echo "ab519af91bc0a1ebb7d0ab92784ca01c2cfda8c32fd72e9e1f60d50fabdd9d59  planetary_resource_generic_source_adapter_v1.py" | sha256sum -c -
+          echo "5a6b52a565b6e414256343b54ae597a9b5a3b012cf3ef1c73b03b062dd4fc9e2  planetary_resource_generic_source_bindings_v1.py" | sha256sum -c -
+          echo "bf050e65e4fc7d53bac04e0cfccffb359ea19cbdbac3c018a4a36380efc57f52  planetary_resource_generic_source_adapter_gate_v1.py" | sha256sum -c -
+
+      - name: Preserve frozen raw sources and empirical contract
+        shell: bash
+        run: |
+          echo "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29  sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json" | sha256sum -c -
+          echo "831ed964ef11527f0d8db767665289b59f5ef7b32fac02cd7667ad4b949a7242  sources/elexon/INDO_2026-10-01T22-00Z.json" | sha256sum -c -
+          echo "a7f15400b518ec51ac0f6a97696bd7cd261e64730d1a348dc1a2ad0be0956928  sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html" | sha256sum -c -
+          echo "592570140b8465cc4e9c38c84a9da5c1f6be73e9894bc1aad0a99e6ad023e9b3  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT.json" | sha256sum -c -
+          echo "3fc420678148149cdfca9fae03088b2f54e5987bf29278d1e94497534a4151c2  planetary_resource_empirical_admission_v1.py" | sha256sum -c -
+
+      - name: Compile conformance harness
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_empirical_admission_v1.py             planetary_resource_first_real_source_canary_v1.py             planetary_resource_second_real_source_canary_v1.py             planetary_resource_third_real_source_gas_canary_v1.py             planetary_resource_generic_source_adapter_v1.py             planetary_resource_generic_source_bindings_v1.py             planetary_resource_generic_source_adapter_gate_v1.py             planetary_resource_generic_source_adapter_conformance_v1.py             test_planetary_resource_generic_source_adapter_conformance_v1.py
+
+      - name: Preserve mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve empirical admission contract
+        run: python -m unittest -v test_planetary_resource_empirical_admission_v1.py
+
+      - name: Preserve water canary
+        run: python -m unittest -v test_planetary_resource_first_real_source_canary_v1.py
+
+      - name: Preserve electricity canary
+        run: python -m unittest -v test_planetary_resource_second_real_source_canary_v1.py
+
+      - name: Preserve gas canary
+        run: python -m unittest -v test_planetary_resource_third_real_source_gas_canary_v1.py
+
+      - name: Preserve generic adapter 3-of-3 equality
+        run: python -m unittest -v test_planetary_resource_generic_source_adapter_v1.py
+
+      - name: Run generic adapter conformance harness
+        run: python -m unittest -v test_planetary_resource_generic_source_adapter_conformance_v1.py
+
+      - name: Build deterministic conformance receipt
+        shell: bash
+        run: |
+          python planetary_resource_generic_source_adapter_conformance_v1.py | tee generic_adapter_conformance.log
+          grep -F '"three_of_three_conformant":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_RECEIPT.json
+          grep -F '"three_of_three_receipt_equal":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_RECEIPT.json
+          grep -F '"count":12,"pass":12' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_RECEIPT.json
+          grep -F '"provider_specific_domain_math":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_RECEIPT.json
+          grep -F '"new_source_ingest":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_GENERIC_SOURCE_ADAPTER_CONFORMANCE_3_OF_3__REJECT_12_OF_12"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_RECEIPT.json
+
+      - name: Preserve independent C++ baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash conformance evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_SCHEMA.json             planetary_resource_generic_source_adapter_conformance_v1.py             test_planetary_resource_generic_source_adapter_conformance_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_RECEIPT.json
+
+      - name: Upload conformance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-generic-adapter-conformance-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_RECEIPT.json
+            generic_adapter_conformance.log
+            cpp_baseline.log
+          if-no-files-found: error
