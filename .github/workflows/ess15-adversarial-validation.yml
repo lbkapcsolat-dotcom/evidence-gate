@@ -1,0 +1,45 @@
+name: ESS-15 Adversarial Validation
+
+on:
+  push:
+    branches:
+      - feature/ess15-adversarial-validation-harness-v1
+    paths:
+      - ess15_adversarial_validation.py
+      - test_ess15_adversarial_validation.py
+      - .github/workflows/ess15-adversarial-validation.yml
+  pull_request:
+    paths:
+      - ess15_adversarial_validation.py
+      - test_ess15_adversarial_validation.py
+      - .github/workflows/ess15-adversarial-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adversarial-validation:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, Node 24
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6, Node 24
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: |
+          python -m compileall -q \
+            ess15_adversarial_validation.py \
+            test_ess15_adversarial_validation.py
+      - name: Run ESS-15 adversarial fixtures
+        run: python -m unittest -v test_ess15_adversarial_validation.py
+      - name: SHA256
+        shell: bash
+        run: |
+          sha256sum \
+            ess15_adversarial_validation.py \
+            test_ess15_adversarial_validation.py
