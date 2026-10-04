@@ -1,0 +1,49 @@
+name: ESS Earth2Studio Native HGraph Cross-Parity V1
+on:
+  push:
+    branches: ["feature/ess-earth2studio-hgraph-cross-parity-v1"]
+    paths:
+      - "ess_earth2studio_eq64_reference_v1.py"
+      - "ess_earth2studio_hgraph_bind_v1.py"
+      - "run_ess_earth2studio_hgraph_cross_parity_v1.py"
+      - ".github/workflows/ess-earth2studio-hgraph-cross-parity-v1.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cross-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install pinned Earth2Studio source and HGraph native runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "earth2studio @ git+https://github.com/NVIDIA/earth2studio.git@1a6e3669db0b04c1b42253cf0e631ed1ee8817ea"
+          python -m pip download --only-binary=:all: --no-deps "hgraph==0.8.31" -d wheelhouse
+          wheel="$(find wheelhouse -maxdepth 1 -name 'hgraph-0.8.31-*.whl' -print -quit)"
+          test -n "$wheel"
+          echo "78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2  $wheel" | sha256sum -c -
+          python -m pip install "$wheel"
+      - name: Verify exact runtime pins
+        run: |
+          python - <<'PY'
+          import importlib.metadata, earth2studio, _hgraph
+          print("EARTH2STUDIO_VERSION="+getattr(earth2studio,"__version__","UNKNOWN"))
+          print("HGRAPH_VERSION="+importlib.metadata.version("hgraph"))
+          print("HGRAPH_NATIVE="+str(_hgraph.__file__))
+          assert importlib.metadata.version("hgraph")=="0.8.31"
+          assert _hgraph.__file__
+          PY
+      - name: Compile harness
+        run: python -m compileall -q ess_earth2studio_eq64_reference_v1.py ess_earth2studio_hgraph_bind_v1.py run_ess_earth2studio_hgraph_cross_parity_v1.py
+      - name: Execute real Earth2Studio Persistence plus native HGraph 15-case cross-parity
+        run: python run_ess_earth2studio_hgraph_cross_parity_v1.py
+      - name: Upload receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-earth2studio-hgraph-cross-parity-v1
+          path: ESS_EARTH2STUDIO_HGRAPH_CROSS_PARITY_RECEIPT_V1.json
+          if-no-files-found: error
