@@ -61,6 +61,23 @@ class NewsifyVerifiedSignalAdapterTests(unittest.TestCase):
         self.assertFalse(result["evidence_authority"])
         self.assertFalse(result["automatic_promotion"])
 
+    def test_irrelevant_signal_is_rejected_before_verification(self):
+        payload = json.loads(json.dumps(CANARY))
+        payload["relevance"]["status"] = "IRRELEVANT"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "canary.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, "verified_signal_adapter.py", str(path)],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        result = json.loads(proc.stdout)
+        self.assertEqual(result["adapter_status"], "REJECT_IRRELEVANT")
+        self.assertFalse(result["evidence_candidate"])
+
     def test_unverified_signal_holds(self):
         payload = json.loads(json.dumps(CANARY))
         payload["verification"]["status"] = "UNVERIFIED"
