@@ -47,6 +47,9 @@ def _admit(payload: Mapping[str, Any]) -> tuple[Admission, list[str]]:
     if eq.get("negative_evidence"):
         return Admission.REJECT, ["NEGATIVE_EVIDENCE"]
 
+    if payload["source"].get("source_class") == "SIGNAL_SOURCE":
+        return Admission.HOLD, ["SIGNAL_SOURCE_DISCOVERY_ONLY"]
+
     if not payload["provider_readback"].get("fresh"):
         reasons.append("PROVIDER_READBACK_NOT_FRESH")
     if not _source_readback_matches(payload):
