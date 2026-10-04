@@ -1,4 +1,6 @@
+import json
 import unittest
+from pathlib import Path
 
 from newsify_multi_signal_router import route_batch
 
@@ -135,6 +137,27 @@ class NewsifyMultiSignalRouterTests(unittest.TestCase):
         self.assertFalse(result["global_bind"])
         self.assertFalse(result["runtime_admission"])
         self.assertFalse(result["production_readiness"])
+
+    def test_live_hu_batch_routes_one_candidate_and_one_verification_queue(self):
+        payload = json.loads(
+            Path("examples/newsify_multi_signal_live_canary_20261004.json")
+            .read_text(encoding="utf-8")
+        )
+        result = route_batch(payload)
+        by_id = {row["signal_id"]: row for row in result["routes"]}
+        self.assertEqual(
+            by_id["ed0943e6-591a-4b6f-9d73-c9d1c6f43464"]["route_status"],
+            "EVIDENCE_CANDIDATE",
+        )
+        self.assertEqual(
+            by_id["d1f90dea-ea8d-4931-b46d-06ad0693907a"]["route_status"],
+            "VERIFY_REQUIRED",
+        )
+        self.assertEqual(
+            result["verification_queue"],
+            ["d1f90dea-ea8d-4931-b46d-06ad0693907a"],
+        )
+        self.assertEqual(result["counts"]["REJECT_IRRELEVANT"], 4)
 
 
 if __name__ == "__main__":
