@@ -91,6 +91,13 @@ class ESSEvidenceRuntimeTests(unittest.TestCase):
         receipt = build_receipt(payload)
         self.assertEqual(receipt["admission"], Admission.HOLD.value)
 
+    def test_signal_source_cannot_directly_enter_evidence(self):
+        payload = copy.deepcopy(BASE)
+        payload["source"]["source_class"] = "SIGNAL_SOURCE"
+        receipt = build_receipt(payload)
+        self.assertEqual(receipt["admission"], Admission.HOLD.value)
+        self.assertIn("SIGNAL_SOURCE_DISCOVERY_ONLY", receipt["reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()
