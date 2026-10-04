@@ -1,0 +1,168 @@
+name: API Bridge JMeter Current Scope
+
+on:
+  pull_request:
+    paths:
+      - "ci/api-bridge/**"
+      - ".github/workflows/api-bridge-jmeter-current-scope.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jmeter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reassemble exact preserved runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d ci/api-bridge/runtime.zip.b64 > ci/api-bridge/runtime.zip
+          test "$(wc -c < ci/api-bridge/runtime.zip)" -eq 27954
+          echo "1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df  ci/api-bridge/runtime.zip" | sha256sum -c -
+          unzip -t ci/api-bridge/runtime.zip
+          unzip -q ci/api-bridge/runtime.zip -d ci/api-bridge/runtime
+
+      - name: Install runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ="$(find ci/api-bridge/runtime -path '*/extracted_ESS_API_BRIDGE_V1_1/requirements.txt' -print -quit)"
+          test -n "$REQ"
+          python -m pip install --upgrade pip
+          python -m pip install -r "$REQ"
+
+      - name: Start exact ESS FastAPI runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPDIR="$(find ci/api-bridge/runtime -type d -name extracted_ESS_API_BRIDGE_V1_1 -print -quit)"
+          test -n "$APPDIR"
+          nohup python -m uvicorn ess_api_bridge_v1_1:app --app-dir "$APPDIR" --host 127.0.0.1 --port 8001 > ci/api-bridge/jmeter_uvicorn.log 2>&1 &
+          echo $! > ci/api-bridge/uvicorn.pid
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(60):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8001/health", timeout=1) as r:
+                      if r.status == 200:
+                          print(r.read().decode())
+                          raise SystemExit(0)
+              except Exception:
+                  time.sleep(1)
+          raise SystemExit("runtime health timeout")
+          PY
+
+      - name: Install Apache JMeter 5.6.3 with upstream SHA-512 verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp
+          curl -fsSLO https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.3.tgz
+          curl -fsSLO https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.3.tgz.sha512
+          sha512sum -c apache-jmeter-5.6.3.tgz.sha512
+          tar -xzf apache-jmeter-5.6.3.tgz
+          /tmp/apache-jmeter-5.6.3/bin/jmeter --version
+
+      - name: Execute bounded JMeter load smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/apache-jmeter-5.6.3/bin/jmeter -n             -t ci/api-bridge/current_scope_jmeter_5_6_3.jmx             -l ci/api-bridge/jmeter_results.jtl             -j ci/api-bridge/jmeter.log             -Jjmeter.save.saveservice.output_format=csv             -Jjmeter.save.saveservice.print_field_names=true
+
+      - name: Audit JMeter result and enforce precommitted bounded thresholds
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv, json, math, statistics
+          from pathlib import Path
+
+          rows=list(csv.DictReader(Path("ci/api-bridge/jmeter_results.jtl").open()))
+          assert len(rows)==240, f"expected 240 samples, got {len(rows)}"
+          failures=[r for r in rows if str(r.get("success","")).lower()!="true"]
+          codes=[str(r.get("responseCode","")) for r in rows]
+          assert not failures, f"{len(failures)} failed samples"
+          assert set(codes)=={"200"}, f"unexpected response codes: {sorted(set(codes))}"
+
+          elapsed=sorted(int(r["elapsed"]) for r in rows)
+          latency=sorted(int(r["Latency"]) for r in rows)
+          def pct(v,p):
+              k=max(0,min(len(v)-1,math.ceil((p/100)*len(v))-1))
+              return v[k]
+
+          start=min(int(r["timeStamp"]) for r in rows)
+          end=max(int(r["timeStamp"])+int(r["elapsed"]) for r in rows)
+          duration_ms=max(1,end-start)
+          throughput=len(rows)/(duration_ms/1000.0)
+          p50=pct(elapsed,50); p95=pct(elapsed,95); p99=pct(elapsed,99)
+          mean=statistics.fmean(elapsed)
+          max_ms=max(elapsed)
+
+          assert p95 <= 1000, f"bounded CI p95 threshold exceeded: {p95}ms"
+          assert p99 <= 1500, f"bounded CI p99 threshold exceeded: {p99}ms"
+
+          per_label={}
+          for label in sorted({r["label"] for r in rows}):
+              xs=[int(r["elapsed"]) for r in rows if r["label"]==label]
+              per_label[label]={
+                  "samples":len(xs),
+                  "mean_ms":round(statistics.fmean(xs),3),
+                  "p95_ms":pct(sorted(xs),95),
+                  "max_ms":max(xs),
+                  "failures":sum(1 for r in rows if r["label"]==label and str(r.get("success","")).lower()!="true")
+              }
+
+          receipt={
+              "verdict":"PASS_PROVIDER_NATIVE_JMETER_5_6_3_BOUNDED_CURRENT_SCOPE_LOAD_SMOKE",
+              "runtime_package_sha256":"1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df",
+              "jmeter_version":"5.6.3",
+              "threads":12,
+              "loops_per_thread":10,
+              "samplers_per_loop":2,
+              "samples_total":len(rows),
+              "samples_failed":len(failures),
+              "error_rate":0.0,
+              "http_codes":[200],
+              "duration_ms":duration_ms,
+              "throughput_rps":round(throughput,3),
+              "mean_elapsed_ms":round(mean,3),
+              "p50_elapsed_ms":p50,
+              "p95_elapsed_ms":p95,
+              "p99_elapsed_ms":p99,
+              "max_elapsed_ms":max_ms,
+              "mean_latency_ms":round(statistics.fmean(latency),3),
+              "thresholds":{"p95_ms_lte":1000,"p99_ms_lte":1500,"error_rate_eq":0.0},
+              "per_label":per_label,
+              "claim_ceiling":"BOUNDED_PROVIDER_NATIVE_CI_LOAD_SMOKE_ONLY__NOT_PRODUCTION_CAPACITY_CERTIFICATION",
+              "runtime_admission":False,
+              "production_promotion":False,
+              "security_certification":False,
+              "global_bind":False
+          }
+          Path("ci/api-bridge/jmeter_audit_receipt.json").write_text(json.dumps(receipt,indent=2)+"\n")
+          print(json.dumps(receipt))
+          PY
+
+      - name: Hash JMeter evidence
+        shell: bash
+        run: |
+          sha256sum             ci/api-bridge/current_scope_jmeter_5_6_3.jmx             ci/api-bridge/jmeter_results.jtl             ci/api-bridge/jmeter.log             ci/api-bridge/jmeter_audit_receipt.json             ci/api-bridge/jmeter_uvicorn.log             > ci/api-bridge/JMETER_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-bridge-current-scope-jmeter-5.6.3
+          path: |
+            ci/api-bridge/current_scope_jmeter_5_6_3.jmx
+            ci/api-bridge/jmeter_results.jtl
+            ci/api-bridge/jmeter.log
+            ci/api-bridge/jmeter_audit_receipt.json
+            ci/api-bridge/JMETER_SHA256SUMS.txt
+            ci/api-bridge/jmeter_uvicorn.log

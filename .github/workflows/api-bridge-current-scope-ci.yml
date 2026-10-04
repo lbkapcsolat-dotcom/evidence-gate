@@ -1,0 +1,122 @@
+name: API Bridge Current Scope CI Replay
+
+on:
+  pull_request:
+    paths:
+      - "ci/api-bridge/**"
+      - ".github/workflows/api-bridge-current-scope-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reassemble and verify exact preserved runtime package
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d ci/api-bridge/runtime.zip.b64 > ci/api-bridge/runtime.zip
+          test "$(wc -c < ci/api-bridge/runtime.zip)" -eq 27954
+          echo "1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df  ci/api-bridge/runtime.zip" | sha256sum -c -
+          unzip -t ci/api-bridge/runtime.zip
+          unzip -q ci/api-bridge/runtime.zip -d ci/api-bridge/runtime
+
+      - name: Install runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ="$(find ci/api-bridge/runtime -path '*/extracted_ESS_API_BRIDGE_V1_1/requirements.txt' -print -quit)"
+          test -n "$REQ"
+          python -m pip install --upgrade pip
+          python -m pip install -r "$REQ"
+
+      - name: Start exact ESS FastAPI runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPDIR="$(find ci/api-bridge/runtime -type d -name extracted_ESS_API_BRIDGE_V1_1 -print -quit)"
+          test -n "$APPDIR"
+          nohup python -m uvicorn ess_api_bridge_v1_1:app --app-dir "$APPDIR" --host 127.0.0.1 --port 8001 > ci/api-bridge/uvicorn.log 2>&1 &
+          echo $! > ci/api-bridge/uvicorn.pid
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(60):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8001/health", timeout=1) as r:
+                      if r.status == 200:
+                          print(r.read().decode())
+                          raise SystemExit(0)
+              except Exception:
+                  time.sleep(1)
+          raise SystemExit("runtime health timeout")
+          PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run pinned Newman against exact runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes newman@6.2.1 run ci/api-bridge/collection.json             --env-var base_url=http://127.0.0.1:8001             -r cli,json             --reporter-json-export ci/api-bridge/newman_run_ci.json
+
+      - name: Verify CI replay receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("ci/api-bridge/newman_run_ci.json")
+          data=json.loads(p.read_text())
+          stats=data["run"]["stats"]
+          assert stats["requests"]["total"] == 2 and stats["requests"]["failed"] == 0, stats["requests"]
+          assert stats["assertions"]["total"] == 2 and stats["assertions"]["failed"] == 0, stats["assertions"]
+          assert data["run"]["failures"] == [], data["run"]["failures"]
+          statuses=[]
+          codes=[]
+          for e in data["run"]["executions"]:
+              codes.append(e["response"]["code"])
+              raw=bytes(e["response"]["stream"]["data"]).decode("utf-8")
+              statuses.append(json.loads(raw)["status"])
+          assert codes == [200,200], codes
+          assert statuses == ["SAFE","SAFE_NO_INTERVENTION_REQUIRED"], statuses
+          out={
+            "verdict":"PASS_PROVIDER_NATIVE_GITHUB_ACTIONS_CURRENT_SCOPE_CI_REPLAY",
+            "runtime_package_sha256":"1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df",
+            "requests":"2_TOTAL__0_FAILED",
+            "assertions":"2_TOTAL__0_FAILED",
+            "http_codes":codes,
+            "ess_statuses":statuses,
+            "run_failures":0,
+            "runtime_admission":False,
+            "production_promotion":False,
+            "global_bind":False
+          }
+          Path("ci/api-bridge/ci_replay_receipt.json").write_text(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out))
+          PY
+
+      - name: Hash replay artifacts
+        shell: bash
+        run: |
+          sha256sum             ci/api-bridge/runtime.zip             ci/api-bridge/collection.json             ci/api-bridge/newman_run_ci.json             ci/api-bridge/ci_replay_receipt.json             > ci/api-bridge/CI_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-bridge-current-scope-ci-replay
+          path: |
+            ci/api-bridge/newman_run_ci.json
+            ci/api-bridge/ci_replay_receipt.json
+            ci/api-bridge/CI_SHA256SUMS.txt
+            ci/api-bridge/uvicorn.log
