@@ -1,0 +1,122 @@
+name: Planetary Resource Independent C++ Triple-Parity
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-cpp-triple-parity-v1"
+    paths:
+      - docs/planetary_resource_cpp_triple_parity_v1.md
+      - planetary_resource_cpp_kernel_v1.cpp
+      - run_planetary_resource_cpp_triple_parity_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_hgraph_bind_v1.py
+      - test_planetary_resource_hgraph_parity_v1.py
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__40_OF_40_RECEIPT.json
+      - .github/workflows/planetary-resource-cpp-triple-parity.yml
+  pull_request:
+    paths:
+      - docs/planetary_resource_cpp_triple_parity_v1.md
+      - planetary_resource_cpp_kernel_v1.cpp
+      - run_planetary_resource_cpp_triple_parity_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_hgraph_bind_v1.py
+      - test_planetary_resource_hgraph_parity_v1.py
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__40_OF_40_RECEIPT.json
+      - .github/workflows/planetary-resource-cpp-triple-parity.yml
+
+permissions:
+  contents: read
+
+jobs:
+  triple-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Etap 1 - verify frozen predecessor SHA256 pins
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "bf8240dc3c1e505dbefc9b46be1d767dfbc6bfe0f4eb82a5e9970201755cb483  test_equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "6ddd143970f84d2a154cc637e1d3b862b67b957684be2b4b837b67e193808f98  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__40_OF_40_RECEIPT.json" | sha256sum -c -
+
+      - name: Etap 2 - compile independent C++23 domain kernel warning-clean
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" --version
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+
+      - name: Etap 3 - run independent C++ V01-V40
+        shell: bash
+        run: |
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_validation.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_validation.log
+          test "$(grep -c '^{"id":"V' cpp_validation.log)" -eq 40
+
+      - name: Acquire pinned native HGraph 0.8.31 wheel
+        shell: bash
+        run: |
+          python -m pip download --only-binary=:all: --no-deps "hgraph==0.8.31" -d wheelhouse
+          wheel="$(find wheelhouse -maxdepth 1 -name 'hgraph-0.8.31-*.whl' -print -quit)"
+          test -n "$wheel"
+          echo "78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2  $wheel" | sha256sum -c -
+          python -m pip install "$wheel"
+
+      - name: Prove native HGraph runtime identity
+        run: |
+          python - <<'PY'
+          import importlib.metadata
+          import _hgraph
+          assert importlib.metadata.version("hgraph") == "0.8.31"
+          assert _hgraph.__file__
+          print("HGRAPH_VERSION=0.8.31")
+          print("NATIVE_HGRAPH_MODULE=" + _hgraph.__file__)
+          print("UPSTREAM_RELEASE_COMMIT=1bb4b7f21ddfb6c69c8bae74c523980605ae93f6")
+          print("PINNED_LINUX_WHEEL_SHA256=78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2")
+          PY
+
+      - name: Compile Python parity modules
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             test_equilibrium_planetary_resource_core_v1.py             planetary_resource_hgraph_bind_v1.py             test_planetary_resource_hgraph_parity_v1.py             run_planetary_resource_cpp_triple_parity_v1.py
+
+      - name: Etap 4A - frozen Python reference 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Etap 4B - native HGraph binding 40 of 40
+        run: python -m unittest -v test_planetary_resource_hgraph_parity_v1.py
+
+      - name: Etap 4C - independent C++ / Python / native-HGraph triple semantic parity
+        run: python run_planetary_resource_cpp_triple_parity_v1.py
+
+      - name: Etap 5 - verify deterministic triple receipt
+        shell: bash
+        run: |
+          sha256sum             planetary_resource_cpp_kernel_v1.cpp             run_planetary_resource_cpp_triple_parity_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_TRIPLE_PARITY_RECEIPT.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_TRIPLE_PARITY_RECEIPT.json")
+          r=json.loads(p.read_text())
+          assert r["lane_results"]["python_reference"] == {"count":40,"pass":40}
+          assert r["lane_results"]["native_hgraph"] == {"count":40,"pass":40}
+          assert r["lane_results"]["independent_cpp"] == {"count":40,"pass":40}
+          assert r["lane_results"]["triple_semantic_parity"] == {"count":40,"equal":40}
+          assert r["verdict"] == "PASS_BOUNDED_INDEPENDENT_CPP_40_OF_40_X3_TRIPLE_PARITY"
+          print("TRIPLE_40_OF_40_X3=PASS")
+          PY
+
+      - name: Upload triple-parity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-cpp-triple-parity-evidence
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CPP_TRIPLE_PARITY_RECEIPT.json
+            cpp_validation.log
+          if-no-files-found: error
