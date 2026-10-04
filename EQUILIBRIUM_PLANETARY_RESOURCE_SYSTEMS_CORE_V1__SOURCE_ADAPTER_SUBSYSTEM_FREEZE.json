@@ -1,0 +1,75 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_SOURCE_ADAPTER_SUBSYSTEM_FREEZE_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_V1",
+  "subsystem_status": "FROZEN_BOUNDED_RETURN_TO_CORE",
+  "tested_interface_pins": {
+    "generic_adapter_contract_sha256": "607ded5e0a1b046004e776303ed0e4b7cb0e3a7cb8d16ecae5be667fa01d5a46",
+    "generic_adapter_implementation_sha256": "ab519af91bc0a1ebb7d0ab92784ca01c2cfda8c32fd72e9e1f60d50fabdd9d59",
+    "generic_bindings_sha256": "5a6b52a565b6e414256343b54ae597a9b5a3b012cf3ef1c73b03b062dd4fc9e2",
+    "generic_gate_sha256": "bf050e65e4fc7d53bac04e0cfccffb359ea19cbdbac3c018a4a36380efc57f52",
+    "generic_adapter_receipt_sha256": "4eb59ab856dbe38afc3be191a4900b0290aba59d5436951f308f643d351faec7",
+    "conformance_schema_sha256": "484e53c94e9340b2ac9893ca03858c8a0b54c80fe2821f41adf1e5dd1d546bb4",
+    "conformance_harness_sha256": "6602b3b0fa057fcc5d226659354a49b2e7945759130b8045c24d56074378c175",
+    "conformance_tests_sha256": "c0815db76aa47ba7535a3f34024e88845fb4660ba84481a860e8af408de3e23a",
+    "conformance_receipt_sha256": "a3591ee5da054c8cb7d1a83754fe73f6264f8b82eefe6360a3690b43a9166a9a"
+  },
+  "proven_bindings": {
+    "water": {
+      "provider": "Environment Agency",
+      "raw_sha256": "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29",
+      "canary_receipt_sha256": "697857c063c2cd6d7514e2b9dd79c46d7fe59a5efe0588579e9c4fd306b12c93",
+      "variable_id": "freshwater.internal_flow_rate",
+      "status": "PROVEN_BINDING"
+    },
+    "electricity": {
+      "provider": "Elexon Insights Solution",
+      "raw_sha256": "831ed964ef11527f0d8db767665289b59f5ef7b32fac02cd7667ad4b949a7242",
+      "canary_receipt_sha256": "9a996daea1a702e1654264a13cc72d0dcba760f8945528b24ce854c2392bca29",
+      "variable_id": "electricity.consumption_rate",
+      "status": "PROVEN_BINDING"
+    },
+    "natural_gas": {
+      "provider": "ENTSOG Transparency Platform",
+      "raw_sha256": "a7f15400b518ec51ac0f6a97696bd7cd261e64730d1a348dc1a2ad0be0956928",
+      "canary_receipt_sha256": "f0629b99245af4dacea863f91b71faf5938b10ed6e1c7069f4c1f829b5a1c406",
+      "variable_id": "natural_gas.import_rate",
+      "status": "PROVEN_BINDING"
+    }
+  },
+  "future_provider_path": [
+    "BINDING",
+    "CONFORMANCE",
+    "EMPIRICAL_ADMISSION"
+  ],
+  "future_provider_rules": {
+    "no_direct_empirical_admission_without_conformance": true,
+    "no_provider_specific_domain_math": true,
+    "no_provider_specific_physics_engine": true,
+    "no_silent_unit_or_basis_conversion": true,
+    "no_unpinned_raw_source_bytes": true
+  },
+  "crude_oil": {
+    "canary_status": "DEFERRED",
+    "resume_condition": [
+      "FIRST_REAL_CRUDE_OIL_SOURCE_ADMISSION",
+      "FOUR_LAYER_REAL_WORLD_COVERAGE_CLAIM"
+    ],
+    "provider_implementation_now": false
+  },
+  "return_to_core": {
+    "provider_subsystem_work_now": "STOP",
+    "next_work_domain": "PLANETARY_RESOURCE_CORE",
+    "adapter_changes_require_new_explicit_gate": true
+  },
+  "fences": {
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_SOURCE_ADAPTER_SUBSYSTEM_FROZEN__RETURN_TO_CORE"
+}
