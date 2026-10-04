@@ -1,0 +1,126 @@
+name: Planetary Resource Third Real Source Gas Canary
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-third-real-source-gas-canary-v1"
+    paths:
+      - sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_GAS_CANARY_MANIFEST.json
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GAS_ENERGY_BASIS_EVIDENCE.json
+      - planetary_resource_third_real_source_gas_canary_v1.py
+      - test_planetary_resource_third_real_source_gas_canary_v1.py
+      - planetary_resource_first_real_source_canary_v1.py
+      - planetary_resource_second_real_source_canary_v1.py
+      - planetary_resource_empirical_admission_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-third-real-source-gas-canary.yml
+  pull_request:
+    paths:
+      - sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_GAS_CANARY_MANIFEST.json
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GAS_ENERGY_BASIS_EVIDENCE.json
+      - planetary_resource_third_real_source_gas_canary_v1.py
+      - test_planetary_resource_third_real_source_gas_canary_v1.py
+      - planetary_resource_first_real_source_canary_v1.py
+      - planetary_resource_second_real_source_canary_v1.py
+      - planetary_resource_empirical_admission_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-third-real-source-gas-canary.yml
+
+permissions:
+  contents: read
+
+jobs:
+  third-real-source-gas-canary:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify third raw source bytes
+        shell: bash
+        run: |
+          echo "a7f15400b518ec51ac0f6a97696bd7cd261e64730d1a348dc1a2ad0be0956928  sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html" | sha256sum -c -
+          test "$(wc -c < sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html)" -eq 931
+
+      - name: Preserve water, electricity, and empirical admission contract
+        shell: bash
+        run: |
+          echo "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29  sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json" | sha256sum -c -
+          echo "831ed964ef11527f0d8db767665289b59f5ef7b32fac02cd7667ad4b949a7242  sources/elexon/INDO_2026-10-01T22-00Z.json" | sha256sum -c -
+          echo "592570140b8465cc4e9c38c84a9da5c1f6be73e9894bc1aad0a99e6ad023e9b3  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT.json" | sha256sum -c -
+          echo "3fc420678148149cdfca9fae03088b2f54e5987bf29278d1e94497534a4151c2  planetary_resource_empirical_admission_v1.py" | sha256sum -c -
+
+      - name: Compile admission and gas canary contracts
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_empirical_admission_v1.py             planetary_resource_first_real_source_canary_v1.py             planetary_resource_second_real_source_canary_v1.py             planetary_resource_third_real_source_gas_canary_v1.py             test_planetary_resource_third_real_source_gas_canary_v1.py
+
+      - name: Preserve mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve empirical admission contract
+        run: python -m unittest -v test_planetary_resource_empirical_admission_v1.py
+
+      - name: Preserve first water canary
+        shell: bash
+        run: |
+          python -m unittest -v test_planetary_resource_first_real_source_canary_v1.py
+          python planetary_resource_first_real_source_canary_v1.py > first_canary_receipt.log
+          grep -F "FIRST_REAL_SOURCE_CANARY_RECEIPT_SHA256=697857c063c2cd6d7514e2b9dd79c46d7fe59a5efe0588579e9c4fd306b12c93" first_canary_receipt.log
+
+      - name: Preserve second electricity canary
+        shell: bash
+        run: |
+          python -m unittest -v test_planetary_resource_second_real_source_canary_v1.py
+          python planetary_resource_second_real_source_canary_v1.py > second_canary_receipt.log
+          grep -F "SECOND_REAL_SOURCE_CANARY_RECEIPT_SHA256=9a996daea1a702e1654264a13cc72d0dcba760f8945528b24ce854c2392bca29" second_canary_receipt.log
+
+      - name: Run third natural-gas canary
+        run: python -m unittest -v test_planetary_resource_third_real_source_gas_canary_v1.py
+
+      - name: Build deterministic third-source receipt
+        shell: bash
+        run: |
+          python planetary_resource_third_real_source_gas_canary_v1.py | tee third_real_source_gas_canary.log
+          grep -F '"decision":"ADMIT_OBSERVED"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"variable_id":"natural_gas.import_rate"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"source_energy_basis":"GCV"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"core_basis_label":"HHV"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"volume_to_energy_conversion_performed":false' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_THIRD_REAL_SOURCE_NATURAL_GAS_ADMIT_OBSERVED_GCV_HHV"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+
+      - name: Preserve independent C++ standalone baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash third canary evidence
+        shell: bash
+        run: |
+          sha256sum             sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_GAS_CANARY_MANIFEST.json             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GAS_ENERGY_BASIS_EVIDENCE.json             planetary_resource_third_real_source_gas_canary_v1.py             test_planetary_resource_third_real_source_gas_canary_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+
+      - name: Upload third real-source gas canary evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-third-real-source-gas-canary-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THIRD_REAL_SOURCE_NATURAL_GAS_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+            third_real_source_gas_canary.log
+            first_canary_receipt.log
+            second_canary_receipt.log
+            cpp_baseline.log
+          if-no-files-found: error

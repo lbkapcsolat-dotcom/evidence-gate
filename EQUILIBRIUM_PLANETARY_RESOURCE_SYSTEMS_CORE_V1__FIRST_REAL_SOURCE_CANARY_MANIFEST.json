@@ -1,0 +1,82 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_FIRST_REAL_SOURCE_CANARY_MANIFEST_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_V1",
+  "counts": {
+    "sources": 1,
+    "variables": 1,
+    "nodes": 1,
+    "intervals": 1,
+    "records": 1
+  },
+  "source": {
+    "source_id": "EA_FLOOD_MONITORING_API_1100TH_FLOW_MEAN_15MIN",
+    "provider": "Environment Agency",
+    "dataset_id": "Flood Monitoring Real Time API",
+    "dataset_version": "0.9",
+    "source_url": "https://environment.data.gov.uk/flood-monitoring/id/measures/1100TH-flow--Mean-15_min-m3_s/readings?_view=full&_sorted&_limit=1",
+    "scrape_id": "01a0f99c-b1df-7459-be49-a3a17cf2b228",
+    "retrieved_at": "2026-10-01T22:35:53Z",
+    "raw_file": "sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json",
+    "raw_sha256": "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29",
+    "citation": "Environment Agency Flood Monitoring Real Time API, station 1100TH Farmoor, flow mean 15 min",
+    "license_or_terms_ref": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "access_class": "PUBLIC"
+  },
+  "record": {
+    "record_locator": "http://environment.data.gov.uk/flood-monitoring/data/readings/1100TH-flow--Mean-15_min-m3_s/2026-10-01T21-30-00Z",
+    "measure_uri": "http://environment.data.gov.uk/flood-monitoring/id/measures/1100TH-flow--Mean-15_min-m3_s",
+    "station_reference": "1100TH",
+    "station_label": "Farmoor",
+    "observed_at": "2026-10-01T21:30:00Z",
+    "parameter": "flow",
+    "period_seconds": 900,
+    "value_type": "mean",
+    "value": "0.832",
+    "source_unit": "m3/s"
+  },
+  "admission": {
+    "variable_id": "freshwater.internal_flow_rate",
+    "source_layer": "FRESHWATER",
+    "source_quantity_kind": "RATE",
+    "source_status": "OBSERVED",
+    "source_gas_basis": "",
+    "target_node_id": "EA_1100TH_FARMOOR_SOURCE_LOCAL_FLOW_ACCOUNTING_UNIT",
+    "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+    "spatial_method": "NODE_LOOKUP",
+    "spatial_method_ref": "EA_1100TH_EXACT_STATION_REFERENCE_TO_SOURCE_LOCAL_ACCOUNTING_UNIT_V1",
+    "spatial_claim_ceiling": "SOURCE_LOCAL_GAUGE_ACCOUNTING_UNIT_ONLY__NOT_THAMES_BASIN_AGGREGATE",
+    "interval_id": "EA_1100TH_2026-10-01T21:30:00Z_MEAN_900S",
+    "temporal_method": "EXACT_INTERVAL",
+    "temporal_method_ref": "EA_SOURCE_PERIOD_900S_VALUE_TYPE_MEAN",
+    "timestamp_semantics": "SOURCE_DATETIME_WITH_PERIOD_900_VALUE_TYPE_MEAN__NO_INFERRED_START_BOUNDARY",
+    "unit_transform": {
+      "source_unit": "m3/s",
+      "canonical_unit": "m3/s",
+      "factor_n": 1,
+      "factor_d": 1
+    },
+    "as_of": "2026-10-01T22:35:53Z",
+    "max_age_seconds": 7200,
+    "expected_freshness_age_seconds": 3953,
+    "uncertainty": {
+      "kind": "UNKNOWN",
+      "method_ref": ""
+    },
+    "missingness": {
+      "value_present": true,
+      "reason": "",
+      "zero_is_missing": false
+    },
+    "sign_semantics_declared": true
+  },
+  "fences": {
+    "multi_source_fusion": false,
+    "global_dataset_bind": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  }
+}
