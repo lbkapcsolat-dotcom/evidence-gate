@@ -1,0 +1,22 @@
+{
+  "schema_version": "EQUILIBRIUM_GITHUB_HF_PUBLIC_BRIDGE_CONTRACT_V1",
+  "mode": "PUBLIC_SAFE__BOUNDED_EVIDENCE_MIRROR__FAIL_CLOSED",
+  "github_role": "SOURCE_CI_CONTROL_PLANE",
+  "hugging_face_role": "PRIVATE_ARTIFACT_EVIDENCE_MODEL_MIRROR",
+  "sync_direction": "GITHUB_TO_HF_MIRROR_FIRST",
+  "bidirectional_auto_sync": false,
+  "authority_transfer": false,
+  "required_integrity": [
+    "SOURCE_COMMIT_SHA",
+    "PAYLOAD_SHA256",
+    "MANIFEST_SHA256",
+    "SOURCE_DESTINATION_IDENTITY",
+    "TIMESTAMP",
+    "POST_WRITE_READBACK"
+  ],
+  "hf_write_state": "HOLD_UNTIL_WRITE_SCOPE_AND_REMOTE_READBACK",
+  "global_bind": false,
+  "runtime_admission": false,
+  "production_readiness": false,
+  "deployment": false
+}
