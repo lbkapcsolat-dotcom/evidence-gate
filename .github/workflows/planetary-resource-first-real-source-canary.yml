@@ -1,0 +1,105 @@
+name: Planetary Resource First Real Source Canary
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-first-real-source-canary-v1"
+    paths:
+      - sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_CANARY_MANIFEST.json
+      - planetary_resource_first_real_source_canary_v1.py
+      - test_planetary_resource_first_real_source_canary_v1.py
+      - planetary_resource_empirical_admission_v1.py
+      - test_planetary_resource_empirical_admission_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-first-real-source-canary.yml
+  pull_request:
+    paths:
+      - sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_CANARY_MANIFEST.json
+      - planetary_resource_first_real_source_canary_v1.py
+      - test_planetary_resource_first_real_source_canary_v1.py
+      - planetary_resource_empirical_admission_v1.py
+      - test_planetary_resource_empirical_admission_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-first-real-source-canary.yml
+
+permissions:
+  contents: read
+
+jobs:
+  first-real-source-canary:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify exact raw source bytes
+        shell: bash
+        run: |
+          echo "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29  sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json" | sha256sum -c -
+          test "$(wc -c < sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json)" -eq 1688
+
+      - name: Verify empirical admission predecessor bytes
+        shell: bash
+        run: |
+          echo "592570140b8465cc4e9c38c84a9da5c1f6be73e9894bc1aad0a99e6ad023e9b3  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT.json" | sha256sum -c -
+          echo "3fc420678148149cdfca9fae03088b2f54e5987bf29278d1e94497534a4151c2  planetary_resource_empirical_admission_v1.py" | sha256sum -c -
+
+      - name: Compile canary and admission contract
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_empirical_admission_v1.py             planetary_resource_first_real_source_canary_v1.py             test_planetary_resource_first_real_source_canary_v1.py
+
+      - name: Preserve mathematical core 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve empirical admission contract
+        run: python -m unittest -v test_planetary_resource_empirical_admission_v1.py
+
+      - name: Run first real-source canary tests
+        run: python -m unittest -v test_planetary_resource_first_real_source_canary_v1.py
+
+      - name: Build deterministic first-source receipt
+        shell: bash
+        run: |
+          python planetary_resource_first_real_source_canary_v1.py | tee first_real_source_canary.log
+          grep -F '"decision":"ADMIT_OBSERVED"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"raw_sha256":"c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"fresh_at_admission":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"uncertainty_kind":"UNKNOWN"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMIT_OBSERVED"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+
+      - name: Preserve independent C++ standalone baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash canary evidence
+        shell: bash
+        run: |
+          sha256sum             sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_CANARY_MANIFEST.json             planetary_resource_first_real_source_canary_v1.py             test_planetary_resource_first_real_source_canary_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+
+      - name: Upload first real-source canary evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-first-real-source-canary-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__FIRST_REAL_SOURCE_SINGLE_VARIABLE_ADMISSION_CANARY_RECEIPT.json
+            first_real_source_canary.log
+            cpp_baseline.log
+          if-no-files-found: error
