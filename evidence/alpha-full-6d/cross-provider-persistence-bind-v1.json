@@ -1,0 +1,37 @@
+{
+  "schema": "A3724_BOOT2347_CROSS_PROVIDER_PERSISTENCE_BIND_PUBLIC_V1",
+  "status": "PASS_BOUNDED_PUBLIC_SAFE_MIRROR",
+  "canonical_authority": "GOOGLE_DRIVE_PRIVATE_SSOT",
+  "source_binding": "PRIVATE_READ_ONLY_SUPPORT_DELTA_VERIFIED_OUT_OF_BAND",
+  "public_payload_digest_sha256": "9f1a241b208aeb320b1ae83921087f259ea17c18f1b11e64c69f2ba2c1ee04d6",
+  "github": {
+    "repository": "lbkapcsolat-dotcom/evidence-gate",
+    "branch": "evidence/cross-provider-persistence-bind-v1-20261005",
+    "role": "NON_AUTHORITY_EVIDENCE_MIRROR",
+    "merge_performed": false,
+    "main_mutated": false
+  },
+  "hugging_face": {
+    "role": "OPTIONAL_ARTIFACT_MIRROR",
+    "probe_status": "HOLD_WRITE_SCOPE",
+    "write_performed": false,
+    "reason": "CURRENT_OAUTH_SCOPES_DO_NOT_INCLUDE_REPOSITORY_WRITE"
+  },
+  "public_private_boundary": {
+    "private_drive_ids_published": false,
+    "private_drive_hashes_published": false,
+    "master_boot_dump_published": false,
+    "raw_private_receipts_published": false,
+    "provider_native_execution_ids_published": false
+  },
+  "guardrails": {
+    "pointer_promotion": false,
+    "global_bind": false,
+    "runtime_admission": false,
+    "production_readiness": false,
+    "certification": false,
+    "live_actuation": false
+  },
+  "claim_ceiling": "CROSS_PROVIDER_PERSISTENCE_MIRROR_ONLY__NO_AUTHORITY_PROMOTION__NO_PRODUCTION_CLAIM",
+  "created_date": "2026-10-05"
+}
