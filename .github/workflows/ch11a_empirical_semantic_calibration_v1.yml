@@ -1,0 +1,73 @@
+# verification-trigger: ch11a-pr61-synchronize
+name: CH11A empirical semantic calibration
+
+on:
+  push:
+    branches:
+      - feature/ch11a-empirical-semantic-calibration-v1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ch11a-calibration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify frozen real-source bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29  sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json" | sha256sum -c -
+          echo "831ed964ef11527f0d8db767665289b59f5ef7b32fac02cd7667ad4b949a7242  sources/elexon/INDO_2026-10-01T22-00Z.json" | sha256sum -c -
+          echo "a7f15400b518ec51ac0f6a97696bd7cd261e64730d1a348dc1a2ad0be0956928  sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html" | sha256sum -c -
+
+      - name: Compile calibration and SUT verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q             run_ch11a_empirical_semantic_calibration_v1.py             planetary_resource_integration_readiness_freeze_v1.py             planetary_resource_empirical_admission_v1.py             planetary_resource_generic_source_adapter_v1.py             planetary_resource_generic_source_adapter_conformance_v1.py
+
+      - name: Preserve empirical admission matrix
+        run: python -m unittest -v test_planetary_resource_empirical_admission_v1.py
+
+      - name: Preserve generic adapter conformance
+        run: python -m unittest -v test_planetary_resource_generic_source_adapter_conformance_v1.py
+
+      - name: Execute CH11A calibration pass 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11a_empirical_semantic_calibration_v1.py | tee ch11a_pass1.log
+          grep -F '"verdict":"PASS_CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_36_OF_36__ZERO_FALSE_PASS__FROZEN_CORPUS_ONLY"' CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json
+          grep -F '"false_pass_count":0' CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json
+          cp CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json CH11A__RECEIPT_PASS1.json
+
+      - name: Execute CH11A calibration pass 2 and require deterministic equality
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11a_empirical_semantic_calibration_v1.py | tee ch11a_pass2.log
+          cmp -s CH11A__RECEIPT_PASS1.json CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json
+          sha256sum             CH11A__SEMANTIC_CALIBRATION_CORPUS_V1.json             run_ch11a_empirical_semantic_calibration_v1.py             CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json             > CH11A_SHA256SUMS.txt
+          cat CH11A_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ch11a-empirical-semantic-calibration-evidence
+          path: |
+            CH11A__SEMANTIC_CALIBRATION_CORPUS_V1.json
+            CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json
+            CH11A_SHA256SUMS.txt
+            ch11a_pass1.log
+            ch11a_pass2.log
+          if-no-files-found: error

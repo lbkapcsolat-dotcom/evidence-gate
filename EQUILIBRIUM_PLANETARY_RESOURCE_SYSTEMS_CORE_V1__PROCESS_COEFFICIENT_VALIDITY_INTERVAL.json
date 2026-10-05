@@ -1,0 +1,65 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_PROCESS_COEFFICIENT_VALIDITY_INTERVAL_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL_V1",
+  "predecessor_pins": {
+    "python_core_sha256": "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae",
+    "cpp_kernel_sha256": "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f",
+    "coefficient_uncertainty_contract_sha256": "612537b73e44a8b607710321df1a71dfc344e2b38fd4688b7529ae41a4a05f82",
+    "coefficient_uncertainty_module_sha256": "29e3f2cd7f163bf850336cc37b67dae36b847d912c13c77cee7fdd7b467b5ebc",
+    "coefficient_uncertainty_gate_sha256": "8231d54b2962fa07ad0fcd09636f2543719b4a523eb049533876b9f24eec1064",
+    "coefficient_uncertainty_receipt_sha256": "0efbf4c2d7b1e653e99ac4193d0525cd14228078b0f6f741d4453160807e3aef"
+  },
+  "implementation_mode": "ADDITIVE_SUCCESSOR_COEFFICIENT_VALIDITY_OVER_PINNED_COEFFICIENT_UNCERTAINTY",
+  "interval_semantics": {
+    "model": "HALF_OPEN_UTC_INTERVALS",
+    "requested": "[requested_start, requested_end)",
+    "coefficient_validity": "[valid_from, valid_to)",
+    "containment_rule": "valid_from <= requested_start AND valid_to >= requested_end",
+    "timezone_requirement": "all temporal bounds must be timezone-aware ISO-8601 timestamps"
+  },
+  "coefficient_extension": {
+    "explicit_type": "ValidityBoundedProcessCoefficient",
+    "added_fields": [
+      "valid_from",
+      "valid_to"
+    ],
+    "validity_required_by_default": true
+  },
+  "rejection_requirements": [
+    "HOLD_PROCESS_COEFFICIENT_EXPIRED",
+    "HOLD_PROCESS_COEFFICIENT_NOT_YET_VALID",
+    "HOLD_PROCESS_COEFFICIENT_PARTIAL_INTERVAL_OVERLAP",
+    "HOLD_PROCESS_COEFFICIENT_VALIDITY_REQUIRED",
+    "HOLD_PROCESS_COEFFICIENT_VALIDITY_INVALID"
+  ],
+  "preservation": {
+    "coefficient_uncertainty": true,
+    "coefficient_evidence_ref": true,
+    "dimensional_unit_check": true,
+    "activity_metadata": true,
+    "value_space": "PHYSICAL",
+    "source_method_evidence": true
+  },
+  "acceptance": {
+    "legacy_python_matrix": "40/40 unchanged",
+    "legacy_cpp_matrix": "40/40 unchanged",
+    "coefficient_uncertainty_successor": "preserved",
+    "expired_rejected": true,
+    "not_yet_valid_rejected": true,
+    "partial_overlap_rejected": true,
+    "missing_validity_when_required_rejected": true,
+    "full_containment_admitted": true
+  },
+  "fences": {
+    "provider_work": false,
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_PROCESS_COEFFICIENT_VALIDITY_INTERVAL"
+}
