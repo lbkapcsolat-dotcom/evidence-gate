@@ -1,0 +1,109 @@
+{
+  "derived": [
+    "AX09",
+    "AX11",
+    "AX12"
+  ],
+  "edges": [
+    ["AX16","AX09"],
+    ["AX10","AX11"],
+    ["AX07","AX12"],
+    ["AX16","AX12"],
+    ["AX08","T1"],
+    ["AX05","T2"],
+    ["AX06","T2"],
+    ["AX10","T3"],
+    ["AX11","T3"],
+    ["AX16","T4"],
+    ["AX09","T4"],
+    ["AX07","T5"],
+    ["AX12","T5"],
+    ["AX14","T6"],
+    ["AX13","T7"],
+    ["AX16","T8"]
+  ],
+  "primitive_meta_transition": [
+    "AX04",
+    "AX13",
+    "AX15"
+  ],
+  "primitive_state": [
+    "AX01",
+    "AX02",
+    "AX03",
+    "AX05",
+    "AX06",
+    "AX07",
+    "AX08",
+    "AX10",
+    "AX14",
+    "AX16"
+  ],
+  "proof_obligations": {
+    "PO_AX09": {
+      "support": ["AX16"],
+      "target": "AX09",
+      "type": "bounded_exhaustive_implication"
+    },
+    "PO_AX11": {
+      "support": ["AX10"],
+      "target": "AX11",
+      "type": "bounded_exhaustive_implication"
+    },
+    "PO_AX12": {
+      "support": ["AX07","AX16"],
+      "target": "AX12",
+      "type": "bounded_exhaustive_implication"
+    },
+    "PO_T1": {
+      "statement": "ROBUST never promotes to exact/local/lease authority.",
+      "support": ["AX08"],
+      "target": "T1",
+      "type": "corpus_invariant"
+    },
+    "PO_T2": {
+      "statement": "Unknown/unverified provenance or insufficient effective domains cannot exact-admit.",
+      "support": ["AX05","AX06"],
+      "target": "T2",
+      "type": "corpus_invariant"
+    },
+    "PO_T3": {
+      "statement": "Lease version/epoch/digest drift cannot remain valid.",
+      "support": ["AX10","AX11"],
+      "target": "T3",
+      "type": "corpus_invariant"
+    },
+    "PO_T4": {
+      "statement": "Overlap or gluing defect cannot global-pass.",
+      "support": ["AX16","AX09"],
+      "target": "T4",
+      "type": "corpus_invariant"
+    },
+    "PO_T5": {
+      "statement": "Revoked identity cannot exact-admit.",
+      "support": ["AX07","AX12"],
+      "target": "T5",
+      "type": "corpus_invariant"
+    },
+    "PO_T6": {
+      "statement": "Bounded proof cannot authorize runtime/production/pointer/global promotion.",
+      "support": ["AX14"],
+      "target": "T6",
+      "type": "corpus_invariant"
+    },
+    "PO_T7": {
+      "statement": "Any mandatory axiom failure yields HOLD.",
+      "support": ["AX13"],
+      "target": "T7",
+      "type": "classifier_meta"
+    },
+    "PO_T8": {
+      "statement": "Decision/local bind requires state/evidence prerequisites.",
+      "support": ["AX16"],
+      "target": "T8",
+      "type": "corpus_invariant"
+    }
+  },
+  "schema": "EQUILIBRIUM_AXIOM_THEOREM_DAG_V1",
+  "theorems": ["T1","T2","T3","T4","T5","T6","T7","T8"]
+}
