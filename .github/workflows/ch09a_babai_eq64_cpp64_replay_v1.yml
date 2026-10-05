@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/ch09a-babai-eq64-hgraph-cpp64-replay-v1
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
