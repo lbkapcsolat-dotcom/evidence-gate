@@ -1,0 +1,123 @@
+name: CH09B CH09C EQ64 Python replay and exact byte parity
+
+on:
+  push:
+    branches:
+      - feature/ch09b-ch09c-eq64-python-crosslang-parity-v1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ch09b-ch09c-python-crosslang:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Materialize exact pinned HGraph runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip download --only-binary=:all: --no-deps "hgraph==0.8.31" -d wheelhouse
+          wheel="$(find wheelhouse -maxdepth 1 -name 'hgraph-0.8.31-*.whl' -print -quit)"
+          test -n "$wheel"
+          echo "78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2  $wheel" | sha256sum -c -
+          python -m pip install "$wheel"
+          python -m pip install "nanobind==2.13.0"
+
+      - name: Fresh native runtime readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import importlib.metadata
+          import _hgraph
+          assert importlib.metadata.version("hgraph") == "0.8.31"
+          assert _hgraph.__file__
+          print("HGRAPH_VERSION=0.8.31")
+          print("NATIVE_HGRAPH_MODULE=" + _hgraph.__file__)
+          print("UPSTREAM_RELEASE_COMMIT=1bb4b7f21ddfb6c69c8bae74c523980605ae93f6")
+          print("PINNED_LINUX_WHEEL_SHA256=78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2")
+          PY
+
+      - name: Compile Python authoring path
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q             ch09b_eq64_hgraph_python_v1.py             run_ch09b_python_hgraph_replay_v1.py             run_ch09c_cross_language_byte_parity_v1.py
+
+      - name: Execute CH09B Python-authored HGraph 64 replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch09b_python_hgraph_replay_v1.py | tee ch09b_python_hgraph_replay.log
+          grep -F '"verdict":"PASS_CH09B__PYTHON_HGRAPH_EVAL_NODE_64_OF_64"' CH09B__PYTHON_HGRAPH_64_REPLAY_RECEIPT_V1.json
+          test "$(wc -l < CH09B__PYTHON_HGRAPH_EQ64_PACKET_V1.jsonl)" -eq 64
+          test "$(wc -l < CH09B__REFERENCE_EQ64_PACKET_V1.jsonl)" -eq 64
+          cmp -s CH09B__PYTHON_HGRAPH_EQ64_PACKET_V1.jsonl CH09B__REFERENCE_EQ64_PACKET_V1.jsonl
+
+      - name: Build CH09C C++ canonical packet exporter
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S ch09c_cpp_packet_v1 -B build/ch09c_cpp_packet -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/ch09c_cpp_packet --parallel 2
+          test -x build/ch09c_cpp_packet/ch09c_eq64_cpp_packet_export_v1
+
+      - name: Export C++ canonical packet
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/ch09c_cpp_packet/ch09c_eq64_cpp_packet_export_v1 > CH09C__CPP_EQ64_PACKET_V1.jsonl
+          test "$(wc -l < CH09C__CPP_EQ64_PACKET_V1.jsonl)" -eq 64
+
+      - name: Require exact three-way byte equality
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp -s CH09C__CPP_EQ64_PACKET_V1.jsonl CH09B__PYTHON_HGRAPH_EQ64_PACKET_V1.jsonl
+          cmp -s CH09C__CPP_EQ64_PACKET_V1.jsonl CH09B__REFERENCE_EQ64_PACKET_V1.jsonl
+          cmp -s CH09B__PYTHON_HGRAPH_EQ64_PACKET_V1.jsonl CH09B__REFERENCE_EQ64_PACKET_V1.jsonl
+          sha256sum             CH09C__CPP_EQ64_PACKET_V1.jsonl             CH09B__PYTHON_HGRAPH_EQ64_PACKET_V1.jsonl             CH09B__REFERENCE_EQ64_PACKET_V1.jsonl
+
+      - name: Build CH09C parity receipt and mutation control
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch09c_cross_language_byte_parity_v1.py | tee ch09c_cross_language_parity.log
+          grep -F '"verdict":"PASS_CH09C__CPP_PYTHON_REFERENCE_EXACT_BYTE_PARITY_64_OF_64"' CH09C__CROSS_LANGUAGE_BYTE_PARITY_RECEIPT_V1.json
+          if cmp -s CH09C__CPP_EQ64_PACKET_V1.jsonl CH09C__MUTANT_EQ64_PACKET_V1.jsonl; then
+            echo "MUTANT_FALSE_PASS"
+            exit 1
+          fi
+          echo "MUTANT_DETECTED=1"
+
+      - name: Hash evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum             ch09b_eq64_hgraph_python_v1.py             run_ch09b_python_hgraph_replay_v1.py             ch09c_cpp_packet_export_v1.cpp             ch09c_cpp_packet_v1/CMakeLists.txt             run_ch09c_cross_language_byte_parity_v1.py             CH09B__PYTHON_HGRAPH_64_REPLAY_RECEIPT_V1.json             CH09B__PYTHON_HGRAPH_EQ64_PACKET_V1.jsonl             CH09B__REFERENCE_EQ64_PACKET_V1.jsonl             CH09C__CPP_EQ64_PACKET_V1.jsonl             CH09C__CROSS_LANGUAGE_BYTE_PARITY_RECEIPT_V1.json             CH09C__MUTANT_EQ64_PACKET_V1.jsonl             > CH09BC_SHA256SUMS.txt
+          cat CH09BC_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ch09b-ch09c-eq64-python-crosslang-parity-evidence
+          path: |
+            CH09B__PYTHON_HGRAPH_64_REPLAY_RECEIPT_V1.json
+            CH09B__PYTHON_HGRAPH_EQ64_PACKET_V1.jsonl
+            CH09B__REFERENCE_EQ64_PACKET_V1.jsonl
+            CH09C__CPP_EQ64_PACKET_V1.jsonl
+            CH09C__CROSS_LANGUAGE_BYTE_PARITY_RECEIPT_V1.json
+            CH09C__MUTANT_EQ64_PACKET_V1.jsonl
+            CH09BC_SHA256SUMS.txt
+            ch09b_python_hgraph_replay.log
+            ch09c_cross_language_parity.log
+          if-no-files-found: error
