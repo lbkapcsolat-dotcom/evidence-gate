@@ -116,3 +116,88 @@ jobs:
           path: artifacts/authority/
           if-no-files-found: error
           retention-days: 30
+
+  external-security-producer:
+    name: external security producer
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: lbkapcsolat-dotcom/equilibrium-stability-systems
+          ref: e3c64f80be032dda6ac30cb38bbed1d41d2fa559
+          path: external-target
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Produce external security evidence
+        run: |
+          mkdir -p artifacts/external-security
+          python eq64_external_target_canary.py produce-security             external-target             artifacts/external-security/eq64_external_security_canary.json
+      - name: Persist external security evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-external-security-${{ github.sha }}
+          path: artifacts/external-security/eq64_external_security_canary.json
+          if-no-files-found: error
+          retention-days: 30
+
+  external-regression-producer:
+    name: external regression producer
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: lbkapcsolat-dotcom/equilibrium-stability-systems
+          ref: e3c64f80be032dda6ac30cb38bbed1d41d2fa559
+          path: external-target
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Produce external regression evidence
+        run: |
+          mkdir -p artifacts/external-regression
+          python eq64_external_target_canary.py produce-regression             external-target             artifacts/external-regression/eq64_external_regression_canary.json
+      - name: Persist external regression evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-external-regression-${{ github.sha }}
+          path: artifacts/external-regression/eq64_external_regression_canary.json
+          if-no-files-found: error
+          retention-days: 30
+
+  external-authority-join:
+    name: external independent authority join
+    needs:
+      - external-security-producer
+      - external-regression-producer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download external security evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-external-security-${{ github.sha }}
+          path: artifacts/external-security
+      - name: Download external regression evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-external-regression-${{ github.sha }}
+          path: artifacts/external-regression
+      - name: Join external evidence under EQ64 authority
+        run: |
+          python eq64_external_target_canary.py join             artifacts/external-security/eq64_external_security_canary.json             artifacts/external-regression/eq64_external_regression_canary.json             --output-dir artifacts/external-authority
+          python eq64_assurance_cli.py replay             artifacts/external-authority/eq64_external_assurance_receipt.json
+      - name: Persist external authority receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-external-authority-${{ github.sha }}
+          path: artifacts/external-authority/
+          if-no-files-found: error
+          retention-days: 30
