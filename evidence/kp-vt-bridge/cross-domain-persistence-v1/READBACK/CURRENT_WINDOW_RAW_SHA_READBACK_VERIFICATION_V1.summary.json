@@ -1,0 +1,28 @@
+{
+  "readback_report_id": "CURRENT_WINDOW_RAW_SHA_READBACK_VERIFICATION_V1",
+  "status": "PASS_RAW_SHA_READBACK_FOR_PRIMARY_BUNDLE_AND_CLOSE_SEAL",
+  "claim_ceiling": "local branch close only",
+  "drive_readback": {
+    "bundle": {
+      "drive_file_id": "1-G-1pV7-ylfnjhFQvIxusGzUbj2IIOpG",
+      "filename": "CURRENT_WINDOW_ABSOLUTE_PERSISTENCE_ENGINE_V1_BUNDLE.zip",
+      "expected_sha256_from_close_seal": "24be8f1da7b3871a5ff31382e63fc8e5a42219c1f575f3c76bb8da372c2bf0aa",
+      "readback_sha256": "24be8f1da7b3871a5ff31382e63fc8e5a42219c1f575f3c76bb8da372c2bf0aa",
+      "size_bytes": 11612,
+      "sha_equality": true
+    },
+    "primary_close_seal": {
+      "drive_file_id": "1BlYB6JH8-QHZ33pSh7ZEBwfe6w8m00sv",
+      "filename": "CURRENT_WINDOW_ABSOLUTE_PERSISTENCE_CLOSE_SEAL_V1.json",
+      "expected_sha256_from_local_creation_log": "88122d50ca0f4f3af1caeb983f3b464ea2a8732046bcb3c86d80f891bb0237ec",
+      "readback_sha256": "88122d50ca0f4f3af1caeb983f3b464ea2a8732046bcb3c86d80f891bb0237ec",
+      "size_bytes": 2635,
+      "sha_equality": true
+    }
+  },
+  "gate_updates": {
+    "RAW_SHA_READBACK_HOLD": "CLEARED_FOR_PRIMARY_BUNDLE_AND_CLOSE_SEAL",
+    "NO_POINTER_PROMOTION": "REMAINS_TRUE",
+    "NO_GLOBAL_BIND": "REMAINS_TRUE"
+  }
+}
