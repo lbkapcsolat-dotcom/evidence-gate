@@ -1,0 +1,125 @@
+name: CH11D repeated live temporal drift failure recovery
+
+on:
+  push:
+    branches:
+      - feature/ch11d-repeated-live-temporal-recovery-v1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ch11d-repeated-live:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify CH11C predecessor ancestry and source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 990a006dc126120d98fd74acbebc5694c849f6a5 HEAD
+          echo "48de908711683ed449f2812542fac11e990d64f93043a6151abd56427c791863  fetch_ch11c_live_readonly_sources_v1.py" | sha256sum -c -
+          echo "fe4e766461b248dd29d221348cf116c02c11f6e8ceecdbf1c0515dc5ea52ea3b  run_ch11c_live_readonly_source_refresh_v1.py" | sha256sum -c -
+          test -f CH11D__PRIOR_TRANSPORT_FAILURE_EVIDENCE_V1.json
+          echo "CH11C_PREDECESSOR_IDENTITY=PASS"
+
+      - name: Compile CH11D code
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q             run_ch11d_repeated_live_fetch_v1.py             run_ch11d_temporal_failure_recovery_v1.py
+
+      - name: Perform three live GET-only rounds with bounded retry
+        id: rounds
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11d_repeated_live_fetch_v1.py | tee ch11d_rounds.log
+          grep -F '"schema_version":"CH11D_ROUND_INDEX_V2"' CH11D__ROUND_INDEX_V1.json
+          grep -F '"round_count":3' CH11D__ROUND_INDEX_V1.json
+          grep -F '"minimum_separation_seconds":60' CH11D__ROUND_INDEX_V1.json
+          grep -F '"all_rounds_completed":true' CH11D__ROUND_INDEX_V1.json
+
+      - name: Validate temporal continuity and failure recovery pass 1
+        id: validate1
+        if: steps.rounds.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11d_temporal_failure_recovery_v1.py | tee ch11d_validate_pass1.log
+          grep -F '"verdict":"PASS_CH11D__THREE_ROUND_LIVE_TEMPORAL_CONTINUITY__BOUNDED_TRANSPORT_RECOVERY__DRIFT_DETECTED__RECOVERY_PASS__ZERO_WRITE_ZERO_ACTUATION"' CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json
+          grep -F '"successful_round_source_slots":9' CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json
+          grep -F '"fail_closed":true' CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json
+          grep -F '"detected":true' CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json
+          grep -F '"recovered":true' CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json
+          cp CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json CH11D__RECEIPT_PASS1.json
+
+      - name: Replay temporal and recovery validation pass 2
+        id: validate2
+        if: steps.validate1.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11d_temporal_failure_recovery_v1.py | tee ch11d_validate_pass2.log
+          cmp -s CH11D__RECEIPT_PASS1.json CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json
+          echo "CH11D_DETERMINISTIC_RECEIPT_REPLAY=PASS"
+
+      - name: Hash CH11D evidence
+        if: steps.validate1.outcome == 'success' && steps.validate2.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum             run_ch11d_repeated_live_fetch_v1.py             run_ch11d_temporal_failure_recovery_v1.py             CH11D__PRIOR_TRANSPORT_FAILURE_EVIDENCE_V1.json             CH11D__ROUND_INDEX_V1.json             CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json             ch11d_rounds/round_1/fetch_manifest.json             ch11d_rounds/round_2/fetch_manifest.json             ch11d_rounds/round_3/fetch_manifest.json             ch11d_rounds/round_1/validation_receipt.json             ch11d_rounds/round_2/validation_receipt.json             ch11d_rounds/round_3/validation_receipt.json             > CH11D_SHA256SUMS.txt
+          find ch11d_rounds -type f -name '*.bin' -print0 | sort -z | xargs -0 sha256sum >> CH11D_SHA256SUMS.txt
+          find ch11d_failure_recovery -type f -print0 | sort -z | xargs -0 sha256sum >> CH11D_SHA256SUMS.txt
+          cat CH11D_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ch11d-repeated-live-temporal-recovery-evidence
+          path: |
+            CH11D__PRIOR_TRANSPORT_FAILURE_EVIDENCE_V1.json
+            CH11D__ROUND_INDEX_V1.json
+            CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json
+            CH11D_SHA256SUMS.txt
+            ch11d_rounds/
+            ch11d_failure_recovery/
+            ch11d_rounds.log
+            ch11d_validate_pass1.log
+            ch11d_validate_pass2.log
+          if-no-files-found: warn
+
+      - name: Final CH11D adjudication
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.rounds.outcome }}" != "success" ]; then
+            echo "CH11D_FINAL=HOLD_REPEATED_LIVE_ROUNDS"
+            exit 1
+          fi
+          if [ "${{ steps.validate1.outcome }}" != "success" ]; then
+            echo "CH11D_FINAL=HOLD_TEMPORAL_OR_FAILURE_CONTROL"
+            exit 1
+          fi
+          if [ "${{ steps.validate2.outcome }}" != "success" ]; then
+            echo "CH11D_FINAL=HOLD_DETERMINISTIC_REPLAY"
+            exit 1
+          fi
+          grep -F '"verdict":"PASS_CH11D__THREE_ROUND_LIVE_TEMPORAL_CONTINUITY__BOUNDED_TRANSPORT_RECOVERY__DRIFT_DETECTED__RECOVERY_PASS__ZERO_WRITE_ZERO_ACTUATION"' CH11D__REPEATED_LIVE_TEMPORAL_RECOVERY_RECEIPT_V1.json
+          echo "CH11D_FINAL=PASS"

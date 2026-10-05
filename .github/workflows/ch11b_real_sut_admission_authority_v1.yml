@@ -1,0 +1,77 @@
+name: CH11B real SUT admission authority gate
+
+on:
+  push:
+    branches:
+      - feature/ch11b-real-sut-admission-authority-v1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ch11b-authority:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify SUT ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 4854040726bf24163f6ec70521d1ee7b4ac47f7d HEAD
+          echo "SUT_BASE_ANCESTRY=PASS"
+
+      - name: Compile authority gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q             run_ch11a_empirical_semantic_calibration_v1.py             run_ch11b_real_sut_admission_authority_v1.py             planetary_resource_integration_readiness_freeze_v1.py
+
+      - name: Re-run CH11A predecessor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11a_empirical_semantic_calibration_v1.py | tee ch11a_predecessor.log
+          grep -F '"verdict":"PASS_CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_36_OF_36__ZERO_FALSE_PASS__FROZEN_CORPUS_ONLY"' CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json
+          echo "7ed4801d78c66f926ccaa68d8bc42d82246bfb67dc3879a7e09ea08f2bb5f9f4  CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json" | sha256sum -c -
+
+      - name: Execute CH11B authority gate pass 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11b_real_sut_admission_authority_v1.py | tee ch11b_pass1.log
+          grep -F '"verdict":"ADMIT_READ_ONLY_BOUNDED_REAL_SUT_CANARY"' CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json
+          grep -F '"deny_by_default":true' CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json
+          grep -F '"pass":6' CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json
+          cp CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json CH11B__RECEIPT_PASS1.json
+
+      - name: Execute CH11B authority gate pass 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11b_real_sut_admission_authority_v1.py | tee ch11b_pass2.log
+          cmp -s CH11B__RECEIPT_PASS1.json CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json
+          sha256sum             run_ch11b_real_sut_admission_authority_v1.py             CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json             > CH11B_SHA256SUMS.txt
+          cat CH11B_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ch11b-real-sut-admission-authority-evidence
+          path: |
+            CH11A__EMPIRICAL_SEMANTIC_CALIBRATION_RECEIPT_V1.json
+            CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json
+            CH11B_SHA256SUMS.txt
+            ch11a_predecessor.log
+            ch11b_pass1.log
+            ch11b_pass2.log
+          if-no-files-found: error

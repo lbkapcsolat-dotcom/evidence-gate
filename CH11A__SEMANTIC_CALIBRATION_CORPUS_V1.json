@@ -1,0 +1,498 @@
+{
+  "schema_version": "CH11A_SEMANTIC_CALIBRATION_CORPUS_V1",
+  "case_count": 36,
+  "axes": [
+    "E",
+    "C",
+    "M",
+    "D",
+    "S",
+    "A"
+  ],
+  "cases": [
+    {
+      "id": "E01",
+      "axis": "E",
+      "source_ref": "DOC-203",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "provenance_complete": true,
+        "raw_sha_verified": true,
+        "fresh": true,
+        "effective_domains": 1,
+        "required_domains": 1
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "E02",
+      "axis": "E",
+      "source_ref": "DOC-206",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "provenance_complete": true,
+        "raw_sha_verified": true,
+        "fresh": true,
+        "effective_domains": 1,
+        "required_domains": 1
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "E03",
+      "axis": "E",
+      "source_ref": "DOC-209",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "provenance_complete": true,
+        "raw_sha_verified": true,
+        "fresh": true,
+        "effective_domains": 1,
+        "required_domains": 1
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "E04",
+      "axis": "E",
+      "source_ref": "DOC-218:R04",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "provenance_complete": true,
+        "raw_sha_verified": false,
+        "fresh": true,
+        "effective_domains": 1,
+        "required_domains": 1
+      },
+      "expected": "HOLD"
+    },
+    {
+      "id": "E05",
+      "axis": "E",
+      "source_ref": "DOC-200:A23",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "provenance_complete": true,
+        "raw_sha_verified": true,
+        "fresh": false,
+        "effective_domains": 1,
+        "required_domains": 1
+      },
+      "expected": "HOLD"
+    },
+    {
+      "id": "E06",
+      "axis": "E",
+      "source_ref": "DOC-357:PROVENANCE_COLLAPSE",
+      "evidence_class": "REAL_SOURCE_NEGATIVE",
+      "features": {
+        "provenance_complete": true,
+        "raw_sha_verified": true,
+        "fresh": true,
+        "effective_domains": 1,
+        "required_domains": 2
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "C01",
+      "axis": "C",
+      "source_ref": "DOC-203",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "metadata_complete": true,
+        "explicit_mismatch": false
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "C02",
+      "axis": "C",
+      "source_ref": "DOC-206",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "metadata_complete": true,
+        "explicit_mismatch": false
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "C03",
+      "axis": "C",
+      "source_ref": "DOC-209",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "metadata_complete": true,
+        "explicit_mismatch": false
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "C04",
+      "axis": "C",
+      "source_ref": "DOC-200:A09",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "metadata_complete": true,
+        "explicit_mismatch": true
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "C05",
+      "axis": "C",
+      "source_ref": "DOC-200:A30",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "metadata_complete": true,
+        "explicit_mismatch": true
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "C06",
+      "axis": "C",
+      "source_ref": "DOC-200:A17",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "metadata_complete": false,
+        "explicit_mismatch": false
+      },
+      "expected": "HOLD"
+    },
+    {
+      "id": "M01",
+      "axis": "M",
+      "source_ref": "DOC-215:water",
+      "evidence_class": "REAL_SOURCE_EXECUTABLE_EQUALITY",
+      "features": {
+        "comparator": "EXACT_CANONICAL_EQUALITY",
+        "values_available": true,
+        "exact_equal": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "M02",
+      "axis": "M",
+      "source_ref": "DOC-215:electricity",
+      "evidence_class": "REAL_SOURCE_EXECUTABLE_EQUALITY",
+      "features": {
+        "comparator": "EXACT_CANONICAL_EQUALITY",
+        "values_available": true,
+        "exact_equal": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "M03",
+      "axis": "M",
+      "source_ref": "DOC-215:gas",
+      "evidence_class": "REAL_SOURCE_EXECUTABLE_EQUALITY",
+      "features": {
+        "comparator": "EXACT_CANONICAL_EQUALITY",
+        "values_available": true,
+        "exact_equal": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "M04",
+      "axis": "M",
+      "source_ref": "CH11A_MUTATION:receipt_field",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "comparator": "EXACT_CANONICAL_EQUALITY",
+        "values_available": true,
+        "exact_equal": false
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "M05",
+      "axis": "M",
+      "source_ref": "CH11A_MUTATION:canonical_value",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "comparator": "EXACT_CANONICAL_EQUALITY",
+        "values_available": true,
+        "exact_equal": false
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "M06",
+      "axis": "M",
+      "source_ref": "DOC-353:T18",
+      "evidence_class": "REFERENCE_NEGATIVE",
+      "features": {
+        "comparator": "",
+        "values_available": true,
+        "exact_equal": false
+      },
+      "expected": "HOLD"
+    },
+    {
+      "id": "D01",
+      "axis": "D",
+      "source_ref": "DOC-203",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "direction_semantics_declared": true,
+        "relation_known": true,
+        "relation_consistent": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "D02",
+      "axis": "D",
+      "source_ref": "DOC-206",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "direction_semantics_declared": true,
+        "relation_known": true,
+        "relation_consistent": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "D03",
+      "axis": "D",
+      "source_ref": "DOC-209",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "direction_semantics_declared": true,
+        "relation_known": true,
+        "relation_consistent": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "D04",
+      "axis": "D",
+      "source_ref": "DOC-200:A31",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "direction_semantics_declared": false,
+        "relation_known": false,
+        "relation_consistent": false
+      },
+      "expected": "HOLD"
+    },
+    {
+      "id": "D05",
+      "axis": "D",
+      "source_ref": "CH11A_MUTATION:gas_entry_to_exit",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "direction_semantics_declared": true,
+        "relation_known": true,
+        "relation_consistent": false
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "D06",
+      "axis": "D",
+      "source_ref": "CH11A_MUTATION:direction_ambiguous",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "direction_semantics_declared": true,
+        "relation_known": false,
+        "relation_consistent": false
+      },
+      "expected": "HOLD"
+    },
+    {
+      "id": "S01",
+      "axis": "S",
+      "source_ref": "DOC-203",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "requested_scope_known": true,
+        "claim_ceiling_known": true,
+        "contained": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "S02",
+      "axis": "S",
+      "source_ref": "DOC-206",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "requested_scope_known": true,
+        "claim_ceiling_known": true,
+        "contained": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "S03",
+      "axis": "S",
+      "source_ref": "DOC-209",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "requested_scope_known": true,
+        "claim_ceiling_known": true,
+        "contained": true
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "S04",
+      "axis": "S",
+      "source_ref": "DOC-203:NOT_THAMES_BASIN_AGGREGATE",
+      "evidence_class": "REAL_SOURCE_SCOPE_NEGATIVE",
+      "features": {
+        "requested_scope_known": true,
+        "claim_ceiling_known": true,
+        "contained": false
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "S05",
+      "axis": "S",
+      "source_ref": "DOC-206:NOT_TOTAL_FINAL_ELECTRICITY_CONSUMPTION",
+      "evidence_class": "REAL_SOURCE_SCOPE_NEGATIVE",
+      "features": {
+        "requested_scope_known": true,
+        "claim_ceiling_known": true,
+        "contained": false
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "S06",
+      "axis": "S",
+      "source_ref": "CH11A_MUTATION:missing_claim_ceiling",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "requested_scope_known": true,
+        "claim_ceiling_known": false,
+        "contained": false
+      },
+      "expected": "HOLD"
+    },
+    {
+      "id": "A01",
+      "axis": "A",
+      "source_ref": "DOC-203",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "authority_proof_present": true,
+        "unique_source": true,
+        "eligible": true,
+        "evidence_backed": true,
+        "provider": "Environment Agency",
+        "role": "freshwater.internal_flow_rate"
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "A02",
+      "axis": "A",
+      "source_ref": "DOC-206",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "authority_proof_present": true,
+        "unique_source": true,
+        "eligible": true,
+        "evidence_backed": true,
+        "provider": "Elexon Insights Solution",
+        "role": "electricity.consumption_rate"
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "A03",
+      "axis": "A",
+      "source_ref": "DOC-209",
+      "evidence_class": "REAL_SOURCE_POSITIVE",
+      "features": {
+        "authority_proof_present": true,
+        "unique_source": true,
+        "eligible": true,
+        "evidence_backed": true,
+        "provider": "ENTSOG Transparency Platform",
+        "role": "natural_gas.import_rate"
+      },
+      "expected": "TRUE"
+    },
+    {
+      "id": "A04",
+      "axis": "A",
+      "source_ref": "DOC-218:R01",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "authority_proof_present": false,
+        "unique_source": false,
+        "eligible": false,
+        "evidence_backed": false,
+        "provider": "",
+        "role": "freshwater.internal_flow_rate"
+      },
+      "expected": "HOLD"
+    },
+    {
+      "id": "A05",
+      "axis": "A",
+      "source_ref": "CH11A_MUTATION:wrong_provider_role",
+      "evidence_class": "REAL_SOURCE_DERIVED_MUTATION",
+      "features": {
+        "authority_proof_present": true,
+        "unique_source": true,
+        "eligible": false,
+        "evidence_backed": true,
+        "provider": "UNVERIFIED_MIRROR",
+        "role": "freshwater.internal_flow_rate"
+      },
+      "expected": "FALSE"
+    },
+    {
+      "id": "A06",
+      "axis": "A",
+      "source_ref": "DOC-357:DERIVATIVE_SOURCE_AMBIGUITY",
+      "evidence_class": "REAL_SOURCE_NEGATIVE",
+      "features": {
+        "authority_proof_present": true,
+        "unique_source": false,
+        "eligible": true,
+        "evidence_backed": true,
+        "provider": "DERIVATIVE_INDEX",
+        "role": "paper_claim"
+      },
+      "expected": "HOLD"
+    }
+  ],
+  "authority_allowlist": [
+    {
+      "provider": "Environment Agency",
+      "role": "freshwater.internal_flow_rate",
+      "source_ref": "DOC-203"
+    },
+    {
+      "provider": "Elexon Insights Solution",
+      "role": "electricity.consumption_rate",
+      "source_ref": "DOC-206"
+    },
+    {
+      "provider": "ENTSOG Transparency Platform",
+      "role": "natural_gas.import_rate",
+      "source_ref": "DOC-209"
+    }
+  ],
+  "source_basis": [
+    "DOC-203",
+    "DOC-206",
+    "DOC-209",
+    "DOC-215",
+    "DOC-218",
+    "DOC-357",
+    "DOC-358",
+    "DOC-353"
+  ],
+  "claim_ceiling": "FROZEN_36_CASE_REAL_SOURCE_AND_MUTATION_CALIBRATION_ONLY__NO_POPULATION_GENERALIZATION__NO_RUNTIME_GLOBAL_BIND"
+}
