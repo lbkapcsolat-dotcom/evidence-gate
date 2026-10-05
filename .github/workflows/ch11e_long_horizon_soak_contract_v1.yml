@@ -1,9 +1,12 @@
-name: CH11E long horizon soak contract tests
+name: CH11E long horizon live read-only soak
 
 on:
   push:
     branches:
       - feature/ch11e-long-horizon-live-readonly-soak-v1
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -14,13 +17,140 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
-      - name: Compile CH11E contract test
-        run: python -m compileall -q test_ch11e_long_horizon_soak_v1.py
+      - name: Verify exact CH11D predecessor lineage
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 2e75e7db425468633e8f68df644e8df3890ad665 HEAD
+          git diff --exit-code 2e75e7db425468633e8f68df644e8df3890ad665..HEAD --             fetch_ch11c_live_readonly_sources_v1.py             run_ch11c_live_readonly_source_refresh_v1.py             run_ch11d_repeated_live_fetch_v1.py             run_ch11d_temporal_failure_recovery_v1.py
+          echo "CH11D_PREDECESSOR_AND_NETWORK_PATH_UNCHANGED=PASS"
 
-      - name: Run CH11E contract test
+      - name: Compile CH11E contract
+        run: |
+          set -euo pipefail
+          python -m compileall -q             run_ch11e_long_horizon_soak_v1.py             test_ch11e_long_horizon_soak_v1.py
+
+      - name: Run CH11E contract tests
         run: python -m unittest -v test_ch11e_long_horizon_soak_v1.py
+
+      - name: Static claim-ceiling guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import run_ch11e_long_horizon_soak_v1 as m
+          assert m.REQUIRED_ROUNDS == 5
+          assert m.MIN_HORIZON_SECONDS == 14400
+          sample = m._hold("HOLD_TEST")
+          c = sample["claim_ceiling"]
+          for key in (
+              "continuous_ingestion",
+              "runtime_admission",
+              "production_readiness",
+              "production_admission",
+              "network_write",
+              "external_actuation",
+              "pointer_promotion",
+              "global_bind",
+              "certification",
+              "merge_authorization",
+          ):
+              assert c[key] is False, (key, c[key])
+          print("CH11E_CLAIM_CEILING_STATIC_GUARD=PASS")
+          PY
+
+  ch11e-live-soak:
+    needs: ch11e-contract
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[CH11E_SOAK]') && needs.ch11e-contract.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Reverify predecessor and GET-only inherited network path
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 2e75e7db425468633e8f68df644e8df3890ad665 HEAD
+          git diff --exit-code 2e75e7db425468633e8f68df644e8df3890ad665..HEAD --             fetch_ch11c_live_readonly_sources_v1.py             run_ch11c_live_readonly_source_refresh_v1.py             run_ch11d_repeated_live_fetch_v1.py             run_ch11d_temporal_failure_recovery_v1.py
+          echo "GET_ONLY_INHERITED_NETWORK_PATH=PASS"
+
+      - name: Execute five-round four-hour bounded live soak
+        id: soak
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11e_long_horizon_soak_v1.py | tee ch11e_soak.log
+
+      - name: Hash CH11E evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > CH11E_SHA256SUMS.txt
+          for f in             run_ch11e_long_horizon_soak_v1.py             test_ch11e_long_horizon_soak_v1.py             CH11E__SOAK_INDEX_V1.json             CH11E__LONG_HORIZON_SOAK_RECEIPT_V1.json; do
+            if [ -f "$f" ]; then sha256sum "$f" >> CH11E_SHA256SUMS.txt; fi
+          done
+          if [ -d ch11e_rounds ]; then
+            find ch11e_rounds -type f -print0 | sort -z | xargs -0 -r sha256sum >> CH11E_SHA256SUMS.txt
+          fi
+          cat CH11E_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ch11e-long-horizon-live-readonly-soak-evidence
+          path: |
+            CH11E__SOAK_INDEX_V1.json
+            CH11E__LONG_HORIZON_SOAK_RECEIPT_V1.json
+            CH11E_SHA256SUMS.txt
+            ch11e_rounds/
+            ch11e_soak.log
+          if-no-files-found: warn
+
+      - name: Final CH11E adjudication
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.soak.outcome }}" != "success" ]; then
+            echo "CH11E_FINAL=HOLD_LIVE_SOAK"
+            test -f CH11E__LONG_HORIZON_SOAK_RECEIPT_V1.json && cat CH11E__LONG_HORIZON_SOAK_RECEIPT_V1.json
+            exit 1
+          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path("CH11E__LONG_HORIZON_SOAK_RECEIPT_V1.json").read_text())
+          allowed = {
+              "PASS_CH11E__LONG_HORIZON_LIVE_READ_ONLY_SOAK__RECOVERY_PATH_NOT_OBSERVED__ZERO_WRITE_ZERO_ACTUATION",
+              "PASS_CH11E__LONG_HORIZON_LIVE_READ_ONLY_SOAK__IN_RUN_RECOVERY_OBSERVED__ZERO_WRITE_ZERO_ACTUATION",
+          }
+          assert r["verdict"] in allowed, r["verdict"]
+          assert r["round_count"] == 5
+          assert r["horizon_seconds"] >= 14400
+          assert r["source_slot_count"] == 15
+          c = r["claim_ceiling"]
+          assert c["continuous_ingestion"] is False
+          assert c["runtime_admission"] is False
+          assert c["production_readiness"] is False
+          assert c["network_write"] is False
+          assert c["external_actuation"] is False
+          assert c["pointer_promotion"] is False
+          assert c["global_bind"] is False
+          print("CH11E_FINAL=PASS")
+          PY
