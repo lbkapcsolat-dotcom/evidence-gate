@@ -1,0 +1,53 @@
+{
+  "execution_id": "CROSS_DOMAIN_REPO_PERSISTENCE_EXECUTION_V1",
+  "branch": "Kritikus Pillanat Könyvtár / Választási Tér / Algorithmic Engine / Equilibrium Bridge x 6D",
+  "repository": "lbkapcsolat-dotcom/evidence-gate",
+  "github_branch": "evidence/kp-vt-bridge-cross-domain-persistence-v1",
+  "status": "GITHUB_MIRROR_TEXT_EVIDENCE_COMMITTED__HF_REMOTE_WRITE_BLOCKED_BY_CONNECTOR_CAPABILITY",
+  "authority_layer": "Google Drive Master",
+  "github_layer": "technical evidence mirror only",
+  "hugging_face_layer": "sanitized reproducibility/public surface planned, not remotely written in this run",
+  "claim_ceiling": "local branch close only",
+  "no_pointer_promotion": true,
+  "no_global_bind": true,
+  "runtime_pass_claim": "NOT_CLAIMED",
+  "drive_primary_bundle": {
+    "filename": "CURRENT_WINDOW_ABSOLUTE_PERSISTENCE_ENGINE_V1_BUNDLE.zip",
+    "drive_file_id": "1-G-1pV7-ylfnjhFQvIxusGzUbj2IIOpG",
+    "sha256": "24be8f1da7b3871a5ff31382e63fc8e5a42219c1f575f3c76bb8da372c2bf0aa",
+    "size_bytes": 11612,
+    "raw_sha_readback": "PASS"
+  },
+  "drive_primary_close_seal": {
+    "filename": "CURRENT_WINDOW_ABSOLUTE_PERSISTENCE_CLOSE_SEAL_V1.json",
+    "drive_file_id": "1BlYB6JH8-QHZ33pSh7ZEBwfe6w8m00sv",
+    "sha256": "88122d50ca0f4f3af1caeb983f3b464ea2a8732046bcb3c86d80f891bb0237ec",
+    "size_bytes": 2635,
+    "raw_sha_readback": "PASS"
+  },
+  "github_committed_paths": [
+    "README.md",
+    "CLAIM_CEILING.md",
+    "CROSS_DOMAIN_REPO_PERSISTENCE_EXECUTION_V1.json",
+    "HASHES/SHA256SUMS_CURRENT_WINDOW_ABSOLUTE_PERSISTENCE_ENGINE_V1.txt",
+    "MANIFEST/CURRENT_WINDOW_ABSOLUTE_PERSISTENCE_CLOSE_SEAL_V1.summary.json",
+    "READBACK/CURRENT_WINDOW_RAW_SHA_READBACK_VERIFICATION_V1.summary.json"
+  ],
+  "blocked_or_partial": [
+    "GitHub binary zip byte-identical upload not performed through this connector; text evidence and hashes committed instead.",
+    "GitHub tag/release creation not available through exposed connector actions in this chat.",
+    "Hugging Face remote write not available through exposed connector actions in this chat."
+  ],
+  "gate_status": {
+    "GATE_01_Drive_authority_seal_exists": "PASS",
+    "GATE_02_Drive_raw_SHA_readback_PASS": "PASS",
+    "GATE_03_GitHub_mirror_branch_created": "PASS",
+    "GATE_04_GitHub_text_evidence_commit_created": "PASS",
+    "GATE_05_GitHub_binary_SHA_equality_PASS": "HOLD_CONNECTOR_LIMITED_TEXT_ONLY",
+    "GATE_06_GitHub_release_tag_created": "HOLD_CONNECTOR_ACTION_UNAVAILABLE",
+    "GATE_07_HF_sanitized_package_created": "HOLD_CONNECTOR_ACTION_UNAVAILABLE",
+    "GATE_08_README_claim_ceiling_present": "PASS",
+    "GATE_09_no_pointer_promotion": "PASS",
+    "GATE_10_no_global_bind": "PASS"
+  }
+}
