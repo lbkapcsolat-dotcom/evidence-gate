@@ -1,0 +1,25 @@
+{
+  "schema_version": "CH11D_PRIOR_TRANSPORT_FAILURE_EVIDENCE_V1",
+  "gate_id": "CH11D__REPEATED_LIVE_REFRESH_TEMPORAL_DRIFT_FAILURE_RECOVERY_V1",
+  "github": {
+    "run_id": 37379497365,
+    "job_id": 111997493119,
+    "head_sha": "74237250cb425f11e12bd5626715905cd2ec3e81",
+    "conclusion": "failure",
+    "artifact_id": 11373013816,
+    "artifact_digest": "sha256:a097133f153013550c6448073640d9214c245a5ebab99cc3fc52344afbff87bb"
+  },
+  "observed_failure": {
+    "round": 2,
+    "source_id": "natural_gas",
+    "provider": "ENTSOG Transparency Platform",
+    "error": "HTTP 502 Bad Gateway",
+    "other_sources": {
+      "water": "HTTP 200",
+      "electricity": "HTTP 200"
+    }
+  },
+  "interpretation": "REAL_TRANSIENT_READ_FAILURE__FAIL_CLOSED__NO_PARTIAL_PASS",
+  "external_write": false,
+  "external_actuation": false
+}

@@ -1,0 +1,89 @@
+name: Planetary Resource Process Coefficient Uncertainty
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-process-coefficient-uncertainty-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  process-coefficient-uncertainty:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify pinned predecessor bytes
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f  planetary_resource_cpp_kernel_v1.cpp" | sha256sum -c -
+          echo "6590802c509f14e37f783a3e8243b756b8f2a3eb88fbb936772a6c039d2b69e2  planetary_resource_process_typed_dimensional_closure_v1.py" | sha256sum -c -
+          echo "c62af9bc715ce4d088112c650f0c7794d9c2758a69088417135084740e2fb46c  planetary_resource_end_to_end_uncertainty_v1.py" | sha256sum -c -
+          echo "746d8ea6c015a003ecba701a4eab8e80f97df71deb959a7f4ea58d178286ae43  planetary_resource_storage_self_loss_typed_v1.py" | sha256sum -c -
+
+      - name: Compile coefficient uncertainty successor
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_process_typed_dimensional_closure_v1.py             planetary_resource_process_typed_dimensional_closure_gate_v1.py             planetary_resource_end_to_end_uncertainty_v1.py             planetary_resource_end_to_end_uncertainty_gate_v1.py             planetary_resource_storage_self_loss_typed_v1.py             planetary_resource_storage_self_loss_typed_gate_v1.py             planetary_resource_post_self_loss_core_gap_review_v1.py             planetary_resource_process_coefficient_uncertainty_v1.py             planetary_resource_process_coefficient_uncertainty_gate_v1.py             test_planetary_resource_process_coefficient_uncertainty_v1.py
+
+      - name: Preserve legacy Python 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve typed process closure
+        run: python -m unittest -v test_planetary_resource_process_typed_dimensional_closure_v1.py
+
+      - name: Preserve end-to-end uncertainty
+        run: python -m unittest -v test_planetary_resource_end_to_end_uncertainty_v1.py
+
+      - name: Preserve typed storage self-loss
+        run: python -m unittest -v test_planetary_resource_storage_self_loss_typed_v1.py
+
+      - name: Preserve post-self-loss review
+        run: python -m unittest -v test_planetary_resource_post_self_loss_core_gap_review_v1.py
+
+      - name: Run process coefficient uncertainty tests
+        run: python -m unittest -v test_planetary_resource_process_coefficient_uncertainty_v1.py
+
+      - name: Build deterministic coefficient uncertainty receipt
+        shell: bash
+        run: |
+          python planetary_resource_process_coefficient_uncertainty_gate_v1.py | tee process_coefficient_uncertainty.log
+          grep -F '"no_zero_coefficient_variance_assumption":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_RECEIPT.json
+          grep -F '"dual_moment_requires_covariance_and_joint_moments":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_RECEIPT.json
+          grep -F '"empirical_requires_sample_alignment":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_RECEIPT.json
+          grep -F '"silent_coefficient_uncertainty_loss_rejected":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_RECEIPT.json
+
+      - name: Preserve independent C++ baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash coefficient uncertainty evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION.json             planetary_resource_process_coefficient_uncertainty_v1.py             planetary_resource_process_coefficient_uncertainty_gate_v1.py             test_planetary_resource_process_coefficient_uncertainty_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_RECEIPT.json
+
+      - name: Upload coefficient uncertainty evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-process-coefficient-uncertainty-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION_RECEIPT.json
+            process_coefficient_uncertainty.log
+            cpp_baseline.log
+          if-no-files-found: error

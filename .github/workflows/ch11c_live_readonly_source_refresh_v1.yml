@@ -1,0 +1,164 @@
+name: CH11C live read-only source refresh canary
+
+on:
+  push:
+    branches:
+      - feature/ch11c-live-readonly-source-refresh-v1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ch11c-live-readonly:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Revalidate CH11B authority predecessor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11b_real_sut_admission_authority_v1.py | tee ch11b_predecessor.log
+          grep -F '"verdict":"ADMIT_READ_ONLY_BOUNDED_REAL_SUT_CANARY"' CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json
+          echo "48868d28ec28eaa5f5dd2cda8236bcd142822af0b0ed2055e35ccabab339a62f  CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json" | sha256sum -c -
+
+      - name: Compile CH11C fetch and validation code
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q             fetch_ch11c_live_readonly_sources_v1.py             run_ch11c_live_readonly_source_refresh_v1.py
+
+      - name: Static GET-only policy guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          path = Path("fetch_ch11c_live_readonly_sources_v1.py")
+          src = path.read_text(encoding="utf-8")
+          tree = ast.parse(src)
+
+          request_calls = 0
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Call):
+                  name = None
+                  if isinstance(node.func, ast.Name):
+                      name = node.func.id
+                  elif isinstance(node.func, ast.Attribute):
+                      name = node.func.attr
+                  if name == "Request":
+                      request_calls += 1
+                      methods = [
+                          kw.value.value
+                          for kw in node.keywords
+                          if kw.arg == "method"
+                          and isinstance(kw.value, ast.Constant)
+                          and isinstance(kw.value.value, str)
+                      ]
+                      if methods != ["GET"]:
+                          raise SystemExit(f"NON_GET_REQUEST:{methods!r}")
+                      if any(kw.arg == "data" for kw in node.keywords):
+                          raise SystemExit("REQUEST_BODY_NOT_ALLOWED")
+
+          if request_calls != 1:
+              raise SystemExit(f"UNEXPECTED_REQUEST_CALL_COUNT:{request_calls}")
+
+          forbidden = ['method="POST"', 'method="PUT"', 'method="PATCH"', 'method="DELETE"']
+          for token in forbidden:
+              if token in src:
+                  raise SystemExit(f"FORBIDDEN_METHOD_TOKEN:{token}")
+
+          required_hosts = [
+              "environment.data.gov.uk",
+              "data.elexon.co.uk",
+              "transparency.entsog.eu",
+          ]
+          for host in required_hosts:
+              if host not in src:
+                  raise SystemExit(f"ALLOWLIST_HOST_MISSING:{host}")
+
+          print("GET_ONLY_STATIC_POLICY=PASS")
+          PY
+
+      - name: Perform one live GET-only fetch round
+        shell: bash
+        run: |
+          set -euo pipefail
+          python fetch_ch11c_live_readonly_sources_v1.py | tee ch11c_fetch.log
+          grep -F '"allowed_method":"GET"' CH11C__LIVE_FETCH_MANIFEST_V1.json
+          grep -F '"external_write":false' CH11C__LIVE_FETCH_MANIFEST_V1.json
+          grep -F '"external_actuation":false' CH11C__LIVE_FETCH_MANIFEST_V1.json
+
+      - name: Validate captured live bytes pass 1
+        id: validate1
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11c_live_readonly_source_refresh_v1.py | tee ch11c_validate_pass1.log
+          grep -F '"verdict":"PASS_CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_3_OF_3__ZERO_WRITE_ZERO_ACTUATION"' CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_RECEIPT_V1.json
+          cp CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_RECEIPT_V1.json CH11C__RECEIPT_PASS1.json
+
+      - name: Validate captured live bytes pass 2
+        id: validate2
+        if: steps.validate1.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch11c_live_readonly_source_refresh_v1.py | tee ch11c_validate_pass2.log
+          cmp -s CH11C__RECEIPT_PASS1.json CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_RECEIPT_V1.json
+          echo "DETERMINISTIC_RECEIPT_REPLAY=PASS"
+
+      - name: Hash CH11C evidence
+        if: steps.validate1.outcome == 'success' && steps.validate2.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum             fetch_ch11c_live_readonly_sources_v1.py             run_ch11c_live_readonly_source_refresh_v1.py             CH11C__LIVE_FETCH_MANIFEST_V1.json             CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_RECEIPT_V1.json             ch11c_live_sources/water.bin             ch11c_live_sources/electricity.bin             ch11c_live_sources/natural_gas.bin             > CH11C_SHA256SUMS.txt
+          cat CH11C_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ch11c-live-readonly-source-refresh-evidence
+          path: |
+            CH11B__REAL_SUT_ADMISSION_AUTHORITY_RECEIPT_V1.json
+            CH11C__LIVE_FETCH_MANIFEST_V1.json
+            CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_RECEIPT_V1.json
+            CH11C_SHA256SUMS.txt
+            ch11c_live_sources/
+            ch11b_predecessor.log
+            ch11c_fetch.log
+            ch11c_validate_pass1.log
+            ch11c_validate_pass2.log
+          if-no-files-found: warn
+
+      - name: Final CH11C adjudication
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.validate1.outcome }}" != "success" ]; then
+            echo "CH11C_FINAL=HOLD_VALIDATE_PASS1"
+            test -f CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_RECEIPT_V1.json && cat CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_RECEIPT_V1.json
+            exit 1
+          fi
+          if [ "${{ steps.validate2.outcome }}" != "success" ]; then
+            echo "CH11C_FINAL=HOLD_DETERMINISTIC_REPLAY"
+            exit 1
+          fi
+          grep -F '"verdict":"PASS_CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_3_OF_3__ZERO_WRITE_ZERO_ACTUATION"' CH11C__LIVE_READ_ONLY_SOURCE_REFRESH_RECEIPT_V1.json
+          echo "CH11C_FINAL=PASS"
