@@ -1,3 +1,4 @@
+# readback-trigger: pr58-synchronize
 name: CH09A Babai EQ64 native C++ HGraph 64 replay
 
 on:
