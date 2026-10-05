@@ -46,7 +46,8 @@ def sha256_file(path: Path) -> str:
 
 
 def canonical_sha256(payload: Any) -> str:
-    body = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    # Match the frozen project receipt convention exactly: canonical JSON + LF.
+    body = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
     return sha256_bytes(body.encode("utf-8"))
 
 
