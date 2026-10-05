@@ -222,3 +222,66 @@ jobs:
           path: artifacts/eq64_comparative_v1/
           if-no-files-found: error
           retention-days: 30
+
+  reviewer-package:
+    name: frozen reviewer package
+    needs:
+      - external-authority-join
+      - comparative-false-pass-experiment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download external authority evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-external-authority-${{ github.sha }}
+          path: artifacts/external-authority
+      - name: Download comparative experiment evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-comparative-false-pass-${{ github.sha }}
+          path: artifacts/comparative
+      - name: Build frozen reviewer handoff
+        run: |
+          python eq64_build_reviewer_package.py             --source-root .             --external-authority-dir artifacts/external-authority             --comparative-dir artifacts/comparative             --output-dir artifacts/reviewer-package
+      - name: Persist reviewer package
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-reviewer-package-${{ github.sha }}
+          path: artifacts/reviewer-package/
+          if-no-files-found: error
+          retention-days: 30
+
+  reviewer-clean-room:
+    name: reviewer clean-room reproduction
+    needs:
+      - reviewer-package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lbkapcsolat-dotcom/equilibrium-stability-systems
+          ref: e3c64f80be032dda6ac30cb38bbed1d41d2fa559
+          path: external-target
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download frozen reviewer package
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-reviewer-package-${{ github.sha }}
+          path: reviewer-package
+      - name: Reproduce only from handoff package and frozen target
+        working-directory: reviewer-package
+        run: |
+          python eq64_reviewer_reproduce.py             --package-root .             --external-target-repo ../external-target             --output REPRODUCTION_RESULT.json
+      - name: Persist clean-room reproduction result
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-reviewer-reproduction-${{ github.sha }}
+          path: reviewer-package/REPRODUCTION_RESULT.json
+          if-no-files-found: error
+          retention-days: 30
