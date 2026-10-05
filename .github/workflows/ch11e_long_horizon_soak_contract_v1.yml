@@ -1,0 +1,26 @@
+name: CH11E long horizon soak contract tests
+
+on:
+  push:
+    branches:
+      - feature/ch11e-long-horizon-live-readonly-soak-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ch11e-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Compile CH11E contract test
+        run: python -m compileall -q test_ch11e_long_horizon_soak_v1.py
+
+      - name: Run CH11E contract test
+        run: python -m unittest -v test_ch11e_long_horizon_soak_v1.py
