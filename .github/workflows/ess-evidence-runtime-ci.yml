@@ -28,3 +28,16 @@ jobs:
         run: python -m compileall -q .
       - name: Core + negative + EQ64 + CLI/API tests
         run: python -m unittest -v
+      - name: Build EQ64 bounded canary evidence
+        if: matrix.python-version == '3.12'
+        run: |
+          python eq64_assurance_canary.py --output-dir artifacts/eq64_assurance_v1
+          python eq64_assurance_cli.py replay artifacts/eq64_assurance_v1/eq64_assurance_receipt.json
+      - name: Persist EQ64 bounded canary evidence
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-assurance-v1-${{ github.sha }}
+          path: artifacts/eq64_assurance_v1/
+          if-no-files-found: error
+          retention-days: 30
