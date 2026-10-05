@@ -41,3 +41,78 @@ jobs:
           path: artifacts/eq64_assurance_v1/
           if-no-files-found: error
           retention-days: 30
+
+  security-producer:
+    name: security producer
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Produce security evidence only
+        run: |
+          mkdir -p artifacts/security
+          python eq64_dual_process_assurance.py produce-security artifacts/security/eq64_security_canary.json
+      - name: Persist security evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-security-${{ github.sha }}
+          path: artifacts/security/eq64_security_canary.json
+          if-no-files-found: error
+          retention-days: 30
+
+  regression-producer:
+    name: regression producer
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Produce regression evidence only
+        run: |
+          mkdir -p artifacts/regression
+          python eq64_dual_process_assurance.py produce-regression artifacts/regression/eq64_regression_canary.json
+      - name: Persist regression evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-regression-${{ github.sha }}
+          path: artifacts/regression/eq64_regression_canary.json
+          if-no-files-found: error
+          retention-days: 30
+
+  authority-join:
+    name: independent authority join
+    needs:
+      - security-producer
+      - regression-producer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download security evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-security-${{ github.sha }}
+          path: artifacts/security
+      - name: Download regression evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-regression-${{ github.sha }}
+          path: artifacts/regression
+      - name: Join raw evidence under EQ64 authority
+        run: |
+          python eq64_dual_process_assurance.py join             artifacts/security/eq64_security_canary.json             artifacts/regression/eq64_regression_canary.json             --output-dir artifacts/authority
+          python eq64_assurance_cli.py replay artifacts/authority/eq64_assurance_receipt.json
+      - name: Persist authority receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-authority-${{ github.sha }}
+          path: artifacts/authority/
+          if-no-files-found: error
+          retention-days: 30
