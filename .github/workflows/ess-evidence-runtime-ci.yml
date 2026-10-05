@@ -201,3 +201,24 @@ jobs:
           path: artifacts/external-authority/
           if-no-files-found: error
           retention-days: 30
+
+  comparative-false-pass-experiment:
+    name: comparative false-pass experiment
+    needs:
+      - external-authority-join
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run precommitted comparative matrix
+        run: |
+          python eq64_comparative_false_pass_experiment.py             --output-dir artifacts/eq64_comparative_v1
+      - name: Persist comparative experiment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-comparative-false-pass-${{ github.sha }}
+          path: artifacts/eq64_comparative_v1/
+          if-no-files-found: error
+          retention-days: 30
