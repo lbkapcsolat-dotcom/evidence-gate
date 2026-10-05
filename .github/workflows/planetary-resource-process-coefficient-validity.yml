@@ -1,0 +1,89 @@
+name: Planetary Resource Process Coefficient Validity
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-process-coefficient-validity-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  process-coefficient-validity:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify pinned predecessor bytes
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f  planetary_resource_cpp_kernel_v1.cpp" | sha256sum -c -
+          echo "612537b73e44a8b607710321df1a71dfc344e2b38fd4688b7529ae41a4a05f82  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION.json" | sha256sum -c -
+          echo "29e3f2cd7f163bf850336cc37b67dae36b847d912c13c77cee7fdd7b467b5ebc  planetary_resource_process_coefficient_uncertainty_v1.py" | sha256sum -c -
+          echo "8231d54b2962fa07ad0fcd09636f2543719b4a523eb049533876b9f24eec1064  planetary_resource_process_coefficient_uncertainty_gate_v1.py" | sha256sum -c -
+
+      - name: Compile validity successor
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_process_typed_dimensional_closure_v1.py             planetary_resource_process_typed_dimensional_closure_gate_v1.py             planetary_resource_end_to_end_uncertainty_v1.py             planetary_resource_end_to_end_uncertainty_gate_v1.py             planetary_resource_storage_self_loss_typed_v1.py             planetary_resource_storage_self_loss_typed_gate_v1.py             planetary_resource_post_self_loss_core_gap_review_v1.py             planetary_resource_process_coefficient_uncertainty_v1.py             planetary_resource_process_coefficient_uncertainty_gate_v1.py             planetary_resource_process_coefficient_validity_v1.py             planetary_resource_process_coefficient_validity_gate_v1.py             test_planetary_resource_process_coefficient_validity_v1.py
+
+      - name: Preserve legacy Python 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve typed process closure
+        run: python -m unittest -v test_planetary_resource_process_typed_dimensional_closure_v1.py
+
+      - name: Preserve end-to-end uncertainty
+        run: python -m unittest -v test_planetary_resource_end_to_end_uncertainty_v1.py
+
+      - name: Preserve typed storage self-loss
+        run: python -m unittest -v test_planetary_resource_storage_self_loss_typed_v1.py
+
+      - name: Preserve coefficient uncertainty
+        run: python -m unittest -v test_planetary_resource_process_coefficient_uncertainty_v1.py
+
+      - name: Run coefficient validity tests
+        run: python -m unittest -v test_planetary_resource_process_coefficient_validity_v1.py
+
+      - name: Build deterministic validity receipt
+        shell: bash
+        run: |
+          python planetary_resource_process_coefficient_validity_gate_v1.py | tee process_coefficient_validity.log
+          grep -F '"expired_rejected":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL_RECEIPT.json
+          grep -F '"not_yet_valid_rejected":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL_RECEIPT.json
+          grep -F '"partial_overlap_rejected":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL_RECEIPT.json
+          grep -F '"missing_validity_when_required_rejected":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_PROCESS_COEFFICIENT_VALIDITY_INTERVAL"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL_RECEIPT.json
+
+      - name: Preserve independent C++ baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash coefficient validity evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL.json             planetary_resource_process_coefficient_validity_v1.py             planetary_resource_process_coefficient_validity_gate_v1.py             test_planetary_resource_process_coefficient_validity_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL_RECEIPT.json
+
+      - name: Upload coefficient validity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-process-coefficient-validity-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL_RECEIPT.json
+            process_coefficient_validity.log
+            cpp_baseline.log
+          if-no-files-found: error
