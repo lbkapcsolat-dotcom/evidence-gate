@@ -5,7 +5,6 @@ import importlib
 import importlib.util
 import unittest
 
-
 MODULE = "run_ch11e_long_horizon_soak_v1"
 
 
@@ -105,6 +104,47 @@ class TestCH11ELongHorizonSoak(unittest.TestCase):
             })
         receipt = self.m.adjudicate_soak(rounds)
         self.assertEqual(receipt["verdict"], "HOLD_CH11E__LONG_HORIZON_NOT_YET_OBSERVED")
+
+    def test_build_source_observations_normalizes_three_ch11c_rows(self):
+        receipt = {
+            "live_source_refresh": {"rows": [
+                {"source_id": "water", "live_raw_sha256": "a"*64, "provider_identity": True, "schema_identity": True, "semantic_identity": True, "freshness_age_seconds": 10, "max_age_seconds": 7200, "selected_record": {"observed_at": "2026-10-05T20:00:00Z", "value": "1", "unit": "m3/s"}},
+                {"source_id": "electricity", "live_raw_sha256": "b"*64, "provider_identity": True, "schema_identity": True, "semantic_identity": True, "freshness_age_seconds": 10, "max_age_seconds": 7200, "selected_record": {"start_time": "2026-10-05T20:00:00Z", "demand": "2", "unit": "MW"}},
+                {"source_id": "natural_gas", "live_raw_sha256": "c"*64, "provider_identity": True, "schema_identity": True, "semantic_identity": True, "freshness_age_seconds": 10, "max_age_seconds": 10800, "selected_record": {"period_to_utc": "2026-10-05T20:00:00Z", "value": "3", "unit": "kWh/h"}},
+            ]}
+        }
+        out = self.m.build_source_observations(receipt)
+        self.assertEqual(set(out), {"water", "electricity", "natural_gas"})
+        self.assertEqual(out["natural_gas"]["selected_timestamp"], "2026-10-05T20:00:00Z")
+
+    def test_execute_soak_requests_five_rounds_and_four_hour_separations(self):
+        calls = []
+        sleeps = []
+
+        def fetch_round(round_no):
+            calls.append(round_no)
+            ts = f"2026-10-05T{19+round_no:02d}:00:00Z"
+            return {"round": round_no, "round_started_at": ts, "round_completed_at": ts, "attempt_history": {}, "receipt_path": f"r{round_no}.json"}
+
+        def receipt_loader(path):
+            round_no = int(path[1])
+            ts = f"2026-10-05T{19+round_no:02d}:00:00Z"
+            return {"live_source_refresh": {"rows": [
+                {"source_id": "water", "live_raw_sha256": "a"*64, "provider_identity": True, "schema_identity": True, "semantic_identity": True, "freshness_age_seconds": 10, "max_age_seconds": 7200, "selected_record": {"observed_at": ts, "value": str(round_no)}},
+                {"source_id": "electricity", "live_raw_sha256": "b"*64, "provider_identity": True, "schema_identity": True, "semantic_identity": True, "freshness_age_seconds": 10, "max_age_seconds": 7200, "selected_record": {"start_time": ts, "demand": str(round_no)}},
+                {"source_id": "natural_gas", "live_raw_sha256": "c"*64, "provider_identity": True, "schema_identity": True, "semantic_identity": True, "freshness_age_seconds": 10, "max_age_seconds": 10800, "selected_record": {"period_to_utc": ts, "value": str(round_no)}},
+            ]}}
+
+        rounds = self.m.execute_soak(
+            fetch_round_fn=fetch_round,
+            receipt_loader=receipt_loader,
+            replay_fn=lambda row: True,
+            sleeper=lambda seconds: sleeps.append(seconds),
+        )
+        self.assertEqual(calls, [1, 2, 3, 4, 5])
+        self.assertEqual(sleeps, [3600, 3600, 3600, 3600])
+        self.assertTrue(all(r["replay_validation_equal"] for r in rounds))
+        self.assertEqual(len(rounds), 5)
 
 
 if __name__ == "__main__":
