@@ -68,7 +68,7 @@ jobs:
 
   ch11e-live-soak:
     needs: ch11e-contract
-    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[CH11E_SOAK]') && needs.ch11e-contract.result == 'success' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.event.pull_request.number == 65 && github.event.pull_request.draft == true && needs.ch11e-contract.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
