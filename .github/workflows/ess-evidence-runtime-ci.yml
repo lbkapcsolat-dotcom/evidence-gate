@@ -28,3 +28,260 @@ jobs:
         run: python -m compileall -q .
       - name: Core + negative + EQ64 + CLI/API tests
         run: python -m unittest -v
+      - name: Build EQ64 bounded canary evidence
+        if: matrix.python-version == '3.12'
+        run: |
+          python eq64_assurance_canary.py --output-dir artifacts/eq64_assurance_v1
+          python eq64_assurance_cli.py replay artifacts/eq64_assurance_v1/eq64_assurance_receipt.json
+      - name: Persist EQ64 bounded canary evidence
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-assurance-v1-${{ github.sha }}
+          path: artifacts/eq64_assurance_v1/
+          if-no-files-found: error
+          retention-days: 30
+
+  security-producer:
+    name: security producer
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Produce security evidence only
+        run: |
+          mkdir -p artifacts/security
+          python eq64_dual_process_assurance.py produce-security artifacts/security/eq64_security_canary.json
+      - name: Persist security evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-security-${{ github.sha }}
+          path: artifacts/security/eq64_security_canary.json
+          if-no-files-found: error
+          retention-days: 30
+
+  regression-producer:
+    name: regression producer
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Produce regression evidence only
+        run: |
+          mkdir -p artifacts/regression
+          python eq64_dual_process_assurance.py produce-regression artifacts/regression/eq64_regression_canary.json
+      - name: Persist regression evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-regression-${{ github.sha }}
+          path: artifacts/regression/eq64_regression_canary.json
+          if-no-files-found: error
+          retention-days: 30
+
+  authority-join:
+    name: independent authority join
+    needs:
+      - security-producer
+      - regression-producer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download security evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-security-${{ github.sha }}
+          path: artifacts/security
+      - name: Download regression evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-regression-${{ github.sha }}
+          path: artifacts/regression
+      - name: Join raw evidence under EQ64 authority
+        run: |
+          python eq64_dual_process_assurance.py join             artifacts/security/eq64_security_canary.json             artifacts/regression/eq64_regression_canary.json             --output-dir artifacts/authority
+          python eq64_assurance_cli.py replay artifacts/authority/eq64_assurance_receipt.json
+      - name: Persist authority receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-authority-${{ github.sha }}
+          path: artifacts/authority/
+          if-no-files-found: error
+          retention-days: 30
+
+  external-security-producer:
+    name: external security producer
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: lbkapcsolat-dotcom/equilibrium-stability-systems
+          ref: e3c64f80be032dda6ac30cb38bbed1d41d2fa559
+          path: external-target
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Produce external security evidence
+        run: |
+          mkdir -p artifacts/external-security
+          python eq64_external_target_canary.py produce-security             external-target             artifacts/external-security/eq64_external_security_canary.json
+      - name: Persist external security evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-external-security-${{ github.sha }}
+          path: artifacts/external-security/eq64_external_security_canary.json
+          if-no-files-found: error
+          retention-days: 30
+
+  external-regression-producer:
+    name: external regression producer
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: lbkapcsolat-dotcom/equilibrium-stability-systems
+          ref: e3c64f80be032dda6ac30cb38bbed1d41d2fa559
+          path: external-target
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Produce external regression evidence
+        run: |
+          mkdir -p artifacts/external-regression
+          python eq64_external_target_canary.py produce-regression             external-target             artifacts/external-regression/eq64_external_regression_canary.json
+      - name: Persist external regression evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-external-regression-${{ github.sha }}
+          path: artifacts/external-regression/eq64_external_regression_canary.json
+          if-no-files-found: error
+          retention-days: 30
+
+  external-authority-join:
+    name: external independent authority join
+    needs:
+      - external-security-producer
+      - external-regression-producer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download external security evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-external-security-${{ github.sha }}
+          path: artifacts/external-security
+      - name: Download external regression evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-external-regression-${{ github.sha }}
+          path: artifacts/external-regression
+      - name: Join external evidence under EQ64 authority
+        run: |
+          python eq64_external_target_canary.py join             artifacts/external-security/eq64_external_security_canary.json             artifacts/external-regression/eq64_external_regression_canary.json             --output-dir artifacts/external-authority
+          python eq64_assurance_cli.py replay             artifacts/external-authority/eq64_external_assurance_receipt.json
+      - name: Persist external authority receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-external-authority-${{ github.sha }}
+          path: artifacts/external-authority/
+          if-no-files-found: error
+          retention-days: 30
+
+  comparative-false-pass-experiment:
+    name: comparative false-pass experiment
+    needs:
+      - external-authority-join
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run precommitted comparative matrix
+        run: |
+          python eq64_comparative_false_pass_experiment.py             --output-dir artifacts/eq64_comparative_v1
+      - name: Persist comparative experiment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-comparative-false-pass-${{ github.sha }}
+          path: artifacts/eq64_comparative_v1/
+          if-no-files-found: error
+          retention-days: 30
+
+  reviewer-package:
+    name: frozen reviewer package
+    needs:
+      - external-authority-join
+      - comparative-false-pass-experiment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download external authority evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-external-authority-${{ github.sha }}
+          path: artifacts/external-authority
+      - name: Download comparative experiment evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-comparative-false-pass-${{ github.sha }}
+          path: artifacts/comparative
+      - name: Build frozen reviewer handoff
+        run: |
+          python eq64_build_reviewer_package.py             --source-root .             --external-authority-dir artifacts/external-authority             --comparative-dir artifacts/comparative             --output-dir artifacts/reviewer-package
+      - name: Persist reviewer package
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-reviewer-package-${{ github.sha }}
+          path: artifacts/reviewer-package/
+          if-no-files-found: error
+          retention-days: 30
+
+  reviewer-clean-room:
+    name: reviewer clean-room reproduction
+    needs:
+      - reviewer-package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lbkapcsolat-dotcom/equilibrium-stability-systems
+          ref: e3c64f80be032dda6ac30cb38bbed1d41d2fa559
+          path: external-target
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download frozen reviewer package
+        uses: actions/download-artifact@v4
+        with:
+          name: eq64-reviewer-package-${{ github.sha }}
+          path: reviewer-package
+      - name: Reproduce only from handoff package and frozen target
+        working-directory: reviewer-package
+        run: |
+          python eq64_reviewer_reproduce.py             --package-root .             --external-target-repo ../external-target             --output REPRODUCTION_RESULT.json
+      - name: Persist clean-room reproduction result
+        uses: actions/upload-artifact@v4
+        with:
+          name: eq64-reviewer-reproduction-${{ github.sha }}
+          path: reviewer-package/REPRODUCTION_RESULT.json
+          if-no-files-found: error
+          retention-days: 30
