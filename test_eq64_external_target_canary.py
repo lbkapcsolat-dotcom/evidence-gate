@@ -3,11 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from eq64_external_target_canary import join_external_evidence
+from eq64_external_target_canary import (
+    EXPECTED_RUNTIME_IDENTITY_SHA256,
+    join_external_evidence,
+)
 from eq64_executable_assurance_engine import replay_assurance_receipt
 
 COMMIT = "e3c64f80be032dda6ac30cb38bbed1d41d2fa559"
-RUNTIME = "a" * 64
+RUNTIME = EXPECTED_RUNTIME_IDENTITY_SHA256
 TARGET_ID = "equilibrium-stability-systems/claim_admission_kernel_v1@e3c64f80"
 
 
