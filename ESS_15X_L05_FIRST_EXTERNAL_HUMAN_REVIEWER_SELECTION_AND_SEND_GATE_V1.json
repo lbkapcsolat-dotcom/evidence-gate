@@ -1,0 +1,26 @@
+{
+  "schema_version": "ESS_15X_L05_FIRST_EXTERNAL_HUMAN_REVIEWER_SELECTION_AND_SEND_GATE_V1",
+  "reviewer": {
+    "name": "Howard Henson",
+    "github": "hhenson",
+    "role_basis": "HGraph maintainer/author; HGraph 0.8.31 publisher provenance resolves to hhenson/hgraph",
+    "selection_reason": "Direct expertise in the exact HGraph 0.8.31 Python-authoring/native-C++ runtime boundary used by the frozen package"
+  },
+  "contact": {
+    "channel": "EMAIL",
+    "address_provenance": "PUBLIC_PYPI_PROJECT_AUTHOR_METADATA",
+    "sender_account": "Equilibrium Stability",
+    "gmail_message_id": "1a10d10341393345",
+    "gmail_thread_id": "1a10d10341393345",
+    "sent": true
+  },
+  "handoff": {
+    "frozen_target_head": "e5b9ca78cd0b1f84a6ba80eba8d698249ed1408e",
+    "release_manifest_sha256": "f18678e84ef90765750445b86742cd0bcb648defa1fc4f3767bc9ecb7227cf6f",
+    "reviewer_package_manifest_sha256": "eadfc9e43f5b838aecc24e276154066d01df704d4e1cc8fd1556400f9a37a561",
+    "request_scope": "INDEPENDENT_TECHNICAL_REPRODUCTION__FAIL_PARTIAL_CRITICISM_OR_PASS_ALL_ACCEPTABLE"
+  },
+  "status": "SENT__WAITING_EXTERNAL_HUMAN_RETURN",
+  "human_external_review_complete": false,
+  "claim_ceiling": "SELECTION_AND_SEND_ONLY__NO_EXTERNAL_VALIDATION_UNTIL_ATTRIBUTABLE_REVIEWER_RETURN__NO_CERTIFICATION__NO_PRODUCTION_ADMISSION__NO_GLOBAL_BIND__NO_MERGE"
+}
