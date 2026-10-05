@@ -1,0 +1,89 @@
+# readback-trigger: pr58-synchronize
+name: CH09A Babai EQ64 native C++ HGraph 64 replay
+
+on:
+  push:
+    branches:
+      - feature/ch09a-babai-eq64-hgraph-cpp64-replay-v1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ch09a-cpp-hgraph-64-replay:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Materialize exact pinned HGraph runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip download --only-binary=:all: --no-deps "hgraph==0.8.31" -d wheelhouse
+          wheel="$(find wheelhouse -maxdepth 1 -name 'hgraph-0.8.31-*.whl' -print -quit)"
+          test -n "$wheel"
+          echo "78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2  $wheel" | sha256sum -c -
+          python -m pip install "$wheel"
+          python -m pip install "nanobind==2.13.0"
+
+      - name: Fresh native runtime readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import importlib.metadata
+          import _hgraph
+          assert importlib.metadata.version("hgraph") == "0.8.31"
+          assert _hgraph.__file__
+          print("HGRAPH_VERSION=0.8.31")
+          print("NATIVE_HGRAPH_MODULE=" + _hgraph.__file__)
+          print("UPSTREAM_RELEASE_COMMIT=1bb4b7f21ddfb6c69c8bae74c523980605ae93f6")
+          print("PINNED_LINUX_WHEEL_SHA256=78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2")
+          PY
+
+      - name: Build CH09A native C++ HGraph adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S ch09a_cpp_hgraph_v1 -B build/ch09a_cpp_hgraph -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/ch09a_cpp_hgraph --parallel 2
+          test -x build/ch09a_cpp_hgraph/ch09a_babai_eq64_cpp_hgraph_replay_v1
+
+      - name: Execute C++ eval_node 64-state replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/ch09a_cpp_hgraph/ch09a_babai_eq64_cpp_hgraph_replay_v1 | tee ch09a_cpp_hgraph_replay.log
+          test "$(grep -c '^{"x":' ch09a_cpp_hgraph_replay.log)" -eq 64
+          grep -Fx "ROTATIONS=24" ch09a_cpp_hgraph_replay.log
+          grep -Fx "CANONICAL_LABELS=10" ch09a_cpp_hgraph_replay.log
+          grep -Fx "ORBIT_PROFILE=1,1,3,3,6,6,8,12,12,12" ch09a_cpp_hgraph_replay.log
+          grep -Fx "ORBIT_STABILIZER=64/64" ch09a_cpp_hgraph_replay.log
+          grep -Fx "CPP_HGRAPH_EQ64_MATRIX=64/64" ch09a_cpp_hgraph_replay.log
+
+      - name: Build deterministic CH09A receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python run_ch09a_cpp_hgraph_receipt_v1.py | tee ch09a_receipt_build.log
+          grep -F '"verdict":"PASS_CH09A__EXACT_HGRAPH_RUNTIME_MATERIALIZED__CPP_EVAL_NODE_64_OF_64"' CH09A__CPP_HGRAPH_EQ64_64_REPLAY_RECEIPT_V1.json
+          sha256sum             ch09a_babai_eq64_cpp_hgraph_replay_v1.cpp             ch09a_cpp_hgraph_v1/CMakeLists.txt             run_ch09a_cpp_hgraph_receipt_v1.py             ch09a_cpp_hgraph_replay.log             CH09A__CPP_HGRAPH_EQ64_64_REPLAY_RECEIPT_V1.json             > CH09A_SHA256SUMS.txt
+          cat CH09A_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ch09a-babai-eq64-cpp-hgraph-64-replay-evidence
+          path: |
+            CH09A__CPP_HGRAPH_EQ64_64_REPLAY_RECEIPT_V1.json
+            CH09A_SHA256SUMS.txt
+            ch09a_cpp_hgraph_replay.log
+            ch09a_receipt_build.log
+          if-no-files-found: error
