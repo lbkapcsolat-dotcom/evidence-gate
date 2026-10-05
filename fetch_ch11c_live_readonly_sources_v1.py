@@ -141,7 +141,22 @@ def main() -> None:
 
     rows = []
     for source_id in ("water", "electricity", "natural_gas"):
-        rows.append(fetch_one(opener, source_id, urls[source_id], fetched_at))
+        try:
+            rows.append(fetch_one(opener, source_id, urls[source_id], fetched_at))
+        except Exception as exc:
+            spec = ALLOWLIST[source_id]
+            rows.append({
+                "source_id": source_id,
+                "provider": spec["provider"],
+                "role": spec["role"],
+                "method": "GET",
+                "requested_url": urls[source_id],
+                "fetched_at": fetched_at,
+                "ok": False,
+                "error": f"{type(exc).__name__}:{exc}",
+                "external_write": False,
+                "request_body_bytes": 0,
+            })
 
     manifest = {
         "schema_version": "CH11C_LIVE_FETCH_MANIFEST_V1",
@@ -157,6 +172,7 @@ def main() -> None:
         },
         "allowlist": ALLOWLIST,
         "fetch_count": len(rows),
+        "successful_fetch_count": sum(1 for row in rows if row.get("http_status") == 200),
         "rows": rows,
     }
     canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
