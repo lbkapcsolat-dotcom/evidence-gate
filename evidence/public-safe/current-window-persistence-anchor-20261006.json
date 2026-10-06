@@ -1,0 +1,28 @@
+{
+  "schema_version": "ESS_PUBLIC_SAFE_PERSISTENCE_ANCHOR_V1",
+  "generated_utc": "2026-10-06T17:05:00Z",
+  "artifact": "RUN_CURRENT_WINDOW_ABSOLUTE_PERSISTENCE_ENGINE_V1__20261006.zip",
+  "artifact_sha256": "a9343c2744e98cc38284e56f8489cb26dd07dc2eb2f2a81e404eef577692418a",
+  "artifact_size_bytes": 263401,
+  "role": "SUPPORT_ONLY_NONAUTHORITY",
+  "binary_location": "PRIVATE_DRIVE_SUPPORT_LAYER",
+  "canonical_authority_location": "PRIVATE_DRIVE_ONLY",
+  "verification": {
+    "local_zip_crc": "PASS",
+    "local_file_set_check": "PASS",
+    "local_sha256": "PASS",
+    "drive_byte_readback_equality": "PASS"
+  },
+  "control_fences": {
+    "pointer_promotion": false,
+    "global_bind": false,
+    "runtime_admission": false,
+    "production_readiness": false,
+    "private_authority_mirror_on_github": false
+  },
+  "unresolved_external_holds": [
+    "GITHUB_PROVIDER_PURGE",
+    "HF_REMOTE_PERSISTENCE"
+  ],
+  "public_surface_note": "This anchor intentionally omits private Drive IDs, pointer IDs, Master/Boot identifiers, close-seal identifiers, internal lineage details, and private manifests."
+}
