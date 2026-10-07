@@ -1,0 +1,30 @@
+{
+  "receipt_id": "READBACK_RECEIPT_V203_CROSS_DOMAIN_ANCHOR_COPY_V1",
+  "created_local": "2026-10-07T03:44:00+02:00",
+  "repository": "lbkapcsolat-dotcom/evidence-gate",
+  "branch": "evidence/v203-cross-domain-anchor-20261007",
+  "drive_remains_canonical": true,
+  "github_role": "SUPPORT_ONLY_ANCHOR_COPY",
+  "hugging_face_status": "HOLD_HF_WRITE_TOOL_UNAVAILABLE_IN_THIS_CHAT",
+  "commits": {
+    "manifest_commit_sha": "8717df36d7a5f3db7a0de1fa56ff34526dc5dd3f",
+    "readme_commit_sha": "eb963920abb76d7c17ad233bd8ed1160d6b01ac1"
+  },
+  "github_readback": {
+    "manifest_path": "evidence/v203/CROSS_DOMAIN_PERSISTENCE_V203_MANIFEST.json",
+    "manifest_blob_sha": "95bb42c117b466be9590101ab92784d006ca818e",
+    "manifest_local_sha256": "38bf129214059ae5f2b2ab799fb2ee6590be1f17a2ae6294efd761ebebecd796",
+    "readme_path": "evidence/v203/README.md",
+    "readme_blob_sha": "8f760767e4386fb7ae867a8e65a3611c77e44074",
+    "readme_local_sha256": "1c08f74349274ddc42ebe10f07f9715e22d440a8a7c5bc9e912d887ade1fbf60"
+  },
+  "blocked_actions": [
+    "NO_POINTER_PATCH",
+    "NO_MASTER_BOOT",
+    "NO_NEW_SEAL",
+    "NO_GLOBAL_BIND",
+    "NO_RUNTIME_ADMISSION",
+    "NO_PRODUCTION_READINESS"
+  ],
+  "verdict": "PASS_GITHUB_SUPPORT_ONLY_MANIFEST_COMMIT_AND_READBACK__HF_HOLD_WRITE_TOOL_UNAVAILABLE__DRIVE_CANONICAL"
+}
