@@ -1,0 +1,35 @@
+{
+  "schema_version": "ESS_PUBLIC_SAFE_CURRENT_AUTHORITY_CROSSDOMAIN_PERSISTENCE_V1",
+  "generated_utc": "2026-10-07T00:08:00Z",
+  "role": "SUPPORT_ONLY_NONAUTHORITY",
+  "canonical_authority_location": "PRIVATE_GOOGLE_DRIVE_ONLY",
+  "canonical_authority_state": "VERIFIED_CURRENT_PRIVATE_AUTHORITY",
+  "authority_identifiers_published": false,
+  "private_drive_ids_published": false,
+  "private_master_boot_ids_published": false,
+  "private_pointer_id_published": false,
+  "private_close_seal_id_published": false,
+  "source_binding": {
+    "current_pointer_readback": "PASS",
+    "private_authority_match": true,
+    "authority_transfer": false
+  },
+  "github": {
+    "repository": "lbkapcsolat-dotcom/evidence-gate",
+    "branch": "evidence/current-authority-crossdomain-persistence-20261007-v1",
+    "path": "evidence/public-safe/current-authority-crossdomain-persistence-20261007.json",
+    "role": "PUBLIC_SAFE_SUPPORT_MIRROR"
+  },
+  "hugging_face": {
+    "role": "PRIVATE_SUPPORT_MIRROR",
+    "write_state": "HOLD_UNTIL_WRITE_SCOPE_AND_REMOTE_READBACK"
+  },
+  "control_fences": {
+    "pointer_promotion": false,
+    "runtime_admission": false,
+    "production_admission": false,
+    "new_global_bind": false,
+    "automatic_bidirectional_sync": false
+  },
+  "claim_ceiling": "PUBLIC_SAFE_SUPPORT_PERSISTENCE_MANIFEST_ONLY__NO_AUTHORITY_TRANSFER__NO_RUNTIME_ADMISSION__NO_PRODUCTION_ADMISSION__NO_NEW_GLOBAL_BIND"
+}
