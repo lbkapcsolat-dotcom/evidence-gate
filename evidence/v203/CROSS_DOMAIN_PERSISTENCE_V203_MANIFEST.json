@@ -1,0 +1,96 @@
+{
+  "manifest_id": "V203_CROSS_DOMAIN_PERSISTENCE_ANCHOR_COPY_V1",
+  "created_local": "2026-10-07T03:44:00+02:00",
+  "authority_model": {
+    "canonical_authority": "Google Drive",
+    "github_role": "SUPPORT_ONLY_ANCHOR_COPY",
+    "hugging_face_role": "DATASET_LAYOUT_PREPARED_OR_HOLD",
+    "no_pointer_patch": true,
+    "no_master_boot": true,
+    "no_global_bind": true,
+    "no_runtime_admission": true,
+    "no_production_readiness": true
+  },
+  "claim_ceiling": "TECHNICAL_LOCAL_CLOSE_BRANCH_LOCAL_ONLY__SUPPORT_ONLY_ANCHOR_COPY",
+  "blocked_promotions": [
+    "GLOBAL_BIND",
+    "GLOBAL_HARD_CLOSE",
+    "META1_GLOBAL",
+    "SC_GLOBAL",
+    "EMPIRICAL_VALIDATION",
+    "EXTERNAL_CERTIFICATION",
+    "PRODUCTION_DEPLOYMENT",
+    "PRODUCTION_ADMISSION",
+    "RUNTIME_ADMISSION"
+  ],
+  "drive_canonical_folder": {
+    "title": "00_BOOT_AND_POINTERS ",
+    "id": "1L5WnfzkX43bnjVBF7epJvj8T5Ll_uQXH"
+  },
+  "drive_evidence_objects": [
+    {
+      "file_name": "route_return_with_audit_payload_v2_0_3.py",
+      "drive_id": "1x471gUi0DWFOkMljQqz0CcIhTwjVUDgp",
+      "mime_type": "text/x-python",
+      "size_bytes": 23002,
+      "sha256": "92664f748d7a2937578918ae834dad836369e8c05ebd363583c364bf635b6867"
+    },
+    {
+      "file_name": "INTEGRATION_HANDOFF_AND_BIND_SERIES_V2_0_3.json",
+      "drive_id": "14XQVJh2y6j0gBIfAI9uoS10WWg6S2_aP",
+      "mime_type": "application/json",
+      "size_bytes": 5623,
+      "sha256": "b4278cdfed1e42586c97c1864fece34bc13e380bc944649ac9c8af337ce3f159"
+    },
+    {
+      "file_name": "CONTENT_PROOF_EXPORT_V2_0_3.zip",
+      "drive_id": "1tX5osbhD_CesCz3naVMQJNJ8D6DUTyCe",
+      "mime_type": "application/zip",
+      "size_bytes": 11818,
+      "sha256": "73d86d6a5e8deb85d7b3f7341e06db01a02e89ed5ab9bb52a861247cfe996f0d"
+    },
+    {
+      "file_name": "HASH_VERIFICATION_EXPORT_V2_0_3.zip",
+      "drive_id": "1vu7abUJFuCvqu-i2oCA2kKIR0iafwmV0",
+      "mime_type": "application/zip",
+      "size_bytes": 3611,
+      "sha256": "7b09964009cd1868ea0a27f8b85b50d6e880cf992e653530467ee75cb29b25e2"
+    },
+    {
+      "file_name": "FINAL_ARTIFACT_MANIFEST_V2_0_3.json",
+      "drive_id": "1DO-kq0WzdOQVZekdbkStnTNR6XGXt7bT",
+      "mime_type": "application/json",
+      "size_bytes": 1928,
+      "sha256": "938de72d0cc5969165aff5a69a40a30f885ce9d41c719b22679f703f680615af"
+    },
+    {
+      "file_name": "EXPORT_RECEIPT_V2_0_3.json",
+      "drive_id": "1vqjBwjPNT79DOOuU6IhR92Ir_lcyKVpq",
+      "mime_type": "application/json",
+      "size_bytes": 1000,
+      "sha256": "7ebd0d876fa65a15a25f0b8a7750fdebcf3772ac5a1ea2c23481e111b26c42cb"
+    }
+  ],
+  "github_anchor": {
+    "repository": "lbkapcsolat-dotcom/evidence-gate",
+    "branch": "evidence/v203-cross-domain-anchor-20261007",
+    "intended_paths": [
+      "evidence/v203/CROSS_DOMAIN_PERSISTENCE_V203_MANIFEST.json",
+      "evidence/v203/README.md"
+    ],
+    "role": "support-only manifest/text mirror; not authority"
+  },
+  "hugging_face_anchor": {
+    "status": "HOLD_HF_WRITE_TOOL_UNAVAILABLE_IN_THIS_CHAT",
+    "prepared_dataset_layout": [
+      "README.md",
+      "CROSS_DOMAIN_PERSISTENCE_V203_MANIFEST.json",
+      "hashes/SHA256SUMS_V2_0_3.txt",
+      "artifacts/route_return_with_audit_payload_v2_0_3.py",
+      "artifacts/INTEGRATION_HANDOFF_AND_BIND_SERIES_V2_0_3.json",
+      "artifacts/FINAL_ARTIFACT_MANIFEST_V2_0_3.json",
+      "artifacts/EXPORT_RECEIPT_V2_0_3.json"
+    ]
+  },
+  "verdict": "PASS_GITHUB_BRANCH_PREPARED_PENDING_COMMIT_READBACK__HF_HOLD_WRITE_TOOL_UNAVAILABLE__DRIVE_REMAINS_CANONICAL"
+}
