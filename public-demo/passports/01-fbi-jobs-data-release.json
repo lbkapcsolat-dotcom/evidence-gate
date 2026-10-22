@@ -1,0 +1,45 @@
+{
+  "schema": "PUBLIC_SYNTHETIC_PROOF_PASSPORT_V1",
+  "frozen_inputs": {
+    "schema": "PUBLIC_SYNTHETIC_INPUT_V1",
+    "case_id": "fbi-jobs-data-release",
+    "authority_revision": 4,
+    "expected_authority_revision": 4,
+    "operation_kind": "WRITE_SENSITIVE",
+    "granted_scopes": [
+      "demo.fbi-jobs-data-release:write"
+    ],
+    "requested_scope": "demo.fbi-jobs-data-release:write",
+    "authority_attested": true,
+    "policy_attested": true,
+    "evidence_attested": true,
+    "q6_required": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "q6_observed": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "synthetic_only": true
+  },
+  "decision_core": {
+    "schema": "PUBLIC_DECISION_CORE_V1",
+    "frozen_input_sha256": "667e12150c523446ce3db048501270cf4736a4afc4516ecc93c109b5e74e7b05",
+    "verdict": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "execution_eligible": false
+  },
+  "decision_core_sha256": "eaf79a1dbfcd856478d8b306c1d44166d6f319ceaac93d88f251ea956e1fea15",
+  "event_origin_attested": false,
+  "external_integrity_pin_verified": false,
+  "production_enforcement": false
+}
