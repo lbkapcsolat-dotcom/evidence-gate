@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Synthetic sample checker. Does not authenticate events or enforce policies. */
 const fs=require('fs'),crypto=require('crypto');
-const d=Buffer.from('PUBLIC-PROOFGATE-SYNTHETIC-V1\\0','utf8');
+const d=Buffer.concat([Buffer.from('PUBLIC-PROOFGATE-SYNTHETIC-V1','ascii'),Buffer.from([0])]);
 const stable=v=>Array.isArray(v)?'['+v.map(stable).join(',')+']':v&&typeof v==='object'?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}':JSON.stringify(v);
 const hash=v=>crypto.createHash('sha256').update(d).update(stable(v),'ascii').digest('hex');
 let p;
