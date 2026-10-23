@@ -1,0 +1,45 @@
+{
+  "decision_core": {
+    "execution_eligible": false,
+    "frozen_input_sha256": "31f878e1c15b545d8772325970046c02da93ed49e591afa9ed3c47f3d936e1ce",
+    "reason": "DECLARED_GUARDS_CONSISTENT",
+    "schema": "PUBLIC_DECISION_CORE_V1",
+    "verdict": "PASS_BOUNDED"
+  },
+  "decision_core_sha256": "32981055148f531c63d01413588fd1d25d7e2c571243fad3bab64c6d6cbed863",
+  "event_origin_attested": false,
+  "external_integrity_pin_verified": false,
+  "frozen_inputs": {
+    "authority_attested": true,
+    "authority_revision": 4,
+    "case_id": "medtech-device-change",
+    "evidence_attested": true,
+    "expected_authority_revision": 4,
+    "granted_scopes": [
+      "demo.medtech-device-change:write"
+    ],
+    "operation_kind": "WRITE_SENSITIVE",
+    "policy_attested": true,
+    "q6_observed": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "q6_required": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "requested_scope": "demo.medtech-device-change:write",
+    "schema": "PUBLIC_SYNTHETIC_INPUT_V1",
+    "synthetic_only": true
+  },
+  "production_enforcement": false,
+  "schema": "PUBLIC_SYNTHETIC_PROOF_PASSPORT_V1"
+}
