@@ -1,0 +1,45 @@
+{
+  "decision_core": {
+    "execution_eligible": false,
+    "frozen_input_sha256": "1463a01b1264e74d9c44aed4412a76bbe4052e3f3b472539ab376af6f9c211cc",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "schema": "PUBLIC_DECISION_CORE_V1",
+    "verdict": "HOLD"
+  },
+  "decision_core_sha256": "4a7b7d9b798227f4fbb6dd5efa14b8faefd52b2ca981301343d3b56894906296",
+  "event_origin_attested": false,
+  "external_integrity_pin_verified": false,
+  "frozen_inputs": {
+    "authority_attested": true,
+    "authority_revision": 4,
+    "case_id": "insurer-claim-payment",
+    "evidence_attested": true,
+    "expected_authority_revision": 4,
+    "granted_scopes": [
+      "demo.insurer-claim-payment:write"
+    ],
+    "operation_kind": "WRITE_SENSITIVE",
+    "policy_attested": true,
+    "q6_observed": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "q6_required": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "requested_scope": "demo.insurer-claim-payment:write",
+    "schema": "PUBLIC_SYNTHETIC_INPUT_V1",
+    "synthetic_only": true
+  },
+  "production_enforcement": false,
+  "schema": "PUBLIC_SYNTHETIC_PROOF_PASSPORT_V1"
+}
