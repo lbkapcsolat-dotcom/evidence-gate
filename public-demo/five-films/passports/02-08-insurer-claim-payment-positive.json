@@ -1,0 +1,45 @@
+{
+  "decision_core": {
+    "execution_eligible": false,
+    "frozen_input_sha256": "774c7069f467df95f805e79a00e824e7bf71e99c8840f59ca63b6593fcfe55c5",
+    "reason": "DECLARED_GUARDS_CONSISTENT",
+    "schema": "PUBLIC_DECISION_CORE_V1",
+    "verdict": "PASS_BOUNDED"
+  },
+  "decision_core_sha256": "3656fefeb4bdedc1c34f1d4c096a1ca9f441e6c228601a31f6135c8263aafe3b",
+  "event_origin_attested": false,
+  "external_integrity_pin_verified": false,
+  "frozen_inputs": {
+    "authority_attested": true,
+    "authority_revision": 4,
+    "case_id": "insurer-claim-payment",
+    "evidence_attested": true,
+    "expected_authority_revision": 4,
+    "granted_scopes": [
+      "demo.insurer-claim-payment:write"
+    ],
+    "operation_kind": "WRITE_SENSITIVE",
+    "policy_attested": true,
+    "q6_observed": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "q6_required": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "requested_scope": "demo.insurer-claim-payment:write",
+    "schema": "PUBLIC_SYNTHETIC_INPUT_V1",
+    "synthetic_only": true
+  },
+  "production_enforcement": false,
+  "schema": "PUBLIC_SYNTHETIC_PROOF_PASSPORT_V1"
+}
