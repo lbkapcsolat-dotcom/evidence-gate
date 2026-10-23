@@ -1,0 +1,45 @@
+{
+  "decision_core": {
+    "execution_eligible": false,
+    "frozen_input_sha256": "b74166dfcd3b0e5448487ee99798445f69952988abb1d204f4b069081e4b7671",
+    "reason": "OUT_OF_SCOPE",
+    "schema": "PUBLIC_DECISION_CORE_V1",
+    "verdict": "DENY"
+  },
+  "decision_core_sha256": "175efb372a1dfd332b13d945f89d0695bcc58e8fd892a805de293ddc64236df1",
+  "event_origin_attested": false,
+  "external_integrity_pin_verified": false,
+  "frozen_inputs": {
+    "authority_attested": true,
+    "authority_revision": 4,
+    "case_id": "warehouse-inventory",
+    "evidence_attested": true,
+    "expected_authority_revision": 4,
+    "granted_scopes": [
+      "demo.warehouse-inventory:inspect"
+    ],
+    "operation_kind": "WRITE_SENSITIVE",
+    "policy_attested": true,
+    "q6_observed": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "q6_required": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "requested_scope": "demo.warehouse-inventory:write",
+    "schema": "PUBLIC_SYNTHETIC_INPUT_V1",
+    "synthetic_only": true
+  },
+  "production_enforcement": false,
+  "schema": "PUBLIC_SYNTHETIC_PROOF_PASSPORT_V1"
+}
