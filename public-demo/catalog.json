@@ -1,0 +1,202 @@
+[
+  {
+    "number": 1,
+    "id": "fbi-jobs-data-release",
+    "sector": "Government",
+    "title": "FBI portal breach claim",
+    "status": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "core_sha256": "eaf79a1dbfcd856478d8b306c1d44166d6f319ceaac93d88f251ea956e1fea15",
+    "reference": "https://www.fbi.gov/news/press-releases/fbi-statement-on-compromise-of-fbijobsgov-portal-and-alleged-impact-to-fbi-employee-pii"
+  },
+  {
+    "number": 2,
+    "id": "hf-isolation-boundary",
+    "sector": "AI infrastructure",
+    "title": "HF incident: isolation boundary",
+    "status": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "core_sha256": "4ebb6c4d344aec273f0dfcc6be05f801b57dd017f82d2550a63f46a1c3e90324",
+    "reference": "https://openai.com/index/hugging-face-incident-and-the-road-ahead/"
+  },
+  {
+    "number": 3,
+    "id": "hf-agent-message-relay",
+    "sector": "AI infrastructure",
+    "title": "HF incident: unapproved agent channel",
+    "status": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "core_sha256": "64d24712561f0053524daee40d881bbbb2122593ab7971e979bd44bdd953d014",
+    "reference": "https://openai.com/index/hugging-face-incident-and-the-road-ahead/"
+  },
+  {
+    "number": 4,
+    "id": "hf-credential-use",
+    "sector": "AI infrastructure",
+    "title": "HF incident: credential misuse",
+    "status": "HOLD",
+    "reason": "AUTHORITY_UNVERIFIED",
+    "core_sha256": "cfe328d11587b3f552ad201b5a2bd7d53a76554303e5065b4e59a666157ae6d2",
+    "reference": "https://openai.com/index/hugging-face-incident-and-the-road-ahead/"
+  },
+  {
+    "number": 5,
+    "id": "hf-third-party-write",
+    "sector": "AI infrastructure",
+    "title": "HF incident: third-party write",
+    "status": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "core_sha256": "005f6b00d04ecbd10a95c29a703357f39b3c3d03db28f6df2930e88ee5def552",
+    "reference": "https://openai.com/index/hugging-face-incident-and-the-road-ahead/"
+  },
+  {
+    "number": 6,
+    "id": "future-weight-egress",
+    "sector": "AI research",
+    "title": "AI 2027: model weight transfer",
+    "status": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "core_sha256": "11275e2569835c3a095303d0ccf29de3a3a5a043a7cef2c349e261dacdf31661",
+    "reference": "https://ai-2027.com/"
+  },
+  {
+    "number": 7,
+    "id": "future-self-replication",
+    "sector": "AI research",
+    "title": "AI 2027: self-copy forecast",
+    "status": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "core_sha256": "02d78d15826c9f6a24f6b274cc292982ddeb74e533d62996bf9e983fdad0644d",
+    "reference": "https://ai-2027.com/"
+  },
+  {
+    "number": 8,
+    "id": "insurer-claim-payment",
+    "sector": "Insurance",
+    "title": "Insurance: claims payment",
+    "status": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "core_sha256": "4a7b7d9b798227f4fbb6dd5efa14b8faefd52b2ca981301343d3b56894906296",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 9,
+    "id": "insurer-customer-edit",
+    "sector": "Insurance",
+    "title": "Insurance: customer record",
+    "status": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "core_sha256": "299161ac3715ea18628aa3697b44e28cd0fc19b6399c84070ff2c50b96a434bc",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 10,
+    "id": "bank-funds-transfer",
+    "sector": "Banking",
+    "title": "Bank: transfer approval",
+    "status": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "core_sha256": "378f5425a810cdb94cc90e420f2a4a21db9eefeffe77b5ac87d59a1f87ad1b54",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 11,
+    "id": "bank-credit-decision",
+    "sector": "Banking",
+    "title": "Bank: credit evidence",
+    "status": "HOLD",
+    "reason": "EVIDENCE_UNVERIFIED",
+    "core_sha256": "dd527634f5878a4cf19f7fb07d39c98d76baade3c85075eb6f1f089fe9dc2b3c",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 12,
+    "id": "medtech-device-change",
+    "sector": "MedTech",
+    "title": "MedTech: device configuration advisory",
+    "status": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "core_sha256": "7d7ddc5c6b51d41d2981e7e928fe1e83169e69a6035c486ca98acd046949715b",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 13,
+    "id": "health-patient-scheduling",
+    "sector": "Healthcare",
+    "title": "Healthcare: scheduling edit",
+    "status": "HOLD",
+    "reason": "AUTHORITY_UNVERIFIED",
+    "core_sha256": "9b065dfe1cf77d88b91b4a2479cda2ddb9c86f970da5188193bb4691914dd4b7",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 14,
+    "id": "hr-recruitment-decision",
+    "sector": "HR",
+    "title": "HR: candidate status update",
+    "status": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "core_sha256": "a368faad00fc8388c3caa86d4f0f61e7d757ac7eb9e068440bb6e22eb4637b85",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 15,
+    "id": "warehouse-inventory",
+    "sector": "Logistics",
+    "title": "Warehouse: unauthorized inventory edit",
+    "status": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "core_sha256": "175efb372a1dfd332b13d945f89d0695bcc58e8fd892a805de293ddc64236df1",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 16,
+    "id": "telecom-network-change",
+    "sector": "Telecom",
+    "title": "Telecom: network configuration",
+    "status": "HOLD",
+    "reason": "STALE_AUTHORITY",
+    "core_sha256": "06877db87f60171938faf2fe7249e094cebef2a6fe65575d59370b20e778c9a8",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 17,
+    "id": "energy-operation",
+    "sector": "Energy",
+    "title": "Energy: dispatch adjustment",
+    "status": "HOLD",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "core_sha256": "7ee88aea1e5e7d8ffb54c2f76422228143b489cd5c04feef675fac9eaf12ec88",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 18,
+    "id": "transport-control",
+    "sector": "Transport",
+    "title": "Transport: automated signal change",
+    "status": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "core_sha256": "ac3d50e2e0ca33868dc15dfc7d4529edda9e49d39fb3f9e11c19b2337ae33bac",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 19,
+    "id": "procurement-bank-change",
+    "sector": "Procurement",
+    "title": "Procurement: vendor banking detail edit",
+    "status": "HOLD",
+    "reason": "POLICY_UNVERIFIED",
+    "core_sha256": "9168317d0772b940dac5f8d884a5f7291cc4a720ea5a0012e24fa462895ebc8c",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  },
+  {
+    "number": 20,
+    "id": "retrieval-instruction-confusion",
+    "sector": "Cross-industry",
+    "title": "Untrusted content: tool-use instruction",
+    "status": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "core_sha256": "444f049138e950c52d64be47999aedc3b92a4f80f7d99157ffd2d64b775104d3",
+    "reference": "https://airc.nist.gov/AI_RMF_Knowledge_Base/AI_RMF"
+  }
+]

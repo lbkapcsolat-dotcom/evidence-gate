@@ -1,0 +1,45 @@
+{
+  "decision_core": {
+    "execution_eligible": false,
+    "frozen_input_sha256": "3530dcc6d77c2af0a641f52e4908eb2e59adf51d7b5d03463d24fc2ef5a6d1fe",
+    "reason": "Q6_DOMINANCE_FAILED",
+    "schema": "PUBLIC_DECISION_CORE_V1",
+    "verdict": "HOLD"
+  },
+  "decision_core_sha256": "378f5425a810cdb94cc90e420f2a4a21db9eefeffe77b5ac87d59a1f87ad1b54",
+  "event_origin_attested": false,
+  "external_integrity_pin_verified": false,
+  "frozen_inputs": {
+    "authority_attested": true,
+    "authority_revision": 4,
+    "case_id": "bank-funds-transfer",
+    "evidence_attested": true,
+    "expected_authority_revision": 4,
+    "granted_scopes": [
+      "demo.bank-funds-transfer:write"
+    ],
+    "operation_kind": "WRITE_SENSITIVE",
+    "policy_attested": true,
+    "q6_observed": [
+      0,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "q6_required": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "requested_scope": "demo.bank-funds-transfer:write",
+    "schema": "PUBLIC_SYNTHETIC_INPUT_V1",
+    "synthetic_only": true
+  },
+  "production_enforcement": false,
+  "schema": "PUBLIC_SYNTHETIC_PROOF_PASSPORT_V1"
+}
