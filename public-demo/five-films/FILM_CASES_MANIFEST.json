@@ -1,0 +1,58 @@
+{
+  "schema": "EQUILIBRIUM_PUBLIC_FIVE_FILM_GITHUB_HANDOFF_V1",
+  "scope": "OFFLINE_SYNTHETIC_ONLY",
+  "claims_only_within_fixture": true,
+  "no_production_enforcement": true,
+  "films": [
+    {
+      "film": 1,
+      "case_id": "medtech-device-change",
+      "adverse": "passports/01-12-medtech-device-change-adverse.json",
+      "positive": "passports/01-12-medtech-device-change-positive.json",
+      "tampered": "passports/01-12-medtech-device-change-tampered.json",
+      "synthetic_verdict": "HOLD",
+      "reason": "Q6_DOMINANCE_FAILED",
+      "decision_core_sha256": "7d7ddc5c6b51d41d2981e7e928fe1e83169e69a6035c486ca98acd046949715b"
+    },
+    {
+      "film": 2,
+      "case_id": "insurer-claim-payment",
+      "adverse": "passports/02-08-insurer-claim-payment-adverse.json",
+      "positive": "passports/02-08-insurer-claim-payment-positive.json",
+      "tampered": "passports/02-08-insurer-claim-payment-tampered.json",
+      "synthetic_verdict": "HOLD",
+      "reason": "Q6_DOMINANCE_FAILED",
+      "decision_core_sha256": "4a7b7d9b798227f4fbb6dd5efa14b8faefd52b2ca981301343d3b56894906296"
+    },
+    {
+      "film": 3,
+      "case_id": "bank-funds-transfer",
+      "adverse": "passports/03-10-bank-funds-transfer-adverse.json",
+      "positive": "passports/03-10-bank-funds-transfer-positive.json",
+      "tampered": "passports/03-10-bank-funds-transfer-tampered.json",
+      "synthetic_verdict": "HOLD",
+      "reason": "Q6_DOMINANCE_FAILED",
+      "decision_core_sha256": "378f5425a810cdb94cc90e420f2a4a21db9eefeffe77b5ac87d59a1f87ad1b54"
+    },
+    {
+      "film": 4,
+      "case_id": "warehouse-inventory",
+      "adverse": "passports/04-15-warehouse-inventory-adverse.json",
+      "positive": "passports/04-15-warehouse-inventory-positive.json",
+      "tampered": "passports/04-15-warehouse-inventory-tampered.json",
+      "synthetic_verdict": "DENY",
+      "reason": "OUT_OF_SCOPE",
+      "decision_core_sha256": "175efb372a1dfd332b13d945f89d0695bcc58e8fd892a805de293ddc64236df1"
+    },
+    {
+      "film": 5,
+      "case_id": "procurement-bank-change",
+      "adverse": "passports/05-19-procurement-bank-change-adverse.json",
+      "positive": "passports/05-19-procurement-bank-change-positive.json",
+      "tampered": "passports/05-19-procurement-bank-change-tampered.json",
+      "synthetic_verdict": "HOLD",
+      "reason": "POLICY_UNVERIFIED",
+      "decision_core_sha256": "9168317d0772b940dac5f8d884a5f7291cc4a720ea5a0012e24fa462895ebc8c"
+    }
+  ]
+}
