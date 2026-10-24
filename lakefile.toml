@@ -1,0 +1,10 @@
+name = "equilibrium_bridge_kernel"
+version = "0.1.0"
+defaultTargets = ["EquilibriumBridge", "EquilibriumBridgeHarness"]
+
+[[lean_lib]]
+name = "EquilibriumBridge"
+
+[[lean_exe]]
+name = "EquilibriumBridgeHarness"
+root = "EquilibriumBridgeHarness"
