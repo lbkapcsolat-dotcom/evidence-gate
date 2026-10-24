@@ -1,0 +1,131 @@
+name: Planetary Resource Source Adapter Subsystem Freeze
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-source-adapter-subsystem-freeze-v1"
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE.json
+      - planetary_resource_source_adapter_subsystem_freeze_v1.py
+      - test_planetary_resource_source_adapter_subsystem_freeze_v1.py
+      - docs/planetary_resource_source_adapter_subsystem_freeze_v1.md
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONTRACT.json
+      - planetary_resource_generic_source_adapter_v1.py
+      - planetary_resource_generic_source_bindings_v1.py
+      - planetary_resource_generic_source_adapter_gate_v1.py
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_SCHEMA.json
+      - planetary_resource_generic_source_adapter_conformance_v1.py
+      - test_planetary_resource_generic_source_adapter_conformance_v1.py
+      - planetary_resource_empirical_admission_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-source-adapter-subsystem-freeze.yml
+  pull_request:
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE.json
+      - planetary_resource_source_adapter_subsystem_freeze_v1.py
+      - test_planetary_resource_source_adapter_subsystem_freeze_v1.py
+      - docs/planetary_resource_source_adapter_subsystem_freeze_v1.md
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONTRACT.json
+      - planetary_resource_generic_source_adapter_v1.py
+      - planetary_resource_generic_source_bindings_v1.py
+      - planetary_resource_generic_source_adapter_gate_v1.py
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_SCHEMA.json
+      - planetary_resource_generic_source_adapter_conformance_v1.py
+      - test_planetary_resource_generic_source_adapter_conformance_v1.py
+      - planetary_resource_empirical_admission_v1.py
+      - equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-source-adapter-subsystem-freeze.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-adapter-subsystem-freeze:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify frozen generic adapter and conformance interface
+        shell: bash
+        run: |
+          echo "607ded5e0a1b046004e776303ed0e4b7cb0e3a7cb8d16ecae5be667fa01d5a46  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONTRACT.json" | sha256sum -c -
+          echo "ab519af91bc0a1ebb7d0ab92784ca01c2cfda8c32fd72e9e1f60d50fabdd9d59  planetary_resource_generic_source_adapter_v1.py" | sha256sum -c -
+          echo "5a6b52a565b6e414256343b54ae597a9b5a3b012cf3ef1c73b03b062dd4fc9e2  planetary_resource_generic_source_bindings_v1.py" | sha256sum -c -
+          echo "bf050e65e4fc7d53bac04e0cfccffb359ea19cbdbac3c018a4a36380efc57f52  planetary_resource_generic_source_adapter_gate_v1.py" | sha256sum -c -
+          echo "484e53c94e9340b2ac9893ca03858c8a0b54c80fe2821f41adf1e5dd1d546bb4  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_SCHEMA.json" | sha256sum -c -
+          echo "6602b3b0fa057fcc5d226659354a49b2e7945759130b8045c24d56074378c175  planetary_resource_generic_source_adapter_conformance_v1.py" | sha256sum -c -
+          echo "c0815db76aa47ba7535a3f34024e88845fb4660ba84481a860e8af408de3e23a  test_planetary_resource_generic_source_adapter_conformance_v1.py" | sha256sum -c -
+
+      - name: Preserve frozen raw sources and empirical contract
+        shell: bash
+        run: |
+          echo "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29  sources/environment_agency/1100TH_flow_mean_15min_2026-10-01T21-30Z.json" | sha256sum -c -
+          echo "831ed964ef11527f0d8db767665289b59f5ef7b32fac02cd7667ad4b949a7242  sources/elexon/INDO_2026-10-01T22-00Z.json" | sha256sum -c -
+          echo "a7f15400b518ec51ac0f6a97696bd7cd261e64730d1a348dc1a2ad0be0956928  sources/entsog/DE-TSO-0005_ITP-00188_entry_physical_flow_2026-10-01T21-22Z.html" | sha256sum -c -
+          echo "592570140b8465cc4e9c38c84a9da5c1f6be73e9894bc1aad0a99e6ad023e9b3  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT.json" | sha256sum -c -
+          echo "3fc420678148149cdfca9fae03088b2f54e5987bf29278d1e94497534a4151c2  planetary_resource_empirical_admission_v1.py" | sha256sum -c -
+
+      - name: Compile freeze verifier
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_empirical_admission_v1.py             planetary_resource_generic_source_adapter_v1.py             planetary_resource_generic_source_bindings_v1.py             planetary_resource_generic_source_adapter_gate_v1.py             planetary_resource_generic_source_adapter_conformance_v1.py             planetary_resource_source_adapter_subsystem_freeze_v1.py             test_planetary_resource_source_adapter_subsystem_freeze_v1.py
+
+      - name: Preserve mathematical core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve empirical admission contract
+        run: python -m unittest -v test_planetary_resource_empirical_admission_v1.py
+
+      - name: Preserve generic adapter 3-of-3 equality
+        run: python -m unittest -v test_planetary_resource_generic_source_adapter_v1.py
+
+      - name: Preserve conformance harness
+        run: python -m unittest -v test_planetary_resource_generic_source_adapter_conformance_v1.py
+
+      - name: Run subsystem freeze gate
+        run: python -m unittest -v test_planetary_resource_source_adapter_subsystem_freeze_v1.py
+
+      - name: Build deterministic freeze receipt
+        shell: bash
+        run: |
+          python planetary_resource_source_adapter_subsystem_freeze_v1.py | tee source_adapter_subsystem_freeze.log
+          grep -F '"subsystem_status":"FROZEN_BOUNDED_RETURN_TO_CORE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+          grep -F '"future_provider_path":["BINDING","CONFORMANCE","EMPIRICAL_ADMISSION"]' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+          grep -F '"proven_binding_count":3' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+          grep -F '"canary_status":"DEFERRED"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+          grep -F '"provider_subsystem_work_now":"STOP"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+          grep -F '"next_work_domain":"PLANETARY_RESOURCE_CORE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_SOURCE_ADAPTER_SUBSYSTEM_FROZEN__RETURN_TO_CORE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+
+      - name: Preserve independent C++ baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash freeze evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE.json             planetary_resource_source_adapter_subsystem_freeze_v1.py             test_planetary_resource_source_adapter_subsystem_freeze_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+
+      - name: Upload freeze evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-source-adapter-subsystem-freeze-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE_AND_RETURN_TO_CORE_RECEIPT.json
+            source_adapter_subsystem_freeze.log
+            cpp_baseline.log
+          if-no-files-found: error
