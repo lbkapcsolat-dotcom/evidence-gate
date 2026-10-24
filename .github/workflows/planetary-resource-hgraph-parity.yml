@@ -1,0 +1,96 @@
+name: Planetary Resource HGraph Native Cross-Parity
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-hgraph-parity-v1"
+    paths:
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__40_OF_40_RECEIPT.json
+      - planetary_resource_hgraph_bind_v1.py
+      - test_planetary_resource_hgraph_parity_v1.py
+      - run_planetary_resource_hgraph_parity_v1.py
+      - .github/workflows/planetary-resource-hgraph-parity.yml
+  pull_request:
+    paths:
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__40_OF_40_RECEIPT.json
+      - planetary_resource_hgraph_bind_v1.py
+      - test_planetary_resource_hgraph_parity_v1.py
+      - run_planetary_resource_hgraph_parity_v1.py
+      - .github/workflows/planetary-resource-hgraph-parity.yml
+
+permissions:
+  contents: read
+
+jobs:
+  native-hgraph-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Download pinned HGraph native wheel
+        run: |
+          python -m pip download --only-binary=:all: --no-deps "hgraph==0.8.31" -d wheelhouse
+          ls -l wheelhouse
+
+      - name: Verify HGraph wheel SHA256
+        shell: bash
+        run: |
+          wheel="$(find wheelhouse -maxdepth 1 -name 'hgraph-0.8.31-*.whl' -print -quit)"
+          test -n "$wheel"
+          echo "78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2  $wheel" | sha256sum -c -
+
+      - name: Install pinned HGraph native runtime
+        shell: bash
+        run: |
+          wheel="$(find wheelhouse -maxdepth 1 -name 'hgraph-0.8.31-*.whl' -print -quit)"
+          python -m pip install "$wheel"
+
+      - name: Prove native HGraph extension and version
+        run: |
+          python - <<'PY'
+          import importlib.metadata
+          import _hgraph
+          version = importlib.metadata.version("hgraph")
+          assert version == "0.8.31", version
+          assert _hgraph.__file__, "native _hgraph extension missing"
+          print("HGRAPH_VERSION=" + version)
+          print("NATIVE_HGRAPH_MODULE=" + _hgraph.__file__)
+          print("UPSTREAM_RELEASE_COMMIT=1bb4b7f21ddfb6c69c8bae74c523980605ae93f6")
+          print("PINNED_LINUX_WHEEL_SHA256=78b08521e11cfeb4b088e519e627f21b19171248ec36560a67779d344abe43b2")
+          PY
+
+      - name: Compile reference and HGraph parity modules
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             test_equilibrium_planetary_resource_core_v1.py             planetary_resource_hgraph_bind_v1.py             test_planetary_resource_hgraph_parity_v1.py             run_planetary_resource_hgraph_parity_v1.py
+
+      - name: Verify exact predecessor SHA256 pins
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "bf8240dc3c1e505dbefc9b46be1d767dfbc6bfe0f4eb82a5e9970201755cb483  test_equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "6ddd143970f84d2a154cc637e1d3b862b67b957684be2b4b837b67e193808f98  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__40_OF_40_RECEIPT.json" | sha256sum -c -
+
+      - name: Run frozen Python reference 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Run native HGraph runtime cross-parity 40 of 40
+        run: python -m unittest -v test_planetary_resource_hgraph_parity_v1.py
+
+      - name: Build deterministic cross-parity receipt
+        run: python run_planetary_resource_hgraph_parity_v1.py
+
+      - name: Upload cross-parity receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-hgraph-cross-parity-receipt
+          path: EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__HGRAPH_CROSS_PARITY_RECEIPT.json
+          if-no-files-found: error
+# parity-v1 execution trigger
