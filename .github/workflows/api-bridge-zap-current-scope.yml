@@ -1,0 +1,190 @@
+name: API Bridge ZAP Current Scope
+# bounded replay trigger: 2026-10-02
+
+on:
+  pull_request:
+    paths:
+      - "ci/api-bridge/**"
+      - ".github/workflows/api-bridge-zap-current-scope.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reassemble exact preserved runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d ci/api-bridge/runtime.zip.b64 > ci/api-bridge/runtime.zip
+          test "$(wc -c < ci/api-bridge/runtime.zip)" -eq 27954
+          echo "1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df  ci/api-bridge/runtime.zip" | sha256sum -c -
+          unzip -t ci/api-bridge/runtime.zip
+          unzip -q ci/api-bridge/runtime.zip -d ci/api-bridge/runtime
+
+      - name: Install runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQ="$(find ci/api-bridge/runtime -path '*/extracted_ESS_API_BRIDGE_V1_1/requirements.txt' -print -quit)"
+          test -n "$REQ"
+          python -m pip install --upgrade pip
+          python -m pip install -r "$REQ"
+
+      - name: Start exact ESS FastAPI runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPDIR="$(find ci/api-bridge/runtime -type d -name extracted_ESS_API_BRIDGE_V1_1 -print -quit)"
+          test -n "$APPDIR"
+          nohup python -m uvicorn ess_api_bridge_v1_1:app --app-dir "$APPDIR" --host 127.0.0.1 --port 8001 > ci/api-bridge/zap_uvicorn.log 2>&1 &
+          echo $! > ci/api-bridge/zap_uvicorn.pid
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(60):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8001/health", timeout=1) as r:
+                      if r.status == 200:
+                          print(r.read().decode())
+                          raise SystemExit(0)
+              except Exception:
+                  time.sleep(1)
+          raise SystemExit("runtime health timeout")
+          PY
+
+      - name: Export runtime-native OpenAPI contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import urllib.request
+          from pathlib import Path
+          raw=urllib.request.urlopen("http://127.0.0.1:8001/openapi.json", timeout=10).read()
+          Path("ci/api-bridge/zap_openapi.json").write_bytes(raw)
+          print(f"openapi_bytes={len(raw)}")
+          PY
+
+      - name: Pull and verify OWASP ZAP 2.17.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/zaproxy/zaproxy:2.17.0"
+          docker pull "$IMAGE"
+          docker image inspect "$IMAGE" --format '{{json .RepoDigests}}' | tee ci/api-bridge/zap_image_digests.json
+          docker run --rm "$IMAGE" zap.sh -version | tee ci/api-bridge/zap_version.txt
+          grep -Eq '2\.17\.0' ci/api-bridge/zap_version.txt
+
+      - name: Execute bounded ZAP API security smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod -R a+rwX ci/api-bridge
+          IMAGE="ghcr.io/zaproxy/zaproxy:2.17.0"
+          set +e
+          docker run --rm --network=host             -v "$PWD/ci/api-bridge:/zap/wrk/:rw"             "$IMAGE"             zap-api-scan.py               -t http://127.0.0.1:8001/openapi.json               -f openapi               -J zap_report.json               -x zap_report.xml               -r zap_report.html               -w zap_report.md               -I               -T 10             2>&1 | tee ci/api-bridge/zap_stdout.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" | tee ci/api-bridge/zap_exit_code.txt
+          test "$rc" -eq 0
+
+      - name: Audit ZAP result with precommitted bounded gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report_path=Path("ci/api-bridge/zap_report.json")
+          data=json.loads(report_path.read_text())
+          sites=data.get("site", [])
+          if isinstance(sites, dict):
+              sites=[sites]
+          alerts=[]
+          for site in sites:
+              xs=site.get("alerts", []) or []
+              if isinstance(xs, dict):
+                  xs=[xs]
+              alerts.extend(xs)
+
+          risk_map={"0":"informational","1":"low","2":"medium","3":"high"}
+          counts={"high":0,"medium":0,"low":0,"informational":0,"unknown":0}
+          instances=0
+          compact=[]
+          for a in alerts:
+              risk=risk_map.get(str(a.get("riskcode","")), "unknown")
+              counts[risk]+=1
+              xs=a.get("instances", []) or []
+              if isinstance(xs, dict):
+                  xs=[xs]
+              instances+=len(xs)
+              compact.append({
+                  "pluginid":a.get("pluginid"),
+                  "alert":a.get("alert") or a.get("name"),
+                  "riskcode":a.get("riskcode"),
+                  "riskdesc":a.get("riskdesc"),
+                  "instances":len(xs),
+              })
+
+          rc=int(Path("ci/api-bridge/zap_exit_code.txt").read_text().strip())
+          assert rc == 0, f"ZAP scan exit code {rc}"
+          assert len(sites) >= 1, "ZAP report contains no scanned site"
+          assert counts["high"] == 0, f"high-risk ZAP alerts present: {counts['high']}"
+
+          receipt={
+              "verdict":"PASS_PROVIDER_NATIVE_ZAP_2_17_0_BOUNDED_CURRENT_SCOPE_API_SECURITY_SMOKE",
+              "runtime_package_sha256":"1d61dcd14690a85d11e043f47f8889abd036689ab2075a368f4b204991daa8df",
+              "zap_version":"2.17.0",
+              "target":"LOCALHOST_CURRENT_SCOPE_ESS_FASTAPI_OPENAPI",
+              "scan_type":"ZAP_API_SCAN_ACTIVE__OPENAPI",
+              "zap_exit_code":rc,
+              "sites_scanned":len(sites),
+              "alert_counts":counts,
+              "alert_instances":instances,
+              "high_risk_gate":"EQ_0",
+              "high_risk_gate_pass":counts["high"] == 0,
+              "alerts":compact,
+              "claim_ceiling":"BOUNDED_PROVIDER_NATIVE_ZAP_API_DAST_SMOKE_ONLY__NOT_SECURITY_CERTIFICATION__NOT_PRODUCTION_READINESS",
+              "security_certification":False,
+              "production_capacity_certification":False,
+              "runtime_admission":False,
+              "production_promotion":False,
+              "pointer_promotion":False,
+              "global_bind":False
+          }
+          Path("ci/api-bridge/zap_audit_receipt.json").write_text(json.dumps(receipt, indent=2)+"\n")
+          print(json.dumps(receipt))
+          PY
+
+      - name: Hash ZAP evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum             ci/api-bridge/runtime.zip             ci/api-bridge/zap_openapi.json             ci/api-bridge/zap_version.txt             ci/api-bridge/zap_image_digests.json             ci/api-bridge/zap_report.json             ci/api-bridge/zap_report.xml             ci/api-bridge/zap_report.html             ci/api-bridge/zap_report.md             ci/api-bridge/zap_stdout.log             ci/api-bridge/zap_exit_code.txt             ci/api-bridge/zap_audit_receipt.json             ci/api-bridge/zap_uvicorn.log             > ci/api-bridge/ZAP_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-bridge-current-scope-zap-2.17.0
+          path: |
+            ci/api-bridge/runtime.zip
+            ci/api-bridge/zap_openapi.json
+            ci/api-bridge/zap_version.txt
+            ci/api-bridge/zap_image_digests.json
+            ci/api-bridge/zap_report.json
+            ci/api-bridge/zap_report.xml
+            ci/api-bridge/zap_report.html
+            ci/api-bridge/zap_report.md
+            ci/api-bridge/zap_stdout.log
+            ci/api-bridge/zap_exit_code.txt
+            ci/api-bridge/zap_audit_receipt.json
+            ci/api-bridge/ZAP_SHA256SUMS.txt
+            ci/api-bridge/zap_uvicorn.log

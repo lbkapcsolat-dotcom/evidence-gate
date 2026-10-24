@@ -1,0 +1,31 @@
+{
+  "info": {
+    "name": "ESS API Bridge Smoke Collection",
+    "_postman_id": "d748f2b1-5e8a-4c91-b3b0-19ef7b123456",
+    "description": "Valós API teszt kollekció az ESS API Bridge számára. FastAPI V1.1 request-schema aligned; explicit 2xx assertions added.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Telemetry Evaluate",
+      "request": {
+        "method": "POST",
+        "header": [{"key":"Content-Type","value":"application/json"}],
+        "url": {"raw":"{{base_url}}/api/v1/telemetry/evaluate","host":["{{base_url}}"],"path":["api","v1","telemetry","evaluate"]},
+        "body": {"mode":"raw","raw":"{\"sensor_data\":{\"0\":200,\"1\":150,\"3\":50},\"event_id\":\"postman-evaluate-safe-001\",\"source\":\"POSTMAN_NEWMAN\",\"dry_run\":true}"}
+      },
+      "event": [{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"HTTP status is 2xx\", function () {","  pm.expect(pm.response.code).to.be.within(200, 299);","});"]}}]
+    },
+    {
+      "name": "Telemetry Intervene",
+      "request": {
+        "method": "POST",
+        "header": [{"key":"Content-Type","value":"application/json"}],
+        "url": {"raw":"{{base_url}}/api/v1/telemetry/intervene","host":["{{base_url}}"],"path":["api","v1","telemetry","intervene"]},
+        "body": {"mode":"raw","raw":"{\"sensor_data\":{\"0\":200,\"1\":150,\"3\":50},\"event_id\":\"postman-intervene-safe-001\",\"source\":\"POSTMAN_NEWMAN\",\"confirm_apply\":true}"}
+      },
+      "event": [{"listen":"test","script":{"type":"text/javascript","exec":["pm.test(\"HTTP status is 2xx\", function () {","  pm.expect(pm.response.code).to.be.within(200, 299);","});"]}}]
+    }
+  ],
+  "variable": [{"key":"base_url","value":"http://localhost:8000","type":"string"}]
+}
