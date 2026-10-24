@@ -1,0 +1,104 @@
+name: Planetary Resource Empirical Data Admission Contract
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-empirical-admission-v1"
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT.json
+      - planetary_resource_empirical_admission_v1.py
+      - test_planetary_resource_empirical_admission_v1.py
+      - docs/planetary_resource_empirical_data_contract_v1.md
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-empirical-admission.yml
+  pull_request:
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT.json
+      - planetary_resource_empirical_admission_v1.py
+      - test_planetary_resource_empirical_admission_v1.py
+      - docs/planetary_resource_empirical_data_contract_v1.md
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-empirical-admission.yml
+
+permissions:
+  contents: read
+
+jobs:
+  empirical-admission:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify frozen predecessor bytes
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f  planetary_resource_cpp_kernel_v1.cpp" | sha256sum -c -
+
+      - name: Compile Python contracts
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_empirical_admission_v1.py             test_planetary_resource_empirical_admission_v1.py
+
+      - name: Preserve frozen synthetic mathematical core 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Run empirical source admission matrix
+        run: python -m unittest -v test_planetary_resource_empirical_admission_v1.py
+
+      - name: Build deterministic empirical admission receipt
+        shell: bash
+        run: |
+          python planetary_resource_empirical_admission_v1.py | tee empirical_admission_receipt.log
+          grep -F '"count":36,"pass":36' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT_AND_SOURCE_ADMISSION_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_EMPIRICAL_DATA_CONTRACT_36_OF_36_NO_DATA_INGEST"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT_AND_SOURCE_ADMISSION_RECEIPT.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          contract=json.loads(Path("EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT.json").read_text())
+          assert len(contract["variables"]) == 36
+          assert contract["scope"]["external_data_ingest"] is False
+          assert contract["scope"]["nasa_bind"] is False
+          assert contract["scope"]["rockstrom_bind"] is False
+          assert contract["scope"]["aggregate_eq_score"] is False
+          assert contract["scope"]["runtime_admission"] is False
+          assert contract["scope"]["pointer_promotion"] is False
+          assert contract["scope"]["global_bind"] is False
+          assert contract["scope"]["merge"] is False
+          print("NO_DATA_INGEST_SCOPE=PASS")
+          PY
+
+      - name: Preserve independent C++ standalone 40 of 40
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT.json             planetary_resource_empirical_admission_v1.py             test_planetary_resource_empirical_admission_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT_AND_SOURCE_ADMISSION_RECEIPT.json
+
+      - name: Upload empirical admission evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-empirical-admission-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT_AND_SOURCE_ADMISSION_RECEIPT.json
+            empirical_admission_receipt.log
+            cpp_baseline.log
+          if-no-files-found: error
