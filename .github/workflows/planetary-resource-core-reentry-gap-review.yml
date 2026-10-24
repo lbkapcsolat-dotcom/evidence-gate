@@ -1,0 +1,101 @@
+name: Planetary Resource Core Reentry Gap Review
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-core-reentry-gap-review-v1"
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW.json
+      - planetary_resource_core_reentry_gap_review_v1.py
+      - test_planetary_resource_core_reentry_gap_review_v1.py
+      - docs/planetary_resource_core_reentry_gap_review_v1.md
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE.json
+      - planetary_resource_source_adapter_subsystem_freeze_v1.py
+      - .github/workflows/planetary-resource-core-reentry-gap-review.yml
+  pull_request:
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW.json
+      - planetary_resource_core_reentry_gap_review_v1.py
+      - test_planetary_resource_core_reentry_gap_review_v1.py
+      - docs/planetary_resource_core_reentry_gap_review_v1.md
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE.json
+      - planetary_resource_source_adapter_subsystem_freeze_v1.py
+      - .github/workflows/planetary-resource-core-reentry-gap-review.yml
+
+permissions:
+  contents: read
+
+jobs:
+  core-reentry-gap-review:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify frozen core and adapter-subsystem pins
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f  planetary_resource_cpp_kernel_v1.cpp" | sha256sum -c -
+          echo "0089eab24d8c58a741c9df91175a0d48b14aeaca6cdca0d8d2c59232f0136643  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__SOURCE_ADAPTER_SUBSYSTEM_FREEZE.json" | sha256sum -c -
+
+      - name: Compile review
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_source_adapter_subsystem_freeze_v1.py             planetary_resource_core_reentry_gap_review_v1.py             test_planetary_resource_core_reentry_gap_review_v1.py
+
+      - name: Preserve mathematical core 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve source-adapter subsystem freeze
+        run: python -m unittest -v test_planetary_resource_source_adapter_subsystem_freeze_v1.py
+
+      - name: Run core reentry gap review
+        run: python -m unittest -v test_planetary_resource_core_reentry_gap_review_v1.py
+
+      - name: Build deterministic review receipt
+        shell: bash
+        run: |
+          python planetary_resource_core_reentry_gap_review_v1.py | tee core_reentry_gap_review.log
+          grep -F '"selected_capability_count":1' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_RECEIPT.json
+          grep -F '"id":"PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_V1"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_RECEIPT.json
+          grep -F '"wrong_coefficient_unit_accepted":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_RECEIPT.json
+          grep -F '"activity_unit_mismatch_accepted":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_RECEIPT.json
+          grep -F '"raw_untyped_process_injection_accepted":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_CORE_REENTRY_REVIEW__NEXT_GAP_PROCESS_TYPED_DIMENSIONAL_CLOSURE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_RECEIPT.json
+
+      - name: Preserve independent C++ baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash review evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW.json             planetary_resource_core_reentry_gap_review_v1.py             test_planetary_resource_core_reentry_gap_review_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_RECEIPT.json
+
+      - name: Upload review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-core-reentry-gap-review-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_RECEIPT.json
+            core_reentry_gap_review.log
+            cpp_baseline.log
+          if-no-files-found: error

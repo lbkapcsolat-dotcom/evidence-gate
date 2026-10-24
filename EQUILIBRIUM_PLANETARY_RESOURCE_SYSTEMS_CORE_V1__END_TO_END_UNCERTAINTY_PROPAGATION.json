@@ -1,0 +1,73 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_END_TO_END_UNCERTAINTY_PROPAGATION_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__END_TO_END_UNCERTAINTY_PROPAGATION_V1",
+  "predecessor_pins": {
+    "python_core_sha256": "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae",
+    "cpp_kernel_sha256": "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f",
+    "typed_process_contract_sha256": "3fb00e16cbca443063bda520510377d5b4fa78672009dfc2fc8fa9d86dc2748d",
+    "typed_process_module_sha256": "6590802c509f14e37f783a3e8243b756b8f2a3eb88fbb936772a6c039d2b69e2",
+    "typed_process_receipt_sha256": "aba5715cd942f8da3d533c37e8d5c64de2f8d1d937cec47508fa1c22c4971fe5",
+    "source_adapter_freeze_receipt_sha256": "7509be3fbb45e9949d159a67b16c648edecb1f606e998d572731ed1d255a150f"
+  },
+  "implementation_mode": "ADDITIVE_SUCCESSOR_UNCERTAINTY_BOUNDARY_OVER_PINNED_CORE",
+  "balance_path": {
+    "output_type": "QualifiedValue per node",
+    "includes": [
+      "production",
+      "demand",
+      "loss",
+      "internal_flow via incidence coefficients",
+      "boundary_flow with signed direction",
+      "storage_delta_rate",
+      "typed_process_contribution"
+    ],
+    "output_unit": "canonical target-layer RATE",
+    "output_status": "IMPUTED if any admitted contributor is IMPUTED, otherwise DERIVED",
+    "metadata": "union evidence refs, transform chains, hold codes; preserve physical space and deterministic freshness summary"
+  },
+  "storage_path": {
+    "output_type": "QualifiedValue stock",
+    "coefficients": [
+      "stock:1",
+      "charge:delta_t*eta_charge",
+      "discharge:-delta_t/eta_discharge"
+    ],
+    "self_loss_rate": "deterministic exact V1 parameter",
+    "output_status": "IMPUTED if any admitted stock/charge/discharge input is IMPUTED, otherwise DERIVED"
+  },
+  "uncertainty_rules": {
+    "exact": "EXACT -> EXACT",
+    "interval": "EXACT+INTERVAL affine propagation with sign-safe bounds",
+    "moment": "EXACT+MOMENT requires explicit covariance matrix for the non-exact moment inputs; no zero covariance assumption",
+    "empirical": "EXACT+EMPIRICAL requires explicit sample_alignment_ref matching all empirical inputs",
+    "unknown": "any UNKNOWN -> UNKNOWN",
+    "mixed_nonexact_families": "HOLD_UNCERTAINTY_OPERATOR",
+    "no_silent_loss": "if any non-EXACT input exists, output may not become EXACT"
+  },
+  "hold_requirements": [
+    "HOLD_COVARIANCE_REQUIRED",
+    "HOLD_SAMPLE_ALIGNMENT_REQUIRED",
+    "HOLD_UNCERTAINTY_OPERATOR"
+  ],
+  "acceptance": {
+    "legacy_python_matrix": "40/40 unchanged",
+    "legacy_cpp_matrix": "40/40 unchanged",
+    "typed_process_closure": "preserved",
+    "balance_uncertainty_end_to_end": true,
+    "storage_uncertainty_end_to_end": true,
+    "typed_process_uncertainty_included": true,
+    "raw_uncertainty_loss_rejected": true
+  },
+  "fences": {
+    "provider_work": false,
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_END_TO_END_UNCERTAINTY_PROPAGATION_BALANCE_STORAGE_TYPED_PROCESS"
+}
