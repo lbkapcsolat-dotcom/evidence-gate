@@ -1,0 +1,58 @@
+name: Evidence Gate Product Integration
+
+on:
+  pull_request:
+    paths:
+      - "github_workflow_adapter.py"
+      - "drive_evidence_adapter.py"
+      - "unified_evidence_source_runner.py"
+      - "live_source_collector.py"
+      - "source_policy_registry.json"
+      - "test_product_integration.py"
+      - "examples/live_github_pr7.json"
+      - "examples/live_drive_boot.json"
+      - "docs/**"
+      - ".github/workflows/evidence-gate-product-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  product-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile product modules
+        run: |
+          python -m compileall -q             evidence_gate.py             github_workflow_adapter.py             drive_evidence_adapter.py             unified_evidence_source_runner.py             live_source_collector.py
+
+      - name: Product integration tests
+        run: |
+          python -m unittest -v             test_evidence_gate.py             test_product_integration.py
+
+      - name: GitHub normalized real-state demo
+        run: |
+          python unified_evidence_source_runner.py examples/live_github_pr7.json             --result /tmp/github.result.json             --receipt /tmp/github.receipt.json
+          python - <<'PY'
+          import json
+          result = json.load(open('/tmp/github.result.json'))
+          assert result['classification']['status'] == 'SUPPORTED', result
+          PY
+
+      - name: Drive normalized real-state demo
+        run: |
+          python unified_evidence_source_runner.py examples/live_drive_boot.json             --result /tmp/drive.result.json             --receipt /tmp/drive.receipt.json
+          python - <<'PY'
+          import json
+          result = json.load(open('/tmp/drive.result.json'))
+          assert result['classification']['status'] == 'SUPPORTED', result
+          PY
