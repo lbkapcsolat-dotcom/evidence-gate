@@ -1,0 +1,104 @@
+name: Planetary Resource Typed Process Dimensional Closure
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-process-typed-dimensional-closure-v1"
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE.json
+      - planetary_resource_process_typed_dimensional_closure_v1.py
+      - planetary_resource_process_typed_dimensional_closure_gate_v1.py
+      - test_planetary_resource_process_typed_dimensional_closure_v1.py
+      - docs/planetary_resource_process_typed_dimensional_closure_v1.md
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - planetary_resource_core_reentry_gap_review_v1.py
+      - planetary_resource_source_adapter_subsystem_freeze_v1.py
+      - .github/workflows/planetary-resource-process-typed-dimensional-closure.yml
+  pull_request:
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE.json
+      - planetary_resource_process_typed_dimensional_closure_v1.py
+      - planetary_resource_process_typed_dimensional_closure_gate_v1.py
+      - test_planetary_resource_process_typed_dimensional_closure_v1.py
+      - docs/planetary_resource_process_typed_dimensional_closure_v1.md
+      - equilibrium_planetary_resource_core_v1.py
+      - test_equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - planetary_resource_core_reentry_gap_review_v1.py
+      - planetary_resource_source_adapter_subsystem_freeze_v1.py
+      - .github/workflows/planetary-resource-process-typed-dimensional-closure.yml
+
+permissions:
+  contents: read
+
+jobs:
+  typed-process-dimensional-closure:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify pinned predecessor bytes
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f  planetary_resource_cpp_kernel_v1.cpp" | sha256sum -c -
+
+      - name: Compile successor closure
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_core_reentry_gap_review_v1.py             planetary_resource_source_adapter_subsystem_freeze_v1.py             planetary_resource_process_typed_dimensional_closure_v1.py             planetary_resource_process_typed_dimensional_closure_gate_v1.py             test_planetary_resource_process_typed_dimensional_closure_v1.py
+
+      - name: Preserve legacy Python 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve source-adapter freeze
+        run: python -m unittest -v test_planetary_resource_source_adapter_subsystem_freeze_v1.py
+
+      - name: Preserve core reentry review
+        run: python -m unittest -v test_planetary_resource_core_reentry_gap_review_v1.py
+
+      - name: Run typed process closure tests
+        run: python -m unittest -v test_planetary_resource_process_typed_dimensional_closure_v1.py
+
+      - name: Build deterministic typed closure receipt
+        shell: bash
+        run: |
+          python planetary_resource_process_typed_dimensional_closure_gate_v1.py | tee typed_process_closure.log
+          grep -F '"raw_fraction_process_injection_rejected":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_RECEIPT.json
+          grep -F '"coefficient_unit_mismatch_rejected":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_RECEIPT.json
+          grep -F '"activity_unit_mismatch_rejected":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_RECEIPT.json
+          grep -F '"typed_balance_zero_residual":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_RECEIPT.json
+
+      - name: Preserve independent C++ 40 of 40
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash typed closure evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE.json             planetary_resource_process_typed_dimensional_closure_v1.py             planetary_resource_process_typed_dimensional_closure_gate_v1.py             test_planetary_resource_process_typed_dimensional_closure_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_RECEIPT.json
+
+      - name: Upload typed closure evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-process-typed-dimensional-closure-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_RECEIPT.json
+            typed_process_closure.log
+            cpp_baseline.log
+          if-no-files-found: error
