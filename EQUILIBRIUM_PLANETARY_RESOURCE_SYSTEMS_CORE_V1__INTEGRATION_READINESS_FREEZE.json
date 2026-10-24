@@ -1,0 +1,129 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_INTEGRATION_READINESS_FREEZE_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE_V1",
+  "freeze_status": "CORE_FROZEN_FOR_INTEGRATION",
+  "source_bearing_predecessor_head": "256521f0b178def9f5d7a19b3255336eba8c8d11",
+  "pins": {
+    "balance_and_boundary_kernel": {
+      "source_path": "equilibrium_planetary_resource_core_v1.py",
+      "sha256": "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae",
+      "required_symbols": [
+        "resource_balance_residual",
+        "boundary_import_export"
+      ],
+      "baseline": "40/40"
+    },
+    "typed_process_coupling": {
+      "contract_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE.json",
+      "contract_sha256": "3fb00e16cbca443063bda520510377d5b4fa78672009dfc2fc8fa9d86dc2748d",
+      "module_path": "planetary_resource_process_typed_dimensional_closure_v1.py",
+      "module_sha256": "6590802c509f14e37f783a3e8243b756b8f2a3eb88fbb936772a6c039d2b69e2",
+      "receipt_sha256": "aba5715cd942f8da3d533c37e8d5c64de2f8d1d937cec47508fa1c22c4971fe5"
+    },
+    "process_coefficient_uncertainty": {
+      "contract_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_UNCERTAINTY_PROPAGATION.json",
+      "contract_sha256": "612537b73e44a8b607710321df1a71dfc344e2b38fd4688b7529ae41a4a05f82",
+      "module_path": "planetary_resource_process_coefficient_uncertainty_v1.py",
+      "module_sha256": "29e3f2cd7f163bf850336cc37b67dae36b847d912c13c77cee7fdd7b467b5ebc",
+      "receipt_sha256": "0efbf4c2d7b1e653e99ac4193d0525cd14228078b0f6f741d4453160807e3aef"
+    },
+    "process_coefficient_validity": {
+      "contract_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COEFFICIENT_VALIDITY_INTERVAL.json",
+      "contract_sha256": "27417b70e5c3178c19890373c0e7ab86eaaf27327c136e81d01aac22269aa930",
+      "module_path": "planetary_resource_process_coefficient_validity_v1.py",
+      "module_sha256": "bfd899bb32719bb83f37dfe29ef490ae847e61a5a22eaf625b1b78460df3e026",
+      "receipt_sha256": "29bad0e86d8f71e69eb1ba7c349e1ebc7b09e72a677639c9da2eac6288e9313d"
+    },
+    "process_manifest_version_enforcement": {
+      "contract_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_MANIFEST_VERSION_ENFORCEMENT.json",
+      "contract_sha256": "f5bd19e476885390a488d57301eb0c17e6a17858e92ca1bd2a5f11aed9229dcf",
+      "module_path": "planetary_resource_process_manifest_version_v1.py",
+      "module_sha256": "bd1cea6138fbcceaf872eb24fd42b7253a5cd6a4994e4b7dbff265d1e973493c",
+      "receipt_sha256": "c909d4f5245d7f2e79c59c60071bc9461512d7a04df2d29f8095516b233ff495"
+    },
+    "typed_storage_self_loss": {
+      "contract_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_SELF_LOSS_TYPED_PHYSICAL_RATE.json",
+      "contract_sha256": "33a58010315be8a4e2b5cdf3bcb831b8e3a67e901ebedf38dd5780d758fb97b2",
+      "module_path": "planetary_resource_storage_self_loss_typed_v1.py",
+      "module_sha256": "746d8ea6c015a003ecba701a4eab8e80f97df71deb959a7f4ea58d178286ae43",
+      "receipt_sha256": "7a769a23db4d7ac5edbbf4921f954856cecced3b7eda65ff4ea846a8b4f60091"
+    },
+    "storage_host_node_topology_bind": {
+      "contract_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_HOST_NODE_TOPOLOGY_BIND.json",
+      "contract_sha256": "9221622ea5b933d732ec5bee7d06604f53d853425405bd4abbe86a97d3a7b0cd",
+      "module_path": "planetary_resource_storage_host_topology_bind_v1.py",
+      "module_sha256": "f5d13bb946d5592ad0539fa8b8358cbbd1cb071caade3984951530e643200ce2",
+      "receipt_sha256": "c99a73054f8e8617a36226977b24ddba85138f592d8640a081cfd81eed545d2c"
+    },
+    "end_to_end_uncertainty": {
+      "contract_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__END_TO_END_UNCERTAINTY_PROPAGATION.json",
+      "contract_sha256": "e6f1fe330a43ead1ee3d0cc6394ff7b15748e6cecbc4166001680ee316b39cfc",
+      "module_path": "planetary_resource_end_to_end_uncertainty_v1.py",
+      "module_sha256": "c62af9bc715ce4d088112c650f0c7794d9c2758a69088417135084740e2fb46c",
+      "receipt_sha256": "e7c131d890aedf397afa5065c74bcbab9b0d57febb6cb2386720fe4f2d1b5dbd"
+    },
+    "generic_source_adapter": {
+      "contract_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONTRACT.json",
+      "contract_sha256": "607ded5e0a1b046004e776303ed0e4b7cb0e3a7cb8d16ecae5be667fa01d5a46",
+      "implementation_path": "planetary_resource_generic_source_adapter_v1.py",
+      "implementation_sha256": "ab519af91bc0a1ebb7d0ab92784ca01c2cfda8c32fd72e9e1f60d50fabdd9d59",
+      "bindings_path": "planetary_resource_generic_source_bindings_v1.py",
+      "bindings_sha256": "5a6b52a565b6e414256343b54ae597a9b5a3b012cf3ef1c73b03b062dd4fc9e2",
+      "gate_sha256": "bf050e65e4fc7d53bac04e0cfccffb359ea19cbdbac3c018a4a36380efc57f52",
+      "receipt_sha256": "4eb59ab856dbe38afc3be191a4900b0290aba59d5436951f308f643d351faec7"
+    },
+    "conformance_harness": {
+      "schema_path": "EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_SCHEMA.json",
+      "schema_sha256": "484e53c94e9340b2ac9893ca03858c8a0b54c80fe2821f41adf1e5dd1d546bb4",
+      "harness_path": "planetary_resource_generic_source_adapter_conformance_v1.py",
+      "harness_sha256": "6602b3b0fa057fcc5d226659354a49b2e7945759130b8045c24d56074378c175",
+      "tests_sha256": "c0815db76aa47ba7535a3f34024e88845fb4660ba84481a860e8af408de3e23a",
+      "receipt_sha256": "a3591ee5da054c8cb7d1a83754fe73f6264f8b82eefe6360a3690b43a9166a9a"
+    },
+    "source_adapter_subsystem_freeze": {
+      "manifest_sha256": "0089eab24d8c58a741c9df91175a0d48b14aeaca6cdca0d8d2c59232f0136643",
+      "verifier_sha256": "6fe7320d62a28950e7079178fd4290bc00b476beaddbc1c3ece2b876f91e33c5",
+      "tests_sha256": "839efdda1f7c91c87131dd3b884c539bfea03fc0c9eed18ccbd6ef216b1a4092",
+      "receipt_sha256": "7509be3fbb45e9949d159a67b16c648edecb1f606e998d572731ed1d255a150f"
+    },
+    "proven_real_source_bindings": {
+      "water": {
+        "provider": "Environment Agency",
+        "variable_id": "freshwater.internal_flow_rate",
+        "raw_sha256": "c180db17bc02d371f1eebb4667695b715f0ce2f9c2f97bab6893b77f87c97c29",
+        "receipt_sha256": "697857c063c2cd6d7514e2b9dd79c46d7fe59a5efe0588579e9c4fd306b12c93"
+      },
+      "electricity": {
+        "provider": "Elexon Insights Solution",
+        "variable_id": "electricity.consumption_rate",
+        "raw_sha256": "831ed964ef11527f0d8db767665289b59f5ef7b32fac02cd7667ad4b949a7242",
+        "receipt_sha256": "9a996daea1a702e1654264a13cc72d0dcba760f8945528b24ce854c2392bca29"
+      },
+      "natural_gas": {
+        "provider": "ENTSOG Transparency Platform",
+        "variable_id": "natural_gas.import_rate",
+        "raw_sha256": "a7f15400b518ec51ac0f6a97696bd7cd261e64730d1a348dc1a2ad0be0956928",
+        "receipt_sha256": "f0629b99245af4dacea863f91b71faf5938b10ed6e1c7069f4c1f829b5a1c406"
+      }
+    }
+  },
+  "deferred_nonblocking": [
+    "STORAGE_PARAMETER_UNCERTAINTY",
+    "AUDIT_VECTOR_PROVENANCE_TYPING"
+  ],
+  "core_change_policy": "NO_NEW_CORE_GAP_WORK_UNLESS_INTEGRATION_FINDS_BREAKAGE",
+  "next_target": "INTEGRATED_MINIMAL_PLANETARY_CORE_V1",
+  "next_target_count": 1,
+  "fences": {
+    "provider_work": false,
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_INTEGRATION_READINESS_FREEZE"
+}

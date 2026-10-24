@@ -1,0 +1,125 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_CORE_REENTRY_GAP_REVIEW_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__CORE_REENTRY_AND_UNRESOLVED_KERNEL_GAP_REVIEW_V1",
+  "pins": {
+    "source_adapter_freeze_manifest_sha256": "0089eab24d8c58a741c9df91175a0d48b14aeaca6cdca0d8d2c59232f0136643",
+    "source_adapter_freeze_receipt_sha256": "7509be3fbb45e9949d159a67b16c648edecb1f606e998d572731ed1d255a150f",
+    "python_core_sha256": "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae",
+    "cpp_kernel_sha256": "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f"
+  },
+  "reviews": {
+    "balance_kernel": {
+      "status": "PASS_BOUNDED_WITH_PROCESS_INGRESS_GAP",
+      "proven": [
+        "internal incidence conservation",
+        "production-demand-loss residual arithmetic",
+        "internal directed flow sign convention",
+        "boundary net contribution",
+        "storage delta-rate contribution",
+        "layer/rate/interval signature checks for typed primitive inputs",
+        "double-loss guard",
+        "topology/version guard"
+      ],
+      "unresolved": [
+        "process_contribution enters resource_balance_residual as Mapping[str,Fraction] and therefore carries no UnitTag, ValueSpace, epistemic status, uncertainty, or evidence refs"
+      ]
+    },
+    "storage_kernel": {
+      "status": "PASS_BOUNDED_DETERMINISTIC_VALUE_PATH",
+      "proven": [
+        "capacity bounds",
+        "charge/discharge rate bounds",
+        "efficiency-domain guard",
+        "stock/rate unit separation",
+        "time-basis check",
+        "deterministic state transition"
+      ],
+      "unresolved": [
+        "input uncertainty is not propagated into the returned stock uncertainty",
+        "self_loss_rate is an untyped Fraction rather than a typed rate object"
+      ]
+    },
+    "process_coupling": {
+      "status": "HOLD_UNPROVEN_TYPED_DIMENSIONAL_CLOSURE",
+      "proven": [
+        "process source/method evidence required",
+        "coefficient evidence ref required",
+        "nonempty coefficient_unit required",
+        "target-node scope guard",
+        "association/correlation causal rejection",
+        "interval check"
+      ],
+      "unresolved": [
+        "coefficient_unit is checked only for non-emptiness, not dimensional compatibility with target canonical rate divided by activity unit",
+        "activity.unit is not checked against process.activity_unit",
+        "returned contribution is untyped numeric mapping"
+      ],
+      "executable_gap_probes": [
+        "mismatched coefficient_unit can survive process_coupling",
+        "raw numeric process_contribution can enter resource_balance_residual without typed physical/evidence guard"
+      ]
+    },
+    "boundary_flow": {
+      "status": "PASS_BOUNDED_TYPED_DIRECTIONAL_PATH",
+      "proven": [
+        "IMPORT/EXPORT direction validation",
+        "negative directed-flow rejection",
+        "layer/rate/interval signature check",
+        "manifest version and node scope check",
+        "deterministic import-export-net decomposition"
+      ],
+      "unresolved": []
+    },
+    "uncertainty_path": {
+      "status": "PASS_BOUNDED_STANDALONE_NOT_END_TO_END",
+      "proven": [
+        "exact affine path",
+        "interval affine outward path",
+        "moment path requires covariance",
+        "empirical path requires sample alignment",
+        "unknown/mixed unsupported path returns UNKNOWN"
+      ],
+      "unresolved": [
+        "balance residual returns raw Fractions and does not preserve or propagate QualifiedValue uncertainty end-to-end",
+        "storage transition currently returns ExactUncertainty regardless of uncertain inputs"
+      ]
+    },
+    "audit_vector": {
+      "status": "PASS_BOUNDED_SEPARATE_VECTOR",
+      "proven": [
+        "L1-L4 remain four separate bounded components",
+        "components outside [0,1] rejected",
+        "aggregate Equilibrium score explicitly prohibited",
+        "audit/evidence/stress values blocked from physical primitive inputs"
+      ],
+      "unresolved": [
+        "audit vector is a bare tuple rather than a provenance-bearing typed object; this is not selected as the next core blocker because it does not currently enter physical balance arithmetic"
+      ]
+    }
+  },
+  "next_single_unproven_core_capability": {
+    "id": "PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_V1",
+    "selected": true,
+    "reason": [
+      "it is the only reviewed path that can inject a raw untyped numeric contribution directly into the physical balance residual",
+      "current coefficient_unit validation proves presence, not dimensional correctness",
+      "current activity unit is not contract-checked against process.activity_unit",
+      "closing this path restores the same typed fail-closed boundary already enforced for production, demand, loss, internal flow, boundary flow, and storage delta"
+    ],
+    "implementation_not_authorized_by_this_review": true,
+    "successor_gate": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE_V1"
+  },
+  "fences": {
+    "source_adapter_subsystem_frozen": true,
+    "provider_work": false,
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_CORE_REENTRY_REVIEW__NEXT_GAP_PROCESS_TYPED_DIMENSIONAL_CLOSURE"
+}

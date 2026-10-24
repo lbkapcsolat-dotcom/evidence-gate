@@ -1,0 +1,152 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_GENERIC_SOURCE_ADAPTER_CONFORMANCE_SCHEMA_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONFORMANCE_HARNESS_V1",
+  "tested_interface_pins": {
+    "generic_adapter_contract_sha256": "607ded5e0a1b046004e776303ed0e4b7cb0e3a7cb8d16ecae5be667fa01d5a46",
+    "generic_adapter_implementation_sha256": "ab519af91bc0a1ebb7d0ab92784ca01c2cfda8c32fd72e9e1f60d50fabdd9d59",
+    "generic_bindings_sha256": "5a6b52a565b6e414256343b54ae597a9b5a3b012cf3ef1c73b03b062dd4fc9e2",
+    "generic_gate_sha256": "bf050e65e4fc7d53bac04e0cfccffb359ea19cbdbac3c018a4a36380efc57f52",
+    "generic_adapter_receipt_sha256": "4eb59ab856dbe38afc3be191a4900b0290aba59d5436951f308f643d351faec7"
+  },
+  "minimum_required_spec_fields": [
+    "source_id",
+    "provider",
+    "dataset_id",
+    "dataset_version",
+    "retrieved_at",
+    "raw_file",
+    "raw_sha256",
+    "citation",
+    "license_or_terms_ref",
+    "access_class",
+    "variable_id",
+    "source_layer",
+    "source_quantity_kind",
+    "source_status",
+    "target_node_id",
+    "target_node_class",
+    "spatial_method",
+    "spatial_method_ref",
+    "interval_id",
+    "temporal_method",
+    "as_of"
+  ],
+  "minimum_required_record_fields": [
+    "source_unit",
+    "record_locator",
+    "observed_at"
+  ],
+  "structural_requirements": {
+    "raw_sha256": "lowercase_hex_64",
+    "max_age_seconds": "integer_gte_0",
+    "base_transform_chain": "nonempty_tuple",
+    "sign_semantics_declared": "must_be_true",
+    "spatial_method": "must_be_allowed_by_empirical_contract",
+    "temporal_method": "must_be_allowed_by_empirical_contract",
+    "variable_id": "must_exist_in_empirical_variable_dictionary",
+    "source_layer_and_quantity_kind": "must_match_variable_dictionary"
+  },
+  "allowed_pre_contract_transforms": [
+    {
+      "kind": "NONE",
+      "rule": "enabled=false; source_unit must be directly admitted by frozen empirical contract"
+    },
+    {
+      "kind": "EVIDENCED_POSITIVE_RATIONAL_UNIT_OR_BASIS_ADAPTER",
+      "rule": "enabled=true; from_unit equals record source_unit; factor_n>0; factor_d>0; evidence_ref nonempty; chain_tokens nonempty; target unit must be admitted by frozen empirical contract; natural-gas target with HHV-tagged unit requires to_gas_basis=HHV"
+    }
+  ],
+  "prohibited_transform_classes": [
+    "ADDITIVE_OFFSET",
+    "NONLINEAR_TRANSFORM",
+    "IMPLICIT_INTERPOLATION",
+    "IMPLICIT_IMPUTATION",
+    "TEMPORAL_AGGREGATION",
+    "SPATIAL_AGGREGATION",
+    "PROVIDER_SPECIFIC_DOMAIN_EQUATION",
+    "PROVIDER_SPECIFIC_PHYSICS_ENGINE"
+  ],
+  "rejection_matrix": [
+    [
+      "R01",
+      "missing provider",
+      "HOLD_BINDING_REQUIRED_FIELD_MISSING"
+    ],
+    [
+      "R02",
+      "missing record locator",
+      "HOLD_BINDING_RECORD_FIELD_MISSING"
+    ],
+    [
+      "R03",
+      "malformed raw sha256",
+      "HOLD_BINDING_RAW_SHA_INVALID"
+    ],
+    [
+      "R04",
+      "raw sha256 does not match frozen bytes",
+      "HOLD_BINDING_RAW_SHA_MISMATCH"
+    ],
+    [
+      "R05",
+      "negative max age",
+      "HOLD_BINDING_MAX_AGE_INVALID"
+    ],
+    [
+      "R06",
+      "empty base transform chain",
+      "HOLD_BINDING_BASE_CHAIN_MISSING"
+    ],
+    [
+      "R07",
+      "direct source unit not admitted by empirical contract",
+      "HOLD_BINDING_SOURCE_UNIT_NOT_ADMISSIBLE"
+    ],
+    [
+      "R08",
+      "pre-contract source unit mismatch",
+      "HOLD_PRECONTRACT_SOURCE_UNIT_MISMATCH"
+    ],
+    [
+      "R09",
+      "non-positive pre-contract rational factor",
+      "HOLD_PRECONTRACT_FACTOR_INVALID"
+    ],
+    [
+      "R10",
+      "pre-contract transform without evidence ref",
+      "HOLD_PRECONTRACT_EVIDENCE_REQUIRED"
+    ],
+    [
+      "R11",
+      "pre-contract target unit not admitted by empirical contract",
+      "HOLD_PRECONTRACT_TARGET_UNIT_NOT_ADMISSIBLE"
+    ],
+    [
+      "R12",
+      "natural-gas HHV target without explicit HHV basis",
+      "HOLD_PRECONTRACT_GAS_BASIS_REQUIRED"
+    ]
+  ],
+  "replay_bindings": [
+    "ENVIRONMENT_AGENCY_FRESHWATER",
+    "ELEXON_ELECTRICITY",
+    "ENTSOG_NATURAL_GAS"
+  ],
+  "acceptance": {
+    "existing_bindings_conform": "3/3",
+    "rejection_matrix_fail_closed": "12/12",
+    "receipt_equality": "3/3 exact",
+    "new_source_ingest": false
+  },
+  "fences": {
+    "provider_specific_domain_math": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  }
+}

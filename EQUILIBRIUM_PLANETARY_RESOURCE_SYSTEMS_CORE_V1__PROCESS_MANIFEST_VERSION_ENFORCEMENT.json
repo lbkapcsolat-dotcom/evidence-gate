@@ -1,0 +1,59 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_PROCESS_MANIFEST_VERSION_ENFORCEMENT_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_MANIFEST_VERSION_ENFORCEMENT_V1",
+  "predecessor_pins": {
+    "python_core_sha256": "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae",
+    "cpp_kernel_sha256": "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f",
+    "coefficient_uncertainty_contract_sha256": "612537b73e44a8b607710321df1a71dfc344e2b38fd4688b7529ae41a4a05f82",
+    "coefficient_uncertainty_module_sha256": "29e3f2cd7f163bf850336cc37b67dae36b847d912c13c77cee7fdd7b467b5ebc",
+    "coefficient_uncertainty_receipt_sha256": "0efbf4c2d7b1e653e99ac4193d0525cd14228078b0f6f741d4453160807e3aef",
+    "coefficient_validity_contract_sha256": "27417b70e5c3178c19890373c0e7ab86eaaf27327c136e81d01aac22269aa930",
+    "coefficient_validity_module_sha256": "bfd899bb32719bb83f37dfe29ef490ae847e61a5a22eaf625b1b78460df3e026",
+    "coefficient_validity_gate_sha256": "e3bbecdeef21fddcb6ecd7ada4f9fb4d7ea31f95a589047cedfb070da3a175f7",
+    "coefficient_validity_receipt_sha256": "29bad0e86d8f71e69eb1ba7c349e1ebc7b09e72a677639c9da2eac6288e9313d"
+  },
+  "implementation_mode": "ADDITIVE_SUCCESSOR_PROCESS_MANIFEST_VERSION_GUARD_OVER_PINNED_VALIDITY_PATH",
+  "version_rules": {
+    "expected_process_manifest_version": "required explicit non-empty string",
+    "process_manifest_rule": "process.manifest_version MUST equal expected_process_manifest_version",
+    "target_node_rule": "every target-layer node manifest_version MUST equal expected_process_manifest_version",
+    "implicit_fallback": false
+  },
+  "rejection_requirements": [
+    "HOLD_PROCESS_MANIFEST_VERSION_REQUIRED",
+    "HOLD_PROCESS_MANIFEST_VERSION_MISMATCH",
+    "HOLD_TARGET_NODE_MANIFEST_VERSION_MISMATCH"
+  ],
+  "preservation": {
+    "coefficient_validity_interval": true,
+    "coefficient_uncertainty": true,
+    "dimensional_unit_check": true,
+    "coefficient_evidence_ref": true,
+    "process_source_method_evidence": true,
+    "activity_metadata": true,
+    "value_space": "PHYSICAL"
+  },
+  "acceptance": {
+    "matching_process_and_nodes_admitted": true,
+    "process_manifest_mismatch_rejected": true,
+    "target_node_manifest_mismatch_rejected": true,
+    "missing_or_empty_expected_version_rejected": true,
+    "no_implicit_version_fallback": true,
+    "coefficient_validity_preserved": true,
+    "coefficient_uncertainty_preserved": true,
+    "legacy_python_matrix": "40/40 unchanged",
+    "legacy_cpp_matrix": "40/40 unchanged"
+  },
+  "fences": {
+    "provider_work": false,
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_PROCESS_MANIFEST_VERSION_ENFORCEMENT"
+}

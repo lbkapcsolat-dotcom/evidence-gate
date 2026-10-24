@@ -1,0 +1,104 @@
+name: Planetary Resource Integration Readiness Freeze
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-integration-readiness-freeze-v1"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-readiness-freeze:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile integration freeze
+        run: |
+          python -m compileall -q \
+            planetary_resource_integration_readiness_freeze_v1.py \
+            test_planetary_resource_integration_readiness_freeze_v1.py
+
+      - name: Preserve legacy Python core
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve typed process
+        run: python -m unittest -v test_planetary_resource_process_typed_dimensional_closure_v1.py
+
+      - name: Preserve end-to-end uncertainty
+        run: python -m unittest -v test_planetary_resource_end_to_end_uncertainty_v1.py
+
+      - name: Preserve typed storage self-loss
+        run: python -m unittest -v test_planetary_resource_storage_self_loss_typed_v1.py
+
+      - name: Preserve coefficient uncertainty
+        run: python -m unittest -v test_planetary_resource_process_coefficient_uncertainty_v1.py
+
+      - name: Preserve coefficient validity
+        run: python -m unittest -v test_planetary_resource_process_coefficient_validity_v1.py
+
+      - name: Preserve process manifest version
+        run: python -m unittest -v test_planetary_resource_process_manifest_version_v1.py
+
+      - name: Preserve storage host topology bind
+        run: python -m unittest -v test_planetary_resource_storage_host_topology_bind_v1.py
+
+      - name: Preserve generic source adapter
+        run: python -m unittest -v test_planetary_resource_generic_source_adapter_v1.py
+
+      - name: Preserve generic conformance harness
+        run: python -m unittest -v test_planetary_resource_generic_source_adapter_conformance_v1.py
+
+      - name: Preserve source adapter subsystem freeze
+        run: python -m unittest -v test_planetary_resource_source_adapter_subsystem_freeze_v1.py
+
+      - name: Run integration readiness freeze tests
+        run: python -m unittest -v test_planetary_resource_integration_readiness_freeze_v1.py
+
+      - name: Build deterministic integration freeze receipt
+        shell: bash
+        run: |
+          python planetary_resource_integration_readiness_freeze_v1.py | tee integration_readiness_freeze.log
+          grep -F '"freeze_status":"CORE_FROZEN_FOR_INTEGRATION"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE_RECEIPT.json
+          grep -F '"proven_real_source_binding_count":3' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE_RECEIPT.json
+          grep -F '"deferred_nonblocking_count":2' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE_RECEIPT.json
+          grep -F '"next_target":"INTEGRATED_MINIMAL_PLANETARY_CORE_V1"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_INTEGRATION_READINESS_FREEZE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE_RECEIPT.json
+
+      - name: Preserve independent C++ baseline
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror planetary_resource_cpp_kernel_v1.cpp -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash integration freeze evidence
+        shell: bash
+        run: |
+          sha256sum \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE.json \
+            planetary_resource_integration_readiness_freeze_v1.py \
+            test_planetary_resource_integration_readiness_freeze_v1.py \
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE_RECEIPT.json
+
+      - name: Upload integration freeze evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-integration-readiness-freeze-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATION_READINESS_FREEZE_RECEIPT.json
+            integration_readiness_freeze.log
+            cpp_baseline.log
+          if-no-files-found: error

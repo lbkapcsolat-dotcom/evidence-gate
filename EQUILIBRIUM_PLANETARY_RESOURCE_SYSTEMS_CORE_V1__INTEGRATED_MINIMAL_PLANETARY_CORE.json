@@ -1,0 +1,173 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_INTEGRATED_MINIMAL_PLANETARY_CORE_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__INTEGRATED_MINIMAL_PLANETARY_CORE_V1",
+  "predecessor": {
+    "integration_freeze_manifest_sha256": "e053a78f537d7d629f97e93d30fb9261d2d3cd9f87163dba864bb34b552b8fcc",
+    "integration_freeze_verifier_sha256": "378863de82ffca242d513cc05216ac9001935a6426a1cee25574dc8ab0c90a50",
+    "integration_freeze_tests_sha256": "4f1418e545eeb9d96de12a2875387d2951d97eeb5504815887d1cb3b34388fcb",
+    "integration_freeze_receipt_sha256": "619e34873fc12d88cb102d727a28256c0fd17f7fc4a4007413ec5c45522a7d70",
+    "source_bearing_head": "4854040726bf24163f6ec70521d1ee7b4ac47f7d"
+  },
+  "integration_mode": "FROZEN_SYNTHETIC_PHYSICAL_FIXTURE",
+  "counts": {
+    "resource_layers": 3,
+    "nodes": 3,
+    "frozen_intervals": 1,
+    "storages": 1,
+    "boundary_edges": 1,
+    "boundary_flows": 1,
+    "cross_layer_processes": 1,
+    "process_target_layers": 2
+  },
+  "layers": [
+    "ELECTRICITY",
+    "NATURAL_GAS",
+    "FRESHWATER"
+  ],
+  "interval": {
+    "interval_id": "T_INT_001",
+    "start": "2026-10-02T13:00:00Z",
+    "end": "2026-10-02T13:01:00Z",
+    "delta_t_seconds": 60
+  },
+  "topology": {
+    "manifest_version": "V1",
+    "nodes": [
+      {
+        "node_id": "E0",
+        "layer": "ELECTRICITY",
+        "node_class": "ELECTRICITY_ZONE"
+      },
+      {
+        "node_id": "G0",
+        "layer": "NATURAL_GAS",
+        "node_class": "GAS_ZONE"
+      },
+      {
+        "node_id": "W0",
+        "layer": "FRESHWATER",
+        "node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT"
+      }
+    ]
+  },
+  "storage": {
+    "storage_id": "ST_E0",
+    "layer": "ELECTRICITY",
+    "host_node_id": "E0",
+    "capacity_J_e": "1000",
+    "max_charge_W_e": "10",
+    "max_discharge_W_e": "10",
+    "eta_charge": "1",
+    "eta_discharge": "1",
+    "initial_stock_J_e": "500",
+    "charge_W_e": "1",
+    "discharge_W_e": "1/2",
+    "self_loss_W_e": "1/10",
+    "expected_next_stock_J_e": "524",
+    "node_side_balance_convention": "A(w-u)",
+    "expected_node_side_delta_W_e": "-1/2"
+  },
+  "boundary": {
+    "boundary_edge_id": "G_IMPORT_0",
+    "layer": "NATURAL_GAS",
+    "local_node_id": "G0",
+    "direction": "IMPORT",
+    "flow_W_th": "20",
+    "gas_basis": "HHV"
+  },
+  "cross_layer_process": {
+    "process_id": "P_GAS_TO_ELECTRICITY",
+    "process_class": "PHYSICAL_CONVERSION",
+    "activity_unit": "process_activity",
+    "activity_value": "2",
+    "activity_uncertainty_interval": [
+      "-1/20",
+      "1/20"
+    ],
+    "manifest_version": "V1",
+    "valid_from": "2026-10-02T00:00:00Z",
+    "valid_to": "2026-10-03T00:00:00Z",
+    "coefficients": [
+      {
+        "layer": "ELECTRICITY",
+        "node_id": "E0",
+        "coefficient": "2",
+        "coefficient_unit": "W_e/process_activity",
+        "uncertainty_interval": [
+          "-1/10",
+          "1/10"
+        ],
+        "evidence_ref": "SYNTH:PROCESS_COEF_E"
+      },
+      {
+        "layer": "NATURAL_GAS",
+        "node_id": "G0",
+        "coefficient": "-5",
+        "coefficient_unit": "W_th/process_activity",
+        "uncertainty_interval": [
+          "-1/5",
+          "1/5"
+        ],
+        "evidence_ref": "SYNTH:PROCESS_COEF_G"
+      }
+    ],
+    "expected_nominal_outputs": {
+      "electricity_W_e": "4",
+      "natural_gas_W_th": "-10"
+    }
+  },
+  "balance_fixture": {
+    "electricity": {
+      "production_W_e": "13/2",
+      "demand_W_e": "10",
+      "loss_W_e": "0",
+      "process_W_e": "4",
+      "storage_delta_W_e": "-1/2",
+      "expected_residual_W_e": "0"
+    },
+    "natural_gas": {
+      "production_W_th": "0",
+      "demand_W_th": "10",
+      "loss_W_th": "0",
+      "boundary_import_W_th": "20",
+      "process_W_th": "-10",
+      "expected_residual_W_th": "0",
+      "gas_basis": "HHV"
+    },
+    "freshwater": {
+      "production_m3_s": "3",
+      "demand_m3_s": "3",
+      "loss_m3_s": "0",
+      "expected_residual_m3_s": "0"
+    }
+  },
+  "requirements": {
+    "use_frozen_core_only": true,
+    "no_new_domain_math": true,
+    "core_patch_allowed_only_if_integration_breaks": true,
+    "uncertainty_end_to_end": true,
+    "full_evidence_lineage": true,
+    "process_version_guard_exercised": true,
+    "process_validity_guard_exercised": true,
+    "storage_topology_guard_exercised": true,
+    "single_integrated_state_receipt": true,
+    "nominal_layer_residuals_zero": true,
+    "real_source_bindings_consumed": false
+  },
+  "mutation_checks": [
+    "PROCESS_VERSION_MISMATCH_REJECTED",
+    "PROCESS_VALIDITY_EXPIRED_REJECTED",
+    "STORAGE_HOST_TOPOLOGY_MISMATCH_REJECTED"
+  ],
+  "fences": {
+    "new_source_ingest": false,
+    "real_multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_INTEGRATED_MINIMAL_PLANETARY_CORE"
+}
