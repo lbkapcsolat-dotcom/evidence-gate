@@ -1,0 +1,61 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_STORAGE_SELF_LOSS_TYPED_PHYSICAL_RATE_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__STORAGE_SELF_LOSS_TYPED_PHYSICAL_RATE_V1",
+  "predecessor_pins": {
+    "python_core_sha256": "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae",
+    "cpp_kernel_sha256": "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f",
+    "typed_process_module_sha256": "6590802c509f14e37f783a3e8243b756b8f2a3eb88fbb936772a6c039d2b69e2",
+    "typed_process_receipt_sha256": "aba5715cd942f8da3d533c37e8d5c64de2f8d1d937cec47508fa1c22c4971fe5",
+    "e2e_uncertainty_module_sha256": "c62af9bc715ce4d088112c650f0c7794d9c2758a69088417135084740e2fb46c",
+    "e2e_uncertainty_receipt_sha256": "e7c131d890aedf397afa5065c74bcbab9b0d57febb6cb2386720fe4f2d1b5dbd",
+    "post_uncertainty_review_receipt_sha256": "edbb006db0f99ed052e8964914113dddacd7edbac21d355b58af939a3b01f045"
+  },
+  "implementation_mode": "ADDITIVE_SUCCESSOR_TYPED_SELF_LOSS_BOUNDARY_OVER_PINNED_CORE",
+  "self_loss_input": {
+    "type": "QualifiedValue",
+    "required_kind": "RATE",
+    "required_layer": "must equal storage.layer",
+    "required_interval": "must equal time_basis.interval_id",
+    "required_space": "PHYSICAL",
+    "value_domain": "value >= 0",
+    "output_coefficient_in_storage_uncertainty": "-delta_t"
+  },
+  "preservation": {
+    "epistemic_status": "conservative across stock, charge, discharge, self_loss",
+    "evidence_refs": "union across stock, charge, discharge, self_loss",
+    "transform_chain": "preserved and storage:self_loss_typed appended",
+    "hold_codes": "union preserved",
+    "freshness": "preserved/summarized",
+    "uncertainty": "self_loss included end-to-end",
+    "value_space": "PHYSICAL"
+  },
+  "rejection_requirements": [
+    "HOLD_SELF_LOSS_TYPED_VALUE_REQUIRED",
+    "HOLD_NEGATIVE_SELF_LOSS",
+    "HOLD_UNIT_MISMATCH",
+    "HOLD_TIME_BASIS_MISMATCH"
+  ],
+  "acceptance": {
+    "legacy_python_matrix": "40/40 unchanged",
+    "legacy_cpp_matrix": "40/40 unchanged",
+    "typed_process_closure": "preserved",
+    "e2e_uncertainty": "preserved",
+    "raw_fraction_self_loss_rejected": true,
+    "negative_self_loss_rejected": true,
+    "wrong_layer_or_unit_rejected": true,
+    "interval_mismatch_rejected": true,
+    "self_loss_uncertainty_included": true
+  },
+  "fences": {
+    "provider_work": false,
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_STORAGE_SELF_LOSS_TYPED_PHYSICAL_RATE"
+}

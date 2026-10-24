@@ -1,0 +1,108 @@
+name: Planetary Resource Post-Uncertainty Core Gap Review
+
+on:
+  push:
+    branches:
+      - "feature/planetary-resource-post-uncertainty-core-gap-review-v1"
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW.json
+      - planetary_resource_post_uncertainty_core_gap_review_v1.py
+      - test_planetary_resource_post_uncertainty_core_gap_review_v1.py
+      - docs/planetary_resource_post_uncertainty_core_gap_review_v1.md
+      - equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_process_typed_dimensional_closure_v1.py
+      - planetary_resource_process_typed_dimensional_closure_gate_v1.py
+      - planetary_resource_end_to_end_uncertainty_v1.py
+      - planetary_resource_end_to_end_uncertainty_gate_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-post-uncertainty-core-gap-review.yml
+  pull_request:
+    paths:
+      - EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW.json
+      - planetary_resource_post_uncertainty_core_gap_review_v1.py
+      - test_planetary_resource_post_uncertainty_core_gap_review_v1.py
+      - docs/planetary_resource_post_uncertainty_core_gap_review_v1.md
+      - equilibrium_planetary_resource_core_v1.py
+      - planetary_resource_process_typed_dimensional_closure_v1.py
+      - planetary_resource_process_typed_dimensional_closure_gate_v1.py
+      - planetary_resource_end_to_end_uncertainty_v1.py
+      - planetary_resource_end_to_end_uncertainty_gate_v1.py
+      - planetary_resource_cpp_kernel_v1.cpp
+      - .github/workflows/planetary-resource-post-uncertainty-core-gap-review.yml
+
+permissions:
+  contents: read
+
+jobs:
+  post-uncertainty-core-gap-review:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify pinned predecessors
+        shell: bash
+        run: |
+          echo "a2dafc38fac6c3077fc8972a0754bd216c4f8b4d83e4c2c8d33fca9b5f7c4aae  equilibrium_planetary_resource_core_v1.py" | sha256sum -c -
+          echo "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f  planetary_resource_cpp_kernel_v1.cpp" | sha256sum -c -
+          echo "3fb00e16cbca443063bda520510377d5b4fa78672009dfc2fc8fa9d86dc2748d  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__PROCESS_COUPLING_TYPED_DIMENSIONAL_CLOSURE.json" | sha256sum -c -
+          echo "6590802c509f14e37f783a3e8243b756b8f2a3eb88fbb936772a6c039d2b69e2  planetary_resource_process_typed_dimensional_closure_v1.py" | sha256sum -c -
+          echo "e6f1fe330a43ead1ee3d0cc6394ff7b15748e6cecbc4166001680ee316b39cfc  EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__END_TO_END_UNCERTAINTY_PROPAGATION.json" | sha256sum -c -
+          echo "c62af9bc715ce4d088112c650f0c7794d9c2758a69088417135084740e2fb46c  planetary_resource_end_to_end_uncertainty_v1.py" | sha256sum -c -
+
+      - name: Compile review
+        run: |
+          python -m compileall -q             equilibrium_planetary_resource_core_v1.py             planetary_resource_process_typed_dimensional_closure_v1.py             planetary_resource_process_typed_dimensional_closure_gate_v1.py             planetary_resource_end_to_end_uncertainty_v1.py             planetary_resource_end_to_end_uncertainty_gate_v1.py             planetary_resource_post_uncertainty_core_gap_review_v1.py             test_planetary_resource_post_uncertainty_core_gap_review_v1.py
+
+      - name: Preserve legacy Python 40 of 40
+        run: python -m unittest -v test_equilibrium_planetary_resource_core_v1.py
+
+      - name: Preserve typed process closure
+        run: python -m unittest -v test_planetary_resource_process_typed_dimensional_closure_v1.py
+
+      - name: Preserve end-to-end uncertainty
+        run: python -m unittest -v test_planetary_resource_end_to_end_uncertainty_v1.py
+
+      - name: Run post-uncertainty core gap review
+        run: python -m unittest -v test_planetary_resource_post_uncertainty_core_gap_review_v1.py
+
+      - name: Build deterministic review receipt
+        shell: bash
+        run: |
+          python planetary_resource_post_uncertainty_core_gap_review_v1.py | tee post_uncertainty_core_gap_review.log
+          grep -F '"selected_capability_count":1' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW_RECEIPT.json
+          grep -F '"id":"STORAGE_SELF_LOSS_TYPED_PHYSICAL_RATE_V1"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW_RECEIPT.json
+          grep -F '"negative_self_loss_accepted":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW_RECEIPT.json
+          grep -F '"mismatched_process_manifest_version_accepted":true' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW_RECEIPT.json
+          grep -F '"verdict":"PASS_BOUNDED_POST_UNCERTAINTY_CORE_REVIEW__NEXT_GAP_STORAGE_SELF_LOSS_TYPED_RATE"' EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW_RECEIPT.json
+
+      - name: Preserve independent C++ 40 of 40
+        shell: bash
+        run: |
+          CXX="$(command -v g++-14 || command -v g++)"
+          "$CXX" -std=c++23 -O2 -Wall -Wextra -Werror             planetary_resource_cpp_kernel_v1.cpp             -o planetary_resource_cpp_kernel_v1
+          ./planetary_resource_cpp_kernel_v1 | tee cpp_baseline.log
+          grep -Fx "CPP_MATRIX=40/40" cpp_baseline.log
+
+      - name: Hash review evidence
+        shell: bash
+        run: |
+          sha256sum             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW.json             planetary_resource_post_uncertainty_core_gap_review_v1.py             test_planetary_resource_post_uncertainty_core_gap_review_v1.py             EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW_RECEIPT.json
+
+      - name: Upload review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: planetary-resource-post-uncertainty-core-gap-review-py${{ matrix.python-version }}
+          path: |
+            EQUILIBRIUM_PLANETARY_RESOURCE_SYSTEMS_CORE_V1__POST_UNCERTAINTY_CORE_GAP_REVIEW_RECEIPT.json
+            post_uncertainty_core_gap_review.log
+            cpp_baseline.log
+          if-no-files-found: error

@@ -1,0 +1,151 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_THREE_LAYER_CANARY_GENERALIZATION_REVIEW_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__THREE_LAYER_CANARY_GENERALIZATION_REVIEW_V1",
+  "predecessor": {
+    "water_receipt_sha256": "697857c063c2cd6d7514e2b9dd79c46d7fe59a5efe0588579e9c4fd306b12c93",
+    "electricity_receipt_sha256": "9a996daea1a702e1654264a13cc72d0dcba760f8945528b24ce854c2392bca29",
+    "gas_receipt_sha256": "f0629b99245af4dacea863f91b71faf5938b10ed6e1c7069f4c1f829b5a1c406",
+    "empirical_contract_sha256": "592570140b8465cc4e9c38c84a9da5c1f6be73e9894bc1aad0a99e6ad023e9b3",
+    "empirical_validator_sha256": "3fc420678148149cdfca9fae03088b2f54e5987bf29278d1e94497534a4151c2"
+  },
+  "compared_layers": [
+    "FRESHWATER",
+    "ELECTRICITY",
+    "NATURAL_GAS"
+  ],
+  "shared_adapter_schema": {
+    "stages": [
+      "RAW_SOURCE_CAPTURE",
+      "RAW_SHA256_VERIFY",
+      "PROVENANCE_BIND",
+      "SOURCE_SEMANTIC_BIND",
+      "VARIABLE_MAP",
+      "SOURCE_UNIT_ADAPT",
+      "CANONICAL_UNIT_TRANSFORM",
+      "SPATIAL_MAP",
+      "TEMPORAL_ALIGN",
+      "FRESHNESS_READBACK",
+      "UNCERTAINTY_DECLARE",
+      "MISSINGNESS_DECLARE",
+      "EMPIRICAL_ADMISSION",
+      "DETERMINISTIC_RECEIPT"
+    ],
+    "required_fields": {
+      "source": [
+        "source_id",
+        "provider",
+        "dataset_id_or_indicator",
+        "dataset_version_or_contract",
+        "record_locator_or_source_url",
+        "retrieved_at",
+        "raw_file",
+        "raw_sha256",
+        "citation_or_source_description",
+        "access_class"
+      ],
+      "record": [
+        "value",
+        "source_unit",
+        "observation_or_interval_time"
+      ],
+      "mapping": [
+        "variable_id",
+        "source_layer",
+        "source_quantity_kind",
+        "source_status",
+        "target_node_id",
+        "target_node_class",
+        "spatial_method",
+        "spatial_method_ref",
+        "interval_id",
+        "temporal_method",
+        "max_age_seconds",
+        "uncertainty_kind",
+        "sign_semantics_declared"
+      ],
+      "receipt": [
+        "admission_decision",
+        "canonical_value",
+        "canonical_unit",
+        "transform_chain",
+        "freshness_age_seconds",
+        "uncertainty_kind",
+        "output_status",
+        "claim_ceiling"
+      ]
+    },
+    "invariants": [
+      "ONE_CANARY_RECORD_IS_NOT_A_GLOBAL_DATASET_BIND",
+      "RAW_BYTES_ARE_HASHED_BEFORE_SEMANTIC_USE",
+      "PROVENANCE_IS_REQUIRED",
+      "SOURCE_SEMANTICS_ARE_EXPLICIT",
+      "SOURCE_TO_CANONICAL_UNIT_TRANSFORM_IS_EXPLICIT",
+      "SPATIAL_MAPPING_IS_EXPLICIT",
+      "TEMPORAL_ALIGNMENT_IS_EXPLICIT",
+      "FRESHNESS_IS_DETERMINISTIC_AT_AS_OF",
+      "UNKNOWN_UNCERTAINTY_IS_NOT_PROMOTED_TO_EXACT",
+      "ZERO_IS_NOT_MISSING",
+      "INTERPOLATION_AND_IMPUTATION_ARE_NOT_SILENT",
+      "CLAIM_CEILING_IS_SOURCE_LOCAL",
+      "SAME_EMPIRICAL_ADMISSION_CONTRACT_IS_REUSED"
+    ]
+  },
+  "layer_specific_exceptions": {
+    "FRESHWATER": {
+      "exception_class": "NONE_REQUIRED_FOR_DIRECT_VOLUME_RATE",
+      "observed_pattern": "m3/s -> m3/s identity",
+      "future_context_dependent_case": "quality/chemistry or basin aggregation would require separate evidence; not part of this core rate adapter"
+    },
+    "ELECTRICITY": {
+      "exception_class": "SOURCE_METRIC_SEMANTICS",
+      "observed_pattern": "MW -> W_e fixed scale",
+      "future_context_dependent_case": "source metric such as demand/load/generation must not be silently reinterpreted as total final consumption"
+    },
+    "NATURAL_GAS": {
+      "exception_class": "ENERGY_BASIS_REQUIRED",
+      "observed_pattern": "kWh/h_GCV -> kW_HHV label bind -> W_th",
+      "future_context_dependent_case": "volume -> energy requires calorific-value and basis evidence and is HOLD by default"
+    },
+    "CRUDE_OIL_FUTURE": {
+      "exception_class": "MASS_BASIS_OR_DENSITY_TEMPERATURE_EVIDENCE",
+      "simple_path": "mass or mass-rate source such as kg, t, kg/s, t/day can use the shared adapter with fixed conversion",
+      "hard_path": "volume or volume-rate source requires density and temperature/reference-condition evidence before kg or kg/s conversion"
+    }
+  },
+  "generalization_findings": {
+    "shared_pipeline_proven_across_three_distinct_dimensions": [
+      "volume_rate",
+      "electrical_power",
+      "gas_energy_rate_with_explicit_heating_value_basis"
+    ],
+    "source_specific_code_should_be_limited_to": [
+      "raw parser",
+      "source field mapping",
+      "source semantic evidence",
+      "optional pre-contract unit/basis adapter",
+      "source-local spatial and temporal metadata"
+    ],
+    "domain_math_reimplementation_per_source_required": false,
+    "provider_specific_physics_engine_required": false
+  },
+  "crude_oil_decision": {
+    "adapter_generalization_requires_oil_canary": false,
+    "four_layer_real_world_coverage_requires_oil_canary": true,
+    "before_any_crude_oil_source_admission": true,
+    "before_claiming_all_four_v1_layers_real_world_tested": true,
+    "recommended_now": false,
+    "decision": "DEFER_UNTIL_CRUDE_OIL_ADMISSION_OR_FOUR_LAYER_COVERAGE_CLAIM",
+    "rationale": "The three canaries already prove the shared adapter pipeline across three physically different unit/semantic cases, including the harder gas basis exception. A crude-oil canary would mainly add a fourth canonical dimension (mass-rate). It becomes materially informative when testing oil-specific volume-to-mass density/temperature evidence, or when a four-layer real-world coverage claim is needed."
+  },
+  "fences": {
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict": "PASS_BOUNDED_THREE_LAYER_ADAPTER_GENERALIZATION__CRUDE_OIL_DEFERRED_CONDITIONALLY"
+}
