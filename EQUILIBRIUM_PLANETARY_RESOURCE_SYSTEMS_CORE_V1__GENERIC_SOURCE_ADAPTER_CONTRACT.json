@@ -1,0 +1,108 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_GENERIC_SOURCE_ADAPTER_CONTRACT_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__GENERIC_SOURCE_ADAPTER_CONTRACT_V1",
+  "predecessor": {
+    "generalization_review_receipt_sha256": "a221c6f8e3d49297d04a1aa780cfcf215da0a457d2ab3ea767e40cb5505b10ca",
+    "empirical_contract_sha256": "592570140b8465cc4e9c38c84a9da5c1f6be73e9894bc1aad0a99e6ad023e9b3",
+    "empirical_validator_sha256": "3fc420678148149cdfca9fae03088b2f54e5987bf29278d1e94497534a4151c2",
+    "water_receipt_sha256": "697857c063c2cd6d7514e2b9dd79c46d7fe59a5efe0588579e9c4fd306b12c93",
+    "electricity_receipt_sha256": "9a996daea1a702e1654264a13cc72d0dcba760f8945528b24ce854c2392bca29",
+    "gas_receipt_sha256": "f0629b99245af4dacea863f91b71faf5938b10ed6e1c7069f4c1f829b5a1c406"
+  },
+  "interface": {
+    "generic_source_record": [
+      "value",
+      "source_unit",
+      "record_locator",
+      "observed_at"
+    ],
+    "generic_adapter_spec": [
+      "source_id",
+      "provider",
+      "dataset_id",
+      "dataset_version",
+      "retrieved_at",
+      "raw_file",
+      "raw_sha256",
+      "citation",
+      "license_or_terms_ref",
+      "access_class",
+      "variable_id",
+      "source_layer",
+      "source_quantity_kind",
+      "source_status",
+      "target_node_id",
+      "target_node_class",
+      "spatial_method",
+      "spatial_method_ref",
+      "interval_id",
+      "temporal_method",
+      "temporal_method_ref",
+      "as_of",
+      "max_age_seconds",
+      "uncertainty_kind",
+      "uncertainty_method_ref",
+      "missingness_reason",
+      "source_gas_basis",
+      "sign_semantics_declared",
+      "base_transform_chain",
+      "pre_contract_transform"
+    ],
+    "pre_contract_transform": [
+      "enabled",
+      "from_unit",
+      "to_unit",
+      "factor_n",
+      "factor_d",
+      "to_gas_basis",
+      "evidence_ref",
+      "chain_tokens"
+    ],
+    "output": "planetary_resource_empirical_admission_v1.AdmissionReceipt"
+  },
+  "invariants": [
+    "RAW_SOURCE_BYTES_ARE_NOT_FETCHED_BY_GENERIC_ADAPTER",
+    "RAW_SHA256_MUST_MATCH_FROZEN_SNAPSHOT",
+    "GENERIC_ADAPTER_MAY_SCALE_OR_RELABEL_SOURCE_UNIT_ONLY_IF_DECLARED",
+    "GENERIC_ADAPTER_DOES_NOT_IMPLEMENT_RESOURCE_BALANCE_MATH",
+    "GENERIC_ADAPTER_DOES_NOT_IMPLEMENT_PROVIDER_SPECIFIC_PHYSICS_ENGINE",
+    "EMPIRICAL_ADMISSION_VALIDATOR_REMAINS_UNCHANGED",
+    "SPATIAL_TEMPORAL_FRESHNESS_UNCERTAINTY_MISSINGNESS_REMAIN_EXPLICIT",
+    "EXISTING_CANARY_CLAIM_CEILINGS_REMAIN_SOURCE_LOCAL",
+    "GENERIC_RECEIPT_MUST_EQUAL_EXISTING_CANARY_EMPIRICAL_RECEIPT"
+  ],
+  "provider_binding_scope": {
+    "allowed": [
+      "parse_frozen_raw_snapshot",
+      "extract_source_value_and_record_locator",
+      "declare_source_semantics",
+      "declare_source_unit_or_basis_evidence",
+      "declare_source_local_spatial_mapping",
+      "declare_source_interval_metadata"
+    ],
+    "prohibited": [
+      "resource_balance_equations",
+      "storage_equations",
+      "cross_resource_process_math",
+      "stress_model",
+      "aggregate_equilibrium_score",
+      "provider_specific_physics_engine"
+    ]
+  },
+  "proven_bindings": [
+    "ENVIRONMENT_AGENCY_FRESHWATER",
+    "ELEXON_ELECTRICITY",
+    "ENTSOG_NATURAL_GAS"
+  ],
+  "fences": {
+    "new_source_ingest": false,
+    "multi_source_fusion": false,
+    "eq_score": false,
+    "ui": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "verdict_target": "PASS_BOUNDED_GENERIC_SOURCE_ADAPTER_CONTRACT_3_OF_3_RECEIPT_EQUALITY"
+}

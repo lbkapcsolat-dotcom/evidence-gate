@@ -1,0 +1,674 @@
+{
+  "schema_version": "EQUILIBRIUM_PRS_EMPIRICAL_DATA_CONTRACT_V1",
+  "gate_id": "EQUILIBRIUM__PLANETARY_RESOURCE_SYSTEMS_CORE_V1__EMPIRICAL_DATA_CONTRACT_AND_SOURCE_ADMISSION_V1",
+  "predecessor": {
+    "branch": "feature/planetary-resource-cpp-hgraph-native-adapter-v1",
+    "head": "4019d3faea1927021ad28707c0332755c27b61c3",
+    "cpp_kernel_sha256": "7e0ee2d2d5c24cd53d10ba04fcc49f752e26c5c050a3b65dc694f6b6cb20f26f",
+    "cpp_hgraph_adapter_receipt_sha256": "43b9b278dea67ac1e55aa16aef000c69c7904525b71e4dfce17b93e37cdd85ec"
+  },
+  "scope": {
+    "external_data_ingest": false,
+    "nasa_bind": false,
+    "rockstrom_bind": false,
+    "ui": false,
+    "aggregate_eq_score": false,
+    "runtime_admission": false,
+    "pointer_promotion": false,
+    "global_bind": false,
+    "merge": false
+  },
+  "variables": [
+    {
+      "variable_id": "electricity.stock",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "STOCK",
+      "role": "stock",
+      "canonical_unit": "J_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "NONNEGATIVE_STOCK"
+    },
+    {
+      "variable_id": "electricity.production_rate",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "RATE",
+      "role": "production_rate",
+      "canonical_unit": "W_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "POSITIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "electricity.consumption_rate",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "RATE",
+      "role": "consumption_rate",
+      "canonical_unit": "W_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "NEGATIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "electricity.loss_rate",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "RATE",
+      "role": "loss_rate",
+      "canonical_unit": "W_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "NEGATIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "electricity.internal_flow_rate",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "RATE",
+      "role": "internal_flow_rate",
+      "canonical_unit": "W_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "DIRECTED_INTERNAL_EDGE"
+    },
+    {
+      "variable_id": "electricity.import_rate",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "RATE",
+      "role": "import_rate",
+      "canonical_unit": "W_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "POSITIVE_BOUNDARY"
+    },
+    {
+      "variable_id": "electricity.export_rate",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "RATE",
+      "role": "export_rate",
+      "canonical_unit": "W_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "NEGATIVE_BOUNDARY"
+    },
+    {
+      "variable_id": "electricity.storage_charge_rate",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "RATE",
+      "role": "storage_charge_rate",
+      "canonical_unit": "W_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "STORAGE_CHARGE"
+    },
+    {
+      "variable_id": "electricity.storage_discharge_rate",
+      "layer": "ELECTRICITY",
+      "quantity_kind": "RATE",
+      "role": "storage_discharge_rate",
+      "canonical_unit": "W_e",
+      "gas_basis": null,
+      "target_node_class": "ELECTRICITY_ZONE",
+      "sign_semantics": "STORAGE_DISCHARGE"
+    },
+    {
+      "variable_id": "natural_gas.stock",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "STOCK",
+      "role": "stock",
+      "canonical_unit": "J_gas",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "NONNEGATIVE_STOCK"
+    },
+    {
+      "variable_id": "natural_gas.production_rate",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "RATE",
+      "role": "production_rate",
+      "canonical_unit": "W_th",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "POSITIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "natural_gas.consumption_rate",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "RATE",
+      "role": "consumption_rate",
+      "canonical_unit": "W_th",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "NEGATIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "natural_gas.loss_rate",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "RATE",
+      "role": "loss_rate",
+      "canonical_unit": "W_th",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "NEGATIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "natural_gas.internal_flow_rate",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "RATE",
+      "role": "internal_flow_rate",
+      "canonical_unit": "W_th",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "DIRECTED_INTERNAL_EDGE"
+    },
+    {
+      "variable_id": "natural_gas.import_rate",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "RATE",
+      "role": "import_rate",
+      "canonical_unit": "W_th",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "POSITIVE_BOUNDARY"
+    },
+    {
+      "variable_id": "natural_gas.export_rate",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "RATE",
+      "role": "export_rate",
+      "canonical_unit": "W_th",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "NEGATIVE_BOUNDARY"
+    },
+    {
+      "variable_id": "natural_gas.storage_charge_rate",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "RATE",
+      "role": "storage_charge_rate",
+      "canonical_unit": "W_th",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "STORAGE_CHARGE"
+    },
+    {
+      "variable_id": "natural_gas.storage_discharge_rate",
+      "layer": "NATURAL_GAS",
+      "quantity_kind": "RATE",
+      "role": "storage_discharge_rate",
+      "canonical_unit": "W_th",
+      "gas_basis": "HHV",
+      "target_node_class": "GAS_ZONE",
+      "sign_semantics": "STORAGE_DISCHARGE"
+    },
+    {
+      "variable_id": "crude_oil.stock",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "STOCK",
+      "role": "stock",
+      "canonical_unit": "kg_crude",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "NONNEGATIVE_STOCK"
+    },
+    {
+      "variable_id": "crude_oil.production_rate",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "RATE",
+      "role": "production_rate",
+      "canonical_unit": "kg/s",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "POSITIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "crude_oil.consumption_rate",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "RATE",
+      "role": "consumption_rate",
+      "canonical_unit": "kg/s",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "NEGATIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "crude_oil.loss_rate",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "RATE",
+      "role": "loss_rate",
+      "canonical_unit": "kg/s",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "NEGATIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "crude_oil.internal_flow_rate",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "RATE",
+      "role": "internal_flow_rate",
+      "canonical_unit": "kg/s",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "DIRECTED_INTERNAL_EDGE"
+    },
+    {
+      "variable_id": "crude_oil.import_rate",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "RATE",
+      "role": "import_rate",
+      "canonical_unit": "kg/s",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "POSITIVE_BOUNDARY"
+    },
+    {
+      "variable_id": "crude_oil.export_rate",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "RATE",
+      "role": "export_rate",
+      "canonical_unit": "kg/s",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "NEGATIVE_BOUNDARY"
+    },
+    {
+      "variable_id": "crude_oil.storage_charge_rate",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "RATE",
+      "role": "storage_charge_rate",
+      "canonical_unit": "kg/s",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "STORAGE_CHARGE"
+    },
+    {
+      "variable_id": "crude_oil.storage_discharge_rate",
+      "layer": "CRUDE_OIL",
+      "quantity_kind": "RATE",
+      "role": "storage_discharge_rate",
+      "canonical_unit": "kg/s",
+      "gas_basis": null,
+      "target_node_class": "OIL_ZONE_OR_HUB",
+      "sign_semantics": "STORAGE_DISCHARGE"
+    },
+    {
+      "variable_id": "freshwater.stock",
+      "layer": "FRESHWATER",
+      "quantity_kind": "STOCK",
+      "role": "stock",
+      "canonical_unit": "m3",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "NONNEGATIVE_STOCK"
+    },
+    {
+      "variable_id": "freshwater.production_rate",
+      "layer": "FRESHWATER",
+      "quantity_kind": "RATE",
+      "role": "production_rate",
+      "canonical_unit": "m3/s",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "POSITIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "freshwater.consumption_rate",
+      "layer": "FRESHWATER",
+      "quantity_kind": "RATE",
+      "role": "consumption_rate",
+      "canonical_unit": "m3/s",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "NEGATIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "freshwater.loss_rate",
+      "layer": "FRESHWATER",
+      "quantity_kind": "RATE",
+      "role": "loss_rate",
+      "canonical_unit": "m3/s",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "NEGATIVE_IN_BALANCE"
+    },
+    {
+      "variable_id": "freshwater.internal_flow_rate",
+      "layer": "FRESHWATER",
+      "quantity_kind": "RATE",
+      "role": "internal_flow_rate",
+      "canonical_unit": "m3/s",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "DIRECTED_INTERNAL_EDGE"
+    },
+    {
+      "variable_id": "freshwater.import_rate",
+      "layer": "FRESHWATER",
+      "quantity_kind": "RATE",
+      "role": "import_rate",
+      "canonical_unit": "m3/s",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "POSITIVE_BOUNDARY"
+    },
+    {
+      "variable_id": "freshwater.export_rate",
+      "layer": "FRESHWATER",
+      "quantity_kind": "RATE",
+      "role": "export_rate",
+      "canonical_unit": "m3/s",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "NEGATIVE_BOUNDARY"
+    },
+    {
+      "variable_id": "freshwater.storage_charge_rate",
+      "layer": "FRESHWATER",
+      "quantity_kind": "RATE",
+      "role": "storage_charge_rate",
+      "canonical_unit": "m3/s",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "STORAGE_CHARGE"
+    },
+    {
+      "variable_id": "freshwater.storage_discharge_rate",
+      "layer": "FRESHWATER",
+      "quantity_kind": "RATE",
+      "role": "storage_discharge_rate",
+      "canonical_unit": "m3/s",
+      "gas_basis": null,
+      "target_node_class": "WATER_BASIN_OR_ACCOUNTING_UNIT",
+      "sign_semantics": "STORAGE_DISCHARGE"
+    }
+  ],
+  "accepted_source_units": {
+    "ELECTRICITY": {
+      "STOCK": {
+        "J": {
+          "target": "J_e",
+          "factor_n": 1,
+          "factor_d": 1
+        },
+        "Wh": {
+          "target": "J_e",
+          "factor_n": 3600,
+          "factor_d": 1
+        },
+        "kWh": {
+          "target": "J_e",
+          "factor_n": 3600000,
+          "factor_d": 1
+        },
+        "MWh": {
+          "target": "J_e",
+          "factor_n": 3600000000,
+          "factor_d": 1
+        },
+        "GWh": {
+          "target": "J_e",
+          "factor_n": 3600000000000,
+          "factor_d": 1
+        }
+      },
+      "RATE": {
+        "W": {
+          "target": "W_e",
+          "factor_n": 1,
+          "factor_d": 1
+        },
+        "kW": {
+          "target": "W_e",
+          "factor_n": 1000,
+          "factor_d": 1
+        },
+        "MW": {
+          "target": "W_e",
+          "factor_n": 1000000,
+          "factor_d": 1
+        },
+        "GW": {
+          "target": "W_e",
+          "factor_n": 1000000000,
+          "factor_d": 1
+        }
+      }
+    },
+    "NATURAL_GAS": {
+      "STOCK": {
+        "J_HHV": {
+          "target": "J_gas",
+          "factor_n": 1,
+          "factor_d": 1,
+          "gas_basis": "HHV"
+        },
+        "MJ_HHV": {
+          "target": "J_gas",
+          "factor_n": 1000000,
+          "factor_d": 1,
+          "gas_basis": "HHV"
+        },
+        "GJ_HHV": {
+          "target": "J_gas",
+          "factor_n": 1000000000,
+          "factor_d": 1,
+          "gas_basis": "HHV"
+        },
+        "TJ_HHV": {
+          "target": "J_gas",
+          "factor_n": 1000000000000,
+          "factor_d": 1,
+          "gas_basis": "HHV"
+        }
+      },
+      "RATE": {
+        "W_HHV": {
+          "target": "W_th",
+          "factor_n": 1,
+          "factor_d": 1,
+          "gas_basis": "HHV"
+        },
+        "kW_HHV": {
+          "target": "W_th",
+          "factor_n": 1000,
+          "factor_d": 1,
+          "gas_basis": "HHV"
+        },
+        "MW_HHV": {
+          "target": "W_th",
+          "factor_n": 1000000,
+          "factor_d": 1,
+          "gas_basis": "HHV"
+        },
+        "GW_HHV": {
+          "target": "W_th",
+          "factor_n": 1000000000,
+          "factor_d": 1,
+          "gas_basis": "HHV"
+        }
+      }
+    },
+    "CRUDE_OIL": {
+      "STOCK": {
+        "kg": {
+          "target": "kg_crude",
+          "factor_n": 1,
+          "factor_d": 1
+        },
+        "t": {
+          "target": "kg_crude",
+          "factor_n": 1000,
+          "factor_d": 1
+        }
+      },
+      "RATE": {
+        "kg/s": {
+          "target": "kg/s",
+          "factor_n": 1,
+          "factor_d": 1
+        },
+        "kg/day": {
+          "target": "kg/s",
+          "factor_n": 1,
+          "factor_d": 86400
+        },
+        "t/day": {
+          "target": "kg/s",
+          "factor_n": 1000,
+          "factor_d": 86400
+        }
+      }
+    },
+    "FRESHWATER": {
+      "STOCK": {
+        "m3": {
+          "target": "m3",
+          "factor_n": 1,
+          "factor_d": 1
+        },
+        "L": {
+          "target": "m3",
+          "factor_n": 1,
+          "factor_d": 1000
+        },
+        "km3": {
+          "target": "m3",
+          "factor_n": 1000000000,
+          "factor_d": 1
+        }
+      },
+      "RATE": {
+        "m3/s": {
+          "target": "m3/s",
+          "factor_n": 1,
+          "factor_d": 1
+        },
+        "m3/day": {
+          "target": "m3/s",
+          "factor_n": 1,
+          "factor_d": 86400
+        },
+        "L/s": {
+          "target": "m3/s",
+          "factor_n": 1,
+          "factor_d": 1000
+        }
+      }
+    }
+  },
+  "context_dependent_units": {
+    "gas_volume_to_energy": "HOLD_UNLESS_CALORIFIC_VALUE_AND_BASIS_EVIDENCE",
+    "oil_volume_to_mass": "HOLD_UNLESS_DENSITY_AND_TEMPERATURE_BASIS_EVIDENCE"
+  },
+  "provenance_required": [
+    "source_id",
+    "provider",
+    "dataset_id",
+    "dataset_version",
+    "record_locator",
+    "observed_at",
+    "retrieved_at",
+    "raw_sha256",
+    "citation",
+    "license_or_terms_ref",
+    "access_class"
+  ],
+  "spatial_mapping": {
+    "allowed_methods": [
+      "IDENTITY",
+      "AREA_WEIGHTED",
+      "NETWORK_ASSIGNMENT",
+      "NODE_LOOKUP",
+      "AGGREGATE_TO_PARENT"
+    ],
+    "method_ref_required": true,
+    "target_node_class_required": true,
+    "weighted_methods_require_sum_one": [
+      "AREA_WEIGHTED"
+    ],
+    "implicit_nearest_neighbor": false
+  },
+  "temporal_alignment": {
+    "allowed_methods": [
+      "EXACT_INTERVAL",
+      "TIME_WEIGHTED_MEAN",
+      "END_OF_INTERVAL_STOCK",
+      "SUM_SUBINTERVALS",
+      "INTEGRATE_RATE"
+    ],
+    "method_ref_required_for_non_exact": true,
+    "interpolation_default": false,
+    "interpolation_requires_method_ref": true,
+    "imputation_default": false,
+    "imputation_requires_method_ref": true
+  },
+  "freshness": {
+    "clock_semantics": "DETERMINISTIC_AS_OF_TIMESTAMP",
+    "max_age_seconds_required": true,
+    "stale_default": "HOLD"
+  },
+  "uncertainty": {
+    "allowed_kinds": [
+      "EXACT",
+      "INTERVAL",
+      "MOMENT",
+      "EMPIRICAL",
+      "UNKNOWN"
+    ],
+    "unknown_may_not_be_promoted_to_exact": true,
+    "moment_aggregation_requires_covariance_ref": true,
+    "empirical_aggregation_requires_alignment_ref": true
+  },
+  "missingness": {
+    "zero_is_missing": false,
+    "allowed_reasons": [
+      "NOT_REPORTED",
+      "NOT_APPLICABLE",
+      "COVERAGE_GAP",
+      "SUPPRESSED",
+      "SENSOR_FAILURE",
+      "SOURCE_WITHHELD",
+      "OUTSIDE_TEMPORAL_SCOPE"
+    ],
+    "reason_required_when_value_missing": true,
+    "missing_values_not_admitted_to_physical_state": true
+  },
+  "admission_outputs": [
+    "ADMIT_OBSERVED",
+    "ADMIT_DERIVED",
+    "ADMIT_IMPUTED_FLAGGED"
+  ],
+  "hold_codes": [
+    "HOLD_VARIABLE_UNMAPPED",
+    "HOLD_PROVENANCE_MISSING",
+    "HOLD_DIGEST_INVALID",
+    "HOLD_LAYER_MISMATCH",
+    "HOLD_QUANTITY_KIND_MISMATCH",
+    "HOLD_UNIT_UNRECOGNIZED",
+    "HOLD_DIMENSIONAL_INCOMPATIBILITY",
+    "HOLD_HHV_LHV_BASIS_MISMATCH",
+    "HOLD_SPATIAL_MAPPING_UNDECLARED",
+    "HOLD_SPATIAL_MAPPING_AMBIGUOUS",
+    "HOLD_TEMPORAL_ALIGNMENT_UNDECLARED",
+    "HOLD_TEMPORAL_METHOD_INVALID",
+    "HOLD_INTERPOLATION_UNDECLARED",
+    "HOLD_IMPUTATION_UNDECLARED",
+    "HOLD_FRESHNESS_UNKNOWN",
+    "HOLD_STALE_INPUT",
+    "HOLD_UNCERTAINTY_MISSING",
+    "HOLD_COVARIANCE_REQUIRED",
+    "HOLD_SAMPLE_ALIGNMENT_REQUIRED",
+    "HOLD_MISSINGNESS_UNDECLARED",
+    "HOLD_MISSING_INPUT",
+    "HOLD_CONFLICTED_INPUT",
+    "HOLD_OUT_OF_SCOPE_INPUT",
+    "HOLD_TRANSFORM_RECEIPT_INCOMPLETE",
+    "HOLD_SIGN_SEMANTICS_UNDECLARED"
+  ],
+  "claim_ceiling": {
+    "empirical_contract_frozen": true,
+    "external_dataset_admitted": false,
+    "physical_calibration": false,
+    "forecasting": false,
+    "policy_conclusion": false,
+    "aggregate_equilibrium_score": false
+  }
+}
