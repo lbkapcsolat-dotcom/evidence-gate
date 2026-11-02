@@ -1,9 +1,6 @@
 name: EQ3D Exact WLSMV 1000rep Grid V1
 
 on:
-  push:
-    branches:
-      - eq3d-wlsmv-1000rep-grid-v1
   workflow_dispatch:
 
 permissions:
