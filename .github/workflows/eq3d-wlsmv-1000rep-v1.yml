@@ -1,0 +1,126 @@
+name: EQ3D Exact WLSMV 1000rep Grid V1
+
+on:
+  push:
+    branches:
+      - eq3d-wlsmv-1000rep-grid-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-grid:
+    name: grid N${{ matrix.N }} ${{ matrix.truth }} shard${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        N: [4800, 6000, 7200]
+        truth: [M3, M4, M5, M7]
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+
+      - name: Install exact ordinal SEM dependencies
+        shell: bash
+        run: |
+          Rscript -e 'install.packages(c("lavaan","mvtnorm"), repos="https://cloud.r-project.org", Ncpus=2)'
+          Rscript -e 'stopifnot(as.character(packageVersion("lavaan")) == "0.7.2"); cat(R.version.string,"\n"); cat("lavaan=",as.character(packageVersion("lavaan")),"\n")'
+
+      - name: Run 250 exact WLSMV replications
+        shell: bash
+        run: |
+          Rscript research/eq3d_wlsmv_1000rep_v1/grid.R \
+            ${{ matrix.N }} ${{ matrix.truth }} ${{ matrix.shard }} 250 grid.csv
+          sha256sum research/eq3d_wlsmv_1000rep_v1/grid.R grid.csv | tee SHA256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grid-N${{ matrix.N }}-${{ matrix.truth }}-s${{ matrix.shard }}
+          path: |
+            grid.csv
+            SHA256.txt
+          retention-days: 14
+
+  sensitivity:
+    name: ESEM and method-factor closure
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+
+      - name: Install sensitivity dependencies
+        shell: bash
+        run: |
+          Rscript -e 'install.packages(c("lavaan","mvtnorm","jsonlite"), repos="https://cloud.r-project.org", Ncpus=2)'
+          Rscript -e 'stopifnot(as.character(packageVersion("lavaan")) == "0.7.2")'
+
+      - name: Run exact ESEM and method-factor positive controls
+        shell: bash
+        run: |
+          mkdir -p sensitivity-out
+          Rscript research/eq3d_wlsmv_1000rep_v1/sensitivity.R sensitivity-out
+          sha256sum research/eq3d_wlsmv_1000rep_v1/sensitivity.R sensitivity-out/* | tee sensitivity-out/SHA256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sensitivity
+          path: sensitivity-out/
+          retention-days: 14
+
+  aggregate:
+    name: Aggregate exact grid and freeze recruitment lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs:
+      - exact-grid
+      - sensitivity
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+
+      - name: Install aggregator dependency
+        shell: bash
+        run: |
+          Rscript -e 'install.packages("jsonlite", repos="https://cloud.r-project.org")'
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: grid-*
+          path: artifacts
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sensitivity
+          path: artifacts/sensitivity
+
+      - name: Aggregate all 12000 exact replications
+        shell: bash
+        run: |
+          mkdir -p final
+          Rscript research/eq3d_wlsmv_1000rep_v1/aggregate.R artifacts final | tee final/AGGREGATION_STDOUT.txt
+          sha256sum research/eq3d_wlsmv_1000rep_v1/aggregate.R final/* | tee final/SHA256.txt
+          cat final/RECRUITMENT_LOCK.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EQ3D-WLSMV-1000REP-FINAL
+          path: final/
+          retention-days: 30
