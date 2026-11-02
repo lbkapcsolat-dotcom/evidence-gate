@@ -4,6 +4,7 @@ suppressPackageStartupMessages({
   library(mvtnorm)
   library(parallel)
 })
+source("research/eq3d_wlsmv_1000rep_v1/row_contract.R")
 
 args <- commandArgs(trailingOnly=TRUE)
 N <- as.integer(args[[1]])
@@ -149,13 +150,13 @@ one_rep <- function(repi) {
   seed <- 260611020L + N*10000L + match(truth,c("M3","M4","M5","M7"))*1000000L + shard*1000L + repi
   t0 <- proc.time()[3]
   d <- try(simdat(N,truth_phi[[truth]],seed),silent=TRUE)
-  if(inherits(d,"try-error")) return(data.frame(rep=repi,seed=seed,status="SIM_FAIL",elapsed=proc.time()[3]-t0))
+  if(inherits(d,"try-error")) return(canonical_result_row(N,truth,shard,repi,seed,"SIM_FAIL",elapsed=proc.time()[3]-t0))
   st <- try(make_stats(d),silent=TRUE)
-  if(inherits(st,"try-error")) return(data.frame(rep=repi,seed=seed,status="LAVCOR_FAIL",elapsed=proc.time()[3]-t0))
+  if(inherits(st,"try-error")) return(canonical_result_row(N,truth,shard,repi,seed,"LAVCOR_FAIL",elapsed=proc.time()[3]-t0))
   vals <- list()
   for(m in c("M3","M4","M5","M7")) {
     z <- try(fit_one(mods[[m]],st,N),silent=TRUE)
-    if(inherits(z,"try-error")) return(data.frame(rep=repi,seed=seed,status=paste0(m,"_FAIL"),elapsed=proc.time()[3]-t0))
+    if(inherits(z,"try-error")) return(canonical_result_row(N,truth,shard,repi,seed,paste0(m,"_FAIL"),elapsed=proc.time()[3]-t0))
     vals[[m]] <- z
   }
   m3 <- vals$M3
@@ -170,10 +171,13 @@ one_rep <- function(repi) {
       ((m3["srmr"] - z["srmr"]) > .010)
   }
   support <- absolute && !worse
-  data.frame(
-    rep=repi,seed=seed,status="OK",m3_support=as.integer(support),
-    m3_cfi=m3["cfi.scaled"],m3_tli=m3["tli.scaled"],
-    m3_rmsea=m3["rmsea.scaled"],m3_srmr=m3["srmr"],
+  canonical_result_row(
+    N,truth,shard,repi,seed,"OK",
+    m3_support=as.integer(support),
+    m3_cfi=m3["cfi.scaled"],
+    m3_tli=m3["tli.scaled"],
+    m3_rmsea=m3["rmsea.scaled"],
+    m3_srmr=m3["srmr"],
     elapsed=proc.time()[3]-t0
   )
 }
