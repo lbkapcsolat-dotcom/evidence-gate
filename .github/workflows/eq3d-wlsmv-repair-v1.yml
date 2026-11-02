@@ -1,0 +1,256 @@
+name: EQ3D WLSMV Grid Repair and Merge Readiness V1
+
+on:
+  push:
+    branches:
+      - eq3d-wlsmv-1000rep-grid-v1
+    paths:
+      - ".github/workflows/eq3d-wlsmv-repair-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN: "41479137566"
+
+jobs:
+  plan:
+    name: Discover missing exact-grid shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - name: Wait for reusable source shards
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN}/jobs?per_page=100")"
+            remaining="$(printf '%s' "$jobs" | jq '[.jobs[] | select(.name | startswith("grid ")) | select(.status != "completed")] | length')"
+            echo "remaining_source_grid_jobs=$remaining"
+            if [ "$remaining" -eq 0 ]; then
+              exit 0
+            fi
+            sleep 60
+          done
+          echo "Source run still has active jobs after bounded reuse window; missing shards will be repaired."
+
+      - id: plan
+        name: Build exact missing-shard matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN}/artifacts?per_page=100" > artifacts.json
+          python3 - <<'PY' > missing.json
+          import json
+          arts=json.load(open("artifacts.json"))
+          have={a["name"] for a in arts.get("artifacts",[]) if not a.get("expired")}
+          inc=[]
+          for N in (4800,6000,7200):
+              for truth in ("M3","M4","M5","M7"):
+                  for shard in range(4):
+                      name=f"grid-N{N}-{truth}-s{shard}"
+                      if name not in have:
+                          inc.append({"N":N,"truth":truth,"shard":shard})
+          print(json.dumps({"include":inc},separators=(",",":")))
+          PY
+          matrix="$(cat missing.json)"
+          count="$(python3 - <<'PY'
+          import json
+          print(len(json.load(open("missing.json"))["include"]))
+          PY
+          )"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "missing_shards=$count"
+          cat missing.json
+
+  repair-grid:
+    name: repair N${{ matrix.N }} ${{ matrix.truth }} shard${{ matrix.shard }}
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+
+      - name: Install pinned exact ordinal SEM dependencies
+        shell: bash
+        run: |
+          Rscript -e 'install.packages(c("remotes","mvtnorm"), repos="https://cloud.r-project.org", Ncpus=2); remotes::install_version("lavaan", version="0.7-2", repos="https://cloud.r-project.org", upgrade="never")'
+          Rscript -e 'stopifnot(as.character(packageVersion("lavaan")) == "0.7.2")'
+
+      - name: Verify row-contract regression
+        shell: bash
+        run: Rscript research/eq3d_wlsmv_1000rep_v1/test_row_contract.R
+
+      - name: Run repaired 250-rep exact shard
+        shell: bash
+        run: |
+          Rscript research/eq3d_wlsmv_1000rep_v1/grid.R \
+            ${{ matrix.N }} ${{ matrix.truth }} ${{ matrix.shard }} 250 grid.csv
+          test "$(($(wc -l < grid.csv) - 1))" -eq 250
+          test "$(Rscript -e 'x<-read.csv("grid.csv"); cat(length(unique(x$lavaan))==1 && unique(x$lavaan)=="0.7.2")')" = "TRUE"
+          sha256sum research/eq3d_wlsmv_1000rep_v1/grid.R \
+                    research/eq3d_wlsmv_1000rep_v1/row_contract.R \
+                    grid.csv > SHA256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grid-N${{ matrix.N }}-${{ matrix.truth }}-s${{ matrix.shard }}
+          path: |
+            grid.csv
+            SHA256.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  sensitivity:
+    name: Reuse exact sensitivity closure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download source sensitivity artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p sensitivity
+          gh run download "${SOURCE_RUN}" -n sensitivity -D sensitivity
+          test -s sensitivity/sensitivity_summary.json
+          sha256sum sensitivity/* > sensitivity/READBACK.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sensitivity
+          path: sensitivity/
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    name: Close exact grid and emit merge-readiness receipt
+    needs: [plan, repair-grid, sensitivity]
+    if: always() && needs.plan.result == 'success' && needs.sensitivity.result == 'success' && (needs.repair-grid.result == 'success' || needs.repair-grid.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+
+      - name: Install aggregator dependency
+        run: Rscript -e 'install.packages("jsonlite", repos="https://cloud.r-project.org")'
+
+      - name: Download reusable source artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN}/artifacts?per_page=100" > source_artifacts.json
+          while IFS= read -r name; do
+            echo "reusing $name"
+            mkdir -p "artifacts/$name"
+            gh run download "${SOURCE_RUN}" -n "$name" -D "artifacts/$name"
+          done < <(jq -r '.artifacts[] | select(.expired == false) | .name | select(startswith("grid-"))' source_artifacts.json)
+
+      - name: Download repaired artifacts
+        if: needs.plan.outputs.count != '0'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: grid-*
+          path: artifacts
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sensitivity
+          path: artifacts/sensitivity
+
+      - name: Assert exact artifact inventory
+        shell: bash
+        run: |
+          count="$(find artifacts -type f -name grid.csv | wc -l)"
+          echo "grid_artifact_count=$count"
+          test "$count" -eq 48
+          test -s artifacts/sensitivity/sensitivity_summary.json
+
+      - name: Aggregate 12x1000 exact grid
+        shell: bash
+        run: |
+          mkdir -p final
+          Rscript research/eq3d_wlsmv_1000rep_v1/aggregate.R artifacts final | tee final/AGGREGATION_STDOUT.txt
+          python3 - <<'PY'
+          import csv,glob
+          rows=[]
+          for p in glob.glob("artifacts/**/grid.csv",recursive=True):
+              with open(p,newline="",encoding="utf-8") as f:
+                  rows.extend(csv.DictReader(f))
+          versions={r.get("lavaan") for r in rows}
+          if versions != {"0.7.2"}:
+              raise SystemExit(f"HOLD_LAVAAN_VERSION_SET={versions}")
+          if len(rows) != 12000:
+              raise SystemExit(f"HOLD_EXACT_ROWS={len(rows)}")
+          print("PASS_EXACT_ROWS=12000")
+          print("PASS_LAVAAN_VERSION=0.7.2")
+          PY
+          sha256sum research/eq3d_wlsmv_1000rep_v1/grid.R \
+                    research/eq3d_wlsmv_1000rep_v1/aggregate.R \
+                    research/eq3d_wlsmv_1000rep_v1/row_contract.R \
+                    final/* > final/FINAL_MANIFEST.sha256
+
+      - name: Emit merge-readiness fence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          p="final/FINAL_RECEIPT.json"
+          r=json.load(open(p))
+          merge = (
+              r.get("overall") == "PASS_FINAL_RECRUITMENT_LOCK"
+              and r.get("grid",{}).get("complete") is True
+              and r.get("sensitivity",{}).get("esem",{}).get("verdict") == "PASS_ESEM_CROSSLOADING_SENSITIVITY"
+          )
+          out={
+              "gate":"EQ3D_WLSMV_GRID_CLOSEOUT_AND_MERGE_READINESS_V1",
+              "source_run":41479137566,
+              "repair_commit":"${{ github.sha }}",
+              "exact_grid_receipt":r,
+              "merge_readiness":"ALLOW_MERGE" if merge else "HOLD_MERGE",
+              "fences":[
+                  "NO_GLOBAL_BIND",
+                  "NO_PRODUCTION_ADMISSION",
+                  "NO_EMPIRICAL_3D_VALIDATION"
+              ]
+          }
+          json.dump(out,open("final/MERGE_READINESS_RECEIPT.json","w"),indent=2,sort_keys=True)
+          print(json.dumps(out,indent=2,sort_keys=True))
+          if not merge:
+              raise SystemExit("HOLD_MERGE")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EQ3D-WLSMV-GRID-CLOSEOUT-MERGE-READINESS
+          path: final/
+          if-no-files-found: error
+          retention-days: 30
