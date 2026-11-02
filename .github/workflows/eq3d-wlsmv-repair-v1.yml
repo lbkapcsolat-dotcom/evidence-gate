@@ -131,7 +131,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p sensitivity
-          gh run download "${SOURCE_RUN}" -n sensitivity -D sensitivity
+          gh run download "${SOURCE_RUN}" -R "${GITHUB_REPOSITORY}" -n sensitivity -D sensitivity
           test -s sensitivity/sensitivity_summary.json
           sha256sum sensitivity/* > sensitivity/READBACK.sha256
 
@@ -170,7 +170,7 @@ jobs:
           while IFS= read -r name; do
             echo "reusing $name"
             mkdir -p "artifacts/$name"
-            gh run download "${SOURCE_RUN}" -n "$name" -D "artifacts/$name"
+            gh run download "${SOURCE_RUN}" -R "${GITHUB_REPOSITORY}" -n "$name" -D "artifacts/$name"
           done < <(jq -r '.artifacts[] | select(.expired == false) | .name | select(startswith("grid-"))' source_artifacts.json)
 
       - name: Download repaired artifacts
