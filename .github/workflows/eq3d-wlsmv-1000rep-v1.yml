@@ -32,7 +32,7 @@ jobs:
       - name: Install exact ordinal SEM dependencies
         shell: bash
         run: |
-          Rscript -e 'install.packages(c("lavaan","mvtnorm"), repos="https://cloud.r-project.org", Ncpus=2)'
+          Rscript -e 'install.packages(c("remotes","mvtnorm"), repos="https://cloud.r-project.org", Ncpus=2); remotes::install_version("lavaan", version="0.7-2", repos="https://cloud.r-project.org", upgrade="never")'
           Rscript -e 'stopifnot(as.character(packageVersion("lavaan")) == "0.7.2"); cat(R.version.string,"\n"); cat("lavaan=",as.character(packageVersion("lavaan")),"\n")'
 
       - name: Run 250 exact WLSMV replications
@@ -65,7 +65,7 @@ jobs:
       - name: Install sensitivity dependencies
         shell: bash
         run: |
-          Rscript -e 'install.packages(c("lavaan","mvtnorm","jsonlite"), repos="https://cloud.r-project.org", Ncpus=2)'
+          Rscript -e 'install.packages(c("remotes","mvtnorm","jsonlite"), repos="https://cloud.r-project.org", Ncpus=2); remotes::install_version("lavaan", version="0.7-2", repos="https://cloud.r-project.org", upgrade="never")'
           Rscript -e 'stopifnot(as.character(packageVersion("lavaan")) == "0.7.2")'
 
       - name: Run exact ESEM and method-factor positive controls
