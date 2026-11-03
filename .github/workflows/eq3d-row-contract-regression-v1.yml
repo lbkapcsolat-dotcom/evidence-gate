@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - eq3d-row-contract-regression-20261103
+      - eq3d-wlsmv-1000rep-grid-v1
     paths:
       - ".github/workflows/eq3d-row-contract-regression-v1.yml"
       - "research/eq3d_wlsmv_1000rep_v1/**"
+  pull_request:
+    branches:
+      - eq3d-wlsmv-1000rep-grid-v1
   workflow_dispatch:
 
 permissions:
