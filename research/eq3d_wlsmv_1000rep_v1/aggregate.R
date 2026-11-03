@@ -7,8 +7,17 @@ outdir <- args[[2]]
 dir.create(outdir,recursive=TRUE,showWarnings=FALSE)
 
 files <- list.files(artifact_root,pattern="grid\\.csv$",recursive=TRUE,full.names=TRUE)
-if(length(files) != 48L) stop(sprintf("HOLD_EXPECTED_48_GRID_SHARDS_FOUND_%d",length(files)))
-x <- do.call(rbind,lapply(files,read_canonical_grid_csv))
+validate_grid_artifact_inventory(files)
+x <- do.call(rbind, lapply(files, function(file) {
+  label <- basename(dirname(file))
+  match <- regmatches(label, regexec(
+    "^grid-N(4800|6000|7200)-(M3|M4|M5|M7)-s([0-3])$", label))[[1]]
+  if (length(match) != 4L) stop("HOLD_GRID_ARTIFACT_LABEL")
+  d <- read_canonical_grid_csv(file)
+  validate_grid_shard(d, as.integer(match[[2]]), match[[3]],
+                      as.integer(match[[4]]))
+  d
+}))
 required_N <- c(4800L,6000L,7200L)
 required_truth <- c("M3","M4","M5","M7")
 cells <- expand.grid(N=required_N,truth=required_truth,stringsAsFactors=FALSE)
