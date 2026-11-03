@@ -1830,10 +1830,10 @@ jobs:
               a=((e.get('actor') or {}).get('process') or {}); d=e.get('dst_endpoint') or {}; f=e.get('firewall_rule') or {}; m=e.get('metadata') or {}
               if a.get('name')=='/usr/local/bin/python3.12' and d.get('domain')=='example.com' and d.get('port')==443 and f.get('name')=='ess-example-read' and m.get('uid') not in current_before:candidates.append(e)
           new_distinct={((e.get('metadata') or {}).get('uid')):e for e in candidates}
-          if len(new_distinct)!=1: raise SystemExit('V1_8_NEW_EVENT_COUNT_HOLD')
+          if len(candidates)!=1 or len(new_distinct)!=1: raise SystemExit('V1_8_NEW_EVENT_COUNT_HOLD')
           uid,event=next(iter(new_distinct.items())); current_sandbox=(event.get('container') or {}).get('uid')
           a=((event.get('actor') or {}).get('process') or {}); d=event.get('dst_endpoint') or {}; f=event.get('firewall_rule') or {}
-          guards={'METADATA_UID_PRESENT':bool(uid),'CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID':current_sandbox==json.loads((root/'sandbox-after-policy.json').read_text()).get('id'),'CALLER_EXACT':a.get('name')=='/usr/local/bin/python3.12','DESTINATION_EXACT':d.get('domain')=='example.com' and d.get('port')==443,'FIREWALL_RULE_EXACT':f.get('name')=='ess-example-read','ACTION_ALLOWED':event.get('action')=='Allowed','POLICY_REVISION_EXACT':True,'POLICY_HASH_EXACT':True}
+          guards={'METADATA_UID_PRESENT':bool(uid),'CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID':current_sandbox==json.loads((root/'sandbox-after-policy.json').read_text()).get('id'),'CALLER_EXACT':a.get('name')=='/usr/local/bin/python3.12','DESTINATION_EXACT':d.get('domain')=='example.com' and d.get('port')==443,'FIREWALL_RULE_EXACT':f.get('name')=='ess-example-read','ACTION_ALLOWED':event.get('action')=='Allowed','POLICY_REVISION_EXACT':False,'POLICY_HASH_EXACT':False}
           miss=next((k for k,v in guards.items() if not v),'NONE')
           receipt={'schema':'ESS_OPENSHELL_MULTI_EVENT_RECEIPT_V1_7','provider_native_uid':uid,'sandbox_id':current_sandbox,'container_uid':current_sandbox,'event_sha256':sh(event),'caller':a.get('name'),'destination':{'domain':d.get('domain'),'port':d.get('port')},'firewall_rule':{'name':f.get('name'),'type':f.get('type')},'action':event.get('action'),'policy_revision':2,'policy_hash':PH,'guards':guards,'first_missing_proof':miss,'strict_cross_event_claim':{'verdict':CROSS,'correlation_uid_synthesized':False},'verdict':'PASS' if miss=='NONE' else 'HOLD'}
           receipt['receipt_sha256']=sh(receipt)
