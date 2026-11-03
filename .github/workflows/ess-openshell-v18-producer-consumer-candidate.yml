@@ -1,0 +1,96 @@
+name: ESS V1.8 Isolated Producer Consumer Evidence Gate
+# Deliberately no push, pull_request, schedule or workflow_dispatch trigger.
+# This file is an inert implementation candidate until an explicitly approved
+# separate-run execution design is reviewed and enabled.
+on:
+  workflow_call:
+    inputs:
+      expected_source_commit:
+        required: true
+        type: string
+      producer_artifact_name:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ess-v18-evidence-${{ github.run_id }}
+  cancel-in-progress: false
+jobs:
+  producer:
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: ${{ steps.export.outputs.artifact_name }}
+    steps:
+      - name: Enforce exact source and fail closed
+        shell: bash
+        env:
+          EXPECTED: ${{ inputs.expected_source_commit }}
+        run: |
+          set -euo pipefail
+          test "${#EXPECTED}" -eq 40
+          test "$GITHUB_SHA" = "$EXPECTED"
+          echo "HOLD_PRODUCER_NATIVE_V17_SOURCE_NOT_YET_INTEGRATED"
+          exit 1
+      - name: Export content-addressed producer evidence
+        id: export
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s producer/canonical-registry.json
+          test -s producer/pinned-event-set.jsonl
+          test -s producer/export-manifest.json
+          (cd producer && sha256sum canonical-registry.json pinned-event-set.jsonl export-manifest.json > producer-sha256.txt)
+          echo "artifact_name=ess-v18-producer-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+      - name: Upload immutable producer evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-v18-producer-${{ github.run_id }}
+          path: producer/
+          retention-days: 30
+          overwrite: false
+          if-no-files-found: error
+  consumer:
+    needs: producer
+    if: ${{ false && needs.producer.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Download exact producer artifact from same run
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.producer.outputs.artifact_name }}
+          path: producer/
+      - name: Fail-closed byte readback and provenance check
+        shell: bash
+        env:
+          EXPECTED: ${{ inputs.expected_source_commit }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$EXPECTED"
+          (cd producer && sha256sum -c producer-sha256.txt)
+          jq -e --arg sha "$EXPECTED" '.source_sha == $sha and .synthetic_uid == false' producer/export-manifest.json
+          echo "HOLD_CROSS_RUN_REHYDRATION_NOT_PROVEN_BY_SAME_RUN_JOBS"
+          exit 1
+      - name: Preserve consumer HOLD receipt
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p consumer
+          printf '%s\n' '{"schema":"ESS_V18_CONSUMER_RECEIPT_V1","verdict":"HOLD","reason":"CROSS_RUN_REHYDRATION_NOT_PROVEN","authority_mutation":false}' > consumer/consumer-receipt.json
+          (cd consumer && sha256sum consumer-receipt.json > consumer-sha256.txt)
+      - name: Upload consumer receipt and hashes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-v18-consumer-${{ github.run_id }}
+          path: consumer/
+          retention-days: 30
+          overwrite: false
+          if-no-files-found: error
