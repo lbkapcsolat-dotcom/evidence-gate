@@ -70,7 +70,7 @@ stopifnot(identical(legacy_reloaded$rep, mixed$rep))
 
 # P0 evidence: the aggregator must reject duplicate / mislabeled / missing shards.
 test_shard <- do.call(rbind, lapply(seq_len(250L), function(i) {
-  canonical_result_row(4800L, "M4", 0L, i, as.integer(5000L + i),
+  canonical_result_row(4800L, "M4", 0L, i, as.integer(310611020L + i),
                        "OK", 1L, .99, .99, .01, .01, .5)
 }))
 test_shard$lavaan <- "0.7.2"
@@ -80,6 +80,7 @@ negative_shards <- list(
   within(test_shard, rep[250L] <- 249L),
   within(test_shard, N[1L] <- 6000L),
   within(test_shard, truth[1L] <- "M3"),
+  within(test_shard, seed[1L] <- seed[1L] + 1L),
   within(test_shard, shard[1L] <- 1L),
   within(test_shard, lavaan[1L] <- "UNKNOWN")
 )
