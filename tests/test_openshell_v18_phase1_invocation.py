@@ -62,7 +62,7 @@ class V18Phase1InvocationTests(unittest.TestCase):
 
     def test_phase2_registry_commit_only_after_hold_gate(self):
         text = WORKFLOW.read_text()
-        start = text.index("new_distinct={", text.index("V1_8_NEW_EVENT_COUNT_HOLD") - 200)
+        start = text.index("new_distinct={", text.index("current_before=set("))
         end = text.index("\n          PY", start)
         region = text[start:end]
         hold = region.index("raise SystemExit('V1_8_PHASE2_HOLD:'+missing)")
