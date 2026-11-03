@@ -157,6 +157,9 @@ one_rep <- function(repi) {
   for(m in c("M3","M4","M5","M7")) {
     z <- try(fit_one(mods[[m]],st,N),silent=TRUE)
     if(inherits(z,"try-error")) return(canonical_result_row(N,truth,shard,repi,seed,paste0(m,"_FAIL"),elapsed=proc.time()[3]-t0))
+    metrics <- z[c("cfi.scaled","tli.scaled","rmsea.scaled","srmr")]
+    if(!isTRUE(unname(z["converged"]) == 1) || !all(is.finite(metrics)))
+      return(canonical_result_row(N,truth,shard,repi,seed,paste0(m,"_INVALID_FIT"),elapsed=proc.time()[3]-t0))
     vals[[m]] <- z
   }
   m3 <- vals$M3
@@ -184,8 +187,18 @@ one_rep <- function(repi) {
 
 rep_ids <- (shard*reps + 1L):((shard+1L)*reps)
 cores <- min(2L, detectCores())
-res <- mclapply(rep_ids, one_rep, mc.cores=cores, mc.preschedule=FALSE)
-out <- do.call(rbind,res)
+# Recover an unexpected per-replication R exception as a typed failure row.
+# If a worker returns an invalid object instead, the strict binder fails closed.
+run_rep_safely <- function(repi) {
+  tryCatch(one_rep(repi), error=function(e) {
+    seed <- 260611020L + N*10000L +
+      match(truth,c("M3","M4","M5","M7"))*1000000L + shard*1000L + repi
+    canonical_result_row(N,truth,shard,repi,seed,"REPLICATION_FAIL")
+  })
+}
+res <- mclapply(rep_ids, run_rep_safely, mc.cores=cores, mc.preschedule=FALSE)
+out <- bind_result_rows(res)
+stopifnot(nrow(out) == reps, identical(out$rep, as.integer(rep_ids)))
 out$N <- N
 out$truth <- truth
 out$shard <- shard

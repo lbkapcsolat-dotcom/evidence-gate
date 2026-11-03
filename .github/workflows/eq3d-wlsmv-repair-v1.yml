@@ -1,11 +1,12 @@
 name: EQ3D WLSMV Grid Repair and Merge Readiness V1
 
 on:
+  # Only explicitly committing an approval trigger on the research branch starts repair.
   push:
     branches:
       - eq3d-wlsmv-1000rep-grid-v1
     paths:
-      - ".github/workflows/eq3d-wlsmv-repair-v1.yml"
+      - ".github/eq3d/RUN_M4_REPAIR_APPROVED.txt"
   workflow_dispatch:
 
 permissions:
@@ -133,6 +134,11 @@ jobs:
           mkdir -p sensitivity
           gh run download "${SOURCE_RUN}" -R "${GITHUB_REPOSITORY}" -n sensitivity -D sensitivity
           test -s sensitivity/sensitivity_summary.json
+          test "$(sha256sum sensitivity/SHA256.txt | awk '{print $1}')" = "45fb48447e9978c0bbdefb8b2c3e9d3d8b45f73a768d84d8bb8316d8514e4e29"
+          entries="$(awk '$2 ~ /^sensitivity-out\// {n++} END {print n+0}' sensitivity/SHA256.txt)"
+          test "$entries" -eq 3
+          awk '$2 ~ /^sensitivity-out\// {sub(/^sensitivity-out\//,"",$2);print $1"  "$2}' sensitivity/SHA256.txt | (cd sensitivity && sha256sum --check --status)
+          echo "PASS_SENSITIVITY_MANIFEST_3_OF_3"
           sha256sum sensitivity/* > sensitivity/READBACK.sha256
 
       - uses: actions/upload-artifact@v4
@@ -193,6 +199,23 @@ jobs:
           test "$count" -eq 48
           test -s artifacts/sensitivity/sensitivity_summary.json
 
+      - name: Verify every grid.csv against the corresponding SHA256.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=0
+          for manifest in artifacts/grid-*/SHA256.txt; do
+            test -s "$manifest"
+            entry="$(awk '$2 == "grid.csv" {print $1}' "$manifest")"
+            test "${#entry}" -eq 64
+            printf '%s\n' "$entry" | grep -Eq '^[0-9a-f]{64}$'
+            actual="$(sha256sum "$(dirname "$manifest")/grid.csv" | cut -d ' ' -f1)"
+            test "$actual" = "$entry"
+            count=$((count+1))
+          done
+          test "$count" -eq 48
+          echo "PASS_SHARD_CSV_SHA256_READBACK_48_OF_48"
+
       - name: Aggregate 12x1000 exact grid
         shell: bash
         run: |
@@ -225,7 +248,7 @@ jobs:
           p="final/FINAL_RECEIPT.json"
           r=json.load(open(p))
           merge = (
-              r.get("overall") == "PASS_FINAL_RECRUITMENT_LOCK"
+              r.get("final_verdict") == "PASS_FINAL_RECRUITMENT_LOCK"
               and r.get("grid",{}).get("complete") is True
               and r.get("sensitivity",{}).get("esem",{}).get("verdict") == "PASS_ESEM_CROSSLOADING_SENSITIVITY"
           )
