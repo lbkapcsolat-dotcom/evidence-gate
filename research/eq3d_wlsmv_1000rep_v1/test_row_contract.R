@@ -53,4 +53,34 @@ stopifnot(identical(vapply(reloaded, typeof, character(1)),
                     c(expected_types, lavaan="character")))
 stopifnot(identical(reloaded$status, mixed$status))
 
+
+# P0 evidence: the aggregator must reject duplicate / mislabeled / missing shards.
+test_shard <- do.call(rbind, lapply(seq_len(250L), function(i) {
+  canonical_result_row(4800L, "M4", 0L, i, as.integer(5000L + i),
+                       "OK", 1L, .99, .99, .01, .01, .5)
+}))
+test_shard$lavaan <- "0.7.2"
+stopifnot(isTRUE(validate_grid_shard(test_shard, 4800L, "M4", 0L)))
+negative_shards <- list(
+  test_shard[-250L, , drop=FALSE],
+  within(test_shard, rep[250L] <- 249L),
+  within(test_shard, N[1L] <- 6000L),
+  within(test_shard, truth[1L] <- "M3"),
+  within(test_shard, shard[1L] <- 1L),
+  within(test_shard, lavaan[1L] <- "UNKNOWN")
+)
+for (broken in negative_shards)
+  stopifnot(inherits(try(validate_grid_shard(broken, 4800L, "M4", 0L),
+                         silent=TRUE), "try-error"))
+
+all_names <- unlist(lapply(c(4800L,6000L,7200L), function(n)
+  unlist(lapply(c("M3","M4","M5","M7"), function(m)
+    paste0("grid-N",n,"-",m,"-s",0:3)))))
+paths <- file.path("artifacts", all_names, "grid.csv")
+stopifnot(isTRUE(validate_grid_artifact_inventory(paths)))
+bad_paths <- paths
+bad_paths[48L] <- bad_paths[1L]
+stopifnot(inherits(try(validate_grid_artifact_inventory(bad_paths),
+                       silent=TRUE), "try-error"))
+
 cat("PASS_ROW_SCHEMA_ALL_STATES_AND_CSV_TYPES\n")
