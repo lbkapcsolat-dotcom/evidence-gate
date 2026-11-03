@@ -73,5 +73,15 @@ class V18Phase1InvocationTests(unittest.TestCase):
         self.assertNotIn("if not already: existing[uid]=receipt", region)
 
 
+    def test_phase2_rejects_duplicate_events_with_same_native_uid(self):
+        text = WORKFLOW.read_text()
+        self.assertIn("if len(candidates)!=1 or len(new_distinct)!=1: raise SystemExit('V1_8_NEW_EVENT_COUNT_HOLD')", text)
+
+    def test_phase2_unverified_policy_pins_fail_closed(self):
+        text = WORKFLOW.read_text()
+        self.assertIn("'POLICY_REVISION_EXACT':False,'POLICY_HASH_EXACT':False", text)
+        self.assertNotIn("'POLICY_REVISION_EXACT':True,'POLICY_HASH_EXACT':True", text)
+
+
 if __name__ == "__main__":
     unittest.main()
