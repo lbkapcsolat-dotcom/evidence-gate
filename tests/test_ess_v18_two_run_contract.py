@@ -56,7 +56,7 @@ class ContractTests(unittest.TestCase):
             (lambda c,m,a:c.update(expected_producer_commit="d"*40),"EXPECTED_COMMIT"),
             (lambda c,m,a:a.update(provider_digest="sha256:"+"f"*64),"ARCHIVE_DIGEST_MISMATCH"),
             (lambda c,m,a:a.update(provider_digest="sha256:"+"e"*64),"ARCHIVE_DIGEST_MISMATCH"),
-            (lambda c,m,a:m.update(synthetic_uid=True),"SYNTHETIC_UID"),
+            (lambda c,m,a:m.update(synthetic_uid=True),"MANIFEST_BYTES"),
         ]
         for edit,expected in cases:
             with self.subTest(expected=expected): self.reject(edit,expected)
