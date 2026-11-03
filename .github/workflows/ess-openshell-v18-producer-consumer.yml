@@ -3399,8 +3399,8 @@ jobs:
           [ "$event_set_file_sha" = "$(jq -r .pinned_event_set_file_sha256 "$SRC/export-manifest.json")" ]
           [ "$manifest_file_sha" = "$(sha256sum "$SRC/export-manifest.json" | awk '{print $1}')" ]
 
-          jq -e --arg r "$GITHUB_RUN_ID" '.source_run_id == $r' "$SRC/export-manifest.json" >/dev/null
-          jq -e --arg s "$GITHUB_SHA" '.source_sha == $s' "$SRC/export-manifest.json" >/dev/null
+          jq -e --arg r "$PINNED_V1_8_SOURCE_RUN" '.source_run_id == $r' "$SRC/export-manifest.json" >/dev/null
+          jq -e --arg s "$PINNED_V1_8_SOURCE_SHA" '.source_sha == $s' "$SRC/export-manifest.json" >/dev/null
           jq -e --arg h "$PINNED_V1_7_RECEIPT_SHA256" '.pinned_v1_7_receipt_sha256 == $h' "$SRC/export-manifest.json" >/dev/null
 
           cp "$SRC/canonical-registry.json" "$WORKDIR/v1_8-rehydrated-registry.json"
