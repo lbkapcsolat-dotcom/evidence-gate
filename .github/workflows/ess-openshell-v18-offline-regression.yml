@@ -1,0 +1,37 @@
+name: ESS OpenShell V1.8 Offline Regression
+
+on:
+  push:
+    branches:
+      - audit/ess-openshell-v18-phase1-invocation-20261103
+    paths:
+      - '.github/workflows/ess-openshell-v18-offline-regression.yml'
+      - '.github/workflows/ess-openshell-live-v1.yml'
+      - 'tests/test_openshell_v18_phase1_invocation.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ess-openshell-v18-offline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-regression:
+    if: github.ref == 'refs/heads/audit/ess-openshell-v18-phase1-invocation-20261103'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact triggering commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run six committed offline regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_openshell_v18_phase1_invocation.py' -v 2>&1 | tee offline-regression.log
+          grep -Eq '^Ran 6 tests in ' offline-regression.log
+          grep -qx 'OK' offline-regression.log
+          printf 'ESS_V18_OFFLINE_REGRESSION_PASS commit=%s run=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
