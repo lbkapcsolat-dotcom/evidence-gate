@@ -52,3 +52,38 @@ read_canonical_grid_csv <- function(path) {
     stop("HOLD_GRID_CSV_TYPES")
   x
 }
+
+# Check every imported (reused or repaired) grid shard before scientific aggregation.
+# Identical cell totals alone cannot detect duplicates, missing shards or wrong provenance.
+validate_grid_shard <- function(x, N, truth, shard, reps=250L) {
+  sample <- canonical_result_row(0L, "", 0L, 0L, 0L, "ERROR")
+  names_expected <- c(names(sample), "lavaan")
+  types_expected <- c(vapply(sample, typeof, character(1)), lavaan="character")
+  if (!is.data.frame(x) ||
+      !identical(names(x), names_expected) ||
+      !identical(vapply(x, typeof, character(1)), types_expected))
+    stop("HOLD_SHARD_COLUMN_CONTRACT")
+  if (nrow(x) != reps)
+    stop("HOLD_SHARD_ROW_COUNT")
+  keys <- c("N", "truth", "shard", "rep", "seed", "status", "lavaan")
+  if (anyNA(x[, keys, drop=FALSE]) ||
+      !all(x$N == N) || !all(x$truth == truth) ||
+      !all(x$shard == shard) || !all(x$lavaan == "0.7.2"))
+    stop("HOLD_SHARD_IDENTITY_OR_VERSION")
+  ids_expected <- seq.int(as.integer(shard * reps + 1L),
+                          length.out=as.integer(reps))
+  if (!identical(sort(x$rep), ids_expected))
+    stop("HOLD_SHARD_REPLICATION_IDS")
+  invisible(TRUE)
+}
+
+validate_grid_artifact_inventory <- function(paths) {
+  labels <- basename(dirname(paths))
+  expected <- unlist(lapply(c(4800L, 6000L, 7200L), function(n)
+    unlist(lapply(c("M3","M4","M5","M7"), function(m)
+      paste0("grid-N", n, "-", m, "-s", 0:3)))))
+  if (length(paths) != length(expected) || anyDuplicated(labels) ||
+      !identical(sort(labels), sort(expected)))
+    stop("HOLD_EXACT_48_SHARD_IDENTITIES")
+  invisible(TRUE)
+}
