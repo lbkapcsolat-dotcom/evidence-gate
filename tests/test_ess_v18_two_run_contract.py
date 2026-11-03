@@ -14,6 +14,8 @@ class ContractTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         for name in ("canonical-registry.json","pinned-event-set.jsonl","v1_7-final-receipt.json"):
             (self.root/name).write_bytes(name.encode())
+        self.archive = self.root / "provider.zip"
+        self.archive.write_bytes(b"offline archive")
         self.manifest = dict(source_run_id="101",source_sha=H,synthetic_uid=False,
             canonical_registry_file_sha256=sha(b"canonical-registry.json"),
             pinned_event_set_file_sha256=sha(b"pinned-event-set.jsonl"),
@@ -28,17 +30,17 @@ class ContractTests(unittest.TestCase):
                            provider_archive_sha256="b"*64)
         self.artifact=dict(repository=p["repository"],workflow_path=p["workflow_path"],
                            run_id=101,run_attempt=1,count_matching_name=1,expired=False,
-                           id=123,name="ess-v18-producer-101",provider_digest="sha256:"+"b"*64)
+                           id=123,name="ess-v18-producer-101",provider_digest="sha256:"+sha(self.archive.read_bytes()))
 
     def test_baseline(self):
-        self.assertEqual(verify(self.contract,self.manifest,self.artifact,self.root)["verdict"],
+        self.assertEqual(verify(self.contract,self.manifest,self.artifact,self.root,self.archive)["verdict"],
                          "PASS_TWO_RUN_IDENTITY_AND_SOURCE_BYTES")
 
     def reject(self, edit, expected):
         c,m,a=copy.deepcopy((self.contract,self.manifest,self.artifact))
         edit(c,m,a)
         with self.assertRaisesRegex(ValueError,"HOLD_"+expected):
-            verify(c,m,a,self.root)
+            verify(c,m,a,self.root,self.archive)
 
     def test_negative_matrix(self):
         cases=[
@@ -52,8 +54,8 @@ class ContractTests(unittest.TestCase):
             (lambda c,m,a:a.update(run_id=999),"ARTIFACT_RUN"),
             (lambda c,m,a:a.update(workflow_path="wrong"),"WORKFLOW"),
             (lambda c,m,a:c.update(expected_producer_commit="d"*40),"EXPECTED_COMMIT"),
-            (lambda c,m,a:c.update(provider_archive_digest_independently_verified=False),"ARCHIVE_DIGEST_READBACK"),
-            (lambda c,m,a:c.update(provider_archive_sha256="f"*64),"ARCHIVE_DIGEST_MISMATCH"),
+            (lambda c,m,a:a.update(provider_digest="sha256:"+"f"*64),"ARCHIVE_DIGEST_MISMATCH"),
+            (lambda c,m,a:a.update(provider_digest="sha256:"+"e"*64),"ARCHIVE_DIGEST_MISMATCH"),
             (lambda c,m,a:m.update(synthetic_uid=True),"SYNTHETIC_UID"),
         ]
         for edit,expected in cases:
@@ -62,7 +64,7 @@ class ContractTests(unittest.TestCase):
     def test_corrupted_file(self):
         (self.root/"canonical-registry.json").write_text("tampered")
         with self.assertRaisesRegex(ValueError,"HOLD_REGISTRY_SHA256"):
-            verify(self.contract,self.manifest,self.artifact,self.root)
+            verify(self.contract,self.manifest,self.artifact,self.root,self.archive)
 
 if __name__ == "__main__":
     unittest.main()
