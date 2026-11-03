@@ -3354,38 +3354,14 @@ jobs:
           echo "verdict=$verdict" >>"$GITHUB_OUTPUT"
           echo "receipt_sha=$receipt_sha" >>"$GITHUB_OUTPUT"
 
-      - name: Download exact producer from same run
-        uses: actions/download-artifact@v4
-        with:
-          name: ess-v18-producer-${{ github.run_id }}
-          path: /tmp/ess-openshell-live-v1/v1_8-source-download
-      - name: Verify producer hashes and identity before native replay
+      - name: Separate-run producer evidence authentication boundary
         shell: bash
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          cd "$WORKDIR/v1_8-source-download"
-          sha256sum -c producer-sha256.txt
-          jq -e --arg r "$GITHUB_RUN_ID" --arg s "$GITHUB_SHA" '.source_run_id==$r and .source_sha==$s' export-manifest.json
-          echo "PINNED_V1_8_SOURCE_RUN=$GITHUB_RUN_ID" >> "$GITHUB_ENV"
-          echo "PINNED_V1_8_SOURCE_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
-          echo "PINNED_V1_8_REGISTRY_FILE_SHA256=$(jq -r .canonical_registry_file_sha256 export-manifest.json)" >> "$GITHUB_ENV"
-          echo "PINNED_V1_8_EVENT_SET_FILE_SHA256=$(jq -r .pinned_event_set_file_sha256 export-manifest.json)" >> "$GITHUB_ENV"
-          # Provider metadata is fetched from GitHub itself, not synthesized.
-          api="https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts"
-          response="$(curl --fail --silent --show-error --retry 3 \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" "$api")"
-          artifact_name="ess-v18-producer-$GITHUB_RUN_ID"
-          count="$(jq --arg n "$artifact_name" '[.artifacts[] | select(.name==$n and .expired==false)] | length' <<<"$response")"
-          test "$count" = "1" || { echo "::error::HOLD_PROVIDER_ARTIFACT_IDENTITY"; exit 1; }
-          artifact_id="$(jq -r --arg n "$artifact_name" '.artifacts[] | select(.name==$n) | .id' <<<"$response")"
-          provider_digest="$(jq -r --arg n "$artifact_name" '.artifacts[] | select(.name==$n) | .digest' <<<"$response")"
-          [[ "$artifact_id" =~ ^[0-9]+$ ]] || exit 1
-          [[ "$provider_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::HOLD_PROVIDER_DIGEST_MISSING"; exit 1; }
-          echo "PINNED_V1_8_ARTIFACT_ID=$artifact_id" >> "$GITHUB_ENV"
-          echo "PINNED_V1_8_ARTIFACT_DIGEST_SHA256=${provider_digest#sha256:}" >> "$GITHUB_ENV"
+          # Never treat the consumer run as its own producer.
+          # Provider-native artifact/run authentication is not wired yet.
+          echo "::error::HOLD_TWO_RUN_PROVIDER_AUTHENTICATION_NOT_WIRED"
+          exit 1
       - name: Mandatory separate-run custody preflight before V1.8 replay
         shell: bash
         env:
