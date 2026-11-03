@@ -1,0 +1,72 @@
+name: ESS V1.8 isolated producer-consumer evidence gate (fail closed)
+on:
+  workflow_dispatch:
+    inputs:
+      enable_native_execution:
+        description: 'Must remain false until native producer/consumer commands are independently reviewed'
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ess-v18-producer-consumer-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  producer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      source_sha: ${{ steps.fence.outputs.source_sha }}
+    steps:
+      - name: Authority and execution fence
+        id: fence
+        shell: bash
+        env:
+          ENABLE_NATIVE: ${{ inputs.enable_native_execution }}
+          EXPECTED_BRANCH: audit/ess-openshell-v18-producer-consumer-20261103
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
+          test "$ENABLE_NATIVE" = "false" || { echo "::error::HOLD_NATIVE_EXECUTION_NOT_IMPLEMENTED"; exit 1; }
+          echo "source_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "HOLD: native producer not implemented; no fabricated artifact or receipt"
+          exit 1
+      - name: Upload producer evidence only if produced and validated
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-v18-producer-${{ github.run_id }}
+          path: evidence-out/producer/
+          if-no-files-found: error
+          retention-days: 30
+  consumer:
+    needs: producer
+    if: ${{ needs.producer.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download producer evidence from same workflow run
+        uses: actions/download-artifact@v4
+        with:
+          name: ess-v18-producer-${{ github.run_id }}
+          path: producer-evidence
+      - name: Verify source identity, manifest, and exact file hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f producer-evidence/export-manifest.json
+          test -f producer-evidence/producer-sha256.txt
+          (cd producer-evidence && sha256sum -c producer-sha256.txt)
+          jq -e --arg sha "${{ needs.producer.outputs.source_sha }}" '.source_sha == $sha' producer-evidence/export-manifest.json
+          echo "::error::HOLD_CONSUMER_NATIVE_REHYDRATION_NOT_IMPLEMENTED"
+          exit 1
+      - name: Upload consumer receipt only after native verification
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-v18-consumer-${{ github.run_id }}
+          path: evidence-out/consumer/
+          if-no-files-found: error
+          retention-days: 30
