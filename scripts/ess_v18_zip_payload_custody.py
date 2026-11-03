@@ -3,6 +3,7 @@
 import hashlib, json, stat, sys, zipfile
 from pathlib import Path
 from scripts.ess_v18_two_run_contract import require, REQUIRED
+ARCHIVE_REQUIRED = REQUIRED + ("producer-sha256.txt",)
 
 def verify_zip_custody(archive_path, payload_dir, provider_digest):
     archive = Path(archive_path)
@@ -12,7 +13,7 @@ def verify_zip_custody(archive_path, payload_dir, provider_digest):
         members = z.infolist()
         names = [m.filename for m in members]
         require(len(names) == len(set(names)), "ZIP_DUPLICATE_MEMBER")
-        require(set(names) == set(REQUIRED), "ZIP_MEMBER_SET")
+        require(set(names) == set(ARCHIVE_REQUIRED), "ZIP_MEMBER_SET")
         for m in members:
             name = m.filename
             require(not m.is_dir() and not name.startswith("/") and ".." not in Path(name).parts, "ZIP_PATH")
@@ -21,6 +22,15 @@ def verify_zip_custody(archive_path, payload_dir, provider_digest):
             actual = (Path(payload_dir) / name)
             require(actual.is_file() and not actual.is_symlink(), "PAYLOAD_MISSING")
             require(hashlib.sha256(z.read(m)).digest() == hashlib.sha256(actual.read_bytes()).digest(), "ZIP_PAYLOAD_MISMATCH")
+    expected = {}
+    for line in (Path(payload_dir) / "producer-sha256.txt").read_text().splitlines():
+        match = __import__("re").fullmatch(r"([0-9a-f]{64})  (canonical-registry\.json|pinned-event-set\.jsonl|v1_7-final-receipt\.json|export-manifest\.json)", line)
+        require(match is not None, "SHA256_MANIFEST_FORMAT")
+        require(match.group(2) not in expected, "SHA256_MANIFEST_DUPLICATE")
+        expected[match.group(2)] = match.group(1)
+    require(set(expected) == set(REQUIRED), "SHA256_MANIFEST_SET")
+    for name, digest in expected.items():
+        require(hashlib.sha256((Path(payload_dir) / name).read_bytes()).hexdigest() == digest, "SHA256_MANIFEST_MISMATCH")
     return {"verdict":"PASS_ZIP_PAYLOAD_CUSTODY","member_count":len(members)}
 
 if __name__ == "__main__":
