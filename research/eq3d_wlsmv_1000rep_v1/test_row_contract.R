@@ -10,7 +10,8 @@ expected_types <- c(N="integer", truth="character", shard="integer", rep="intege
 ok <- canonical_result_row(4800L, "M4", 1L, 1L, 123L, "OK",
                            1L, .99, .99, .01, .01, 2.0)
 failure_states <- c("SIM_FAIL", "LAVCOR_FAIL", "M3_FAIL", "M4_FAIL",
-                    "M5_FAIL", "M7_FAIL", "M4_INVALID_FIT", "REPLICATION_FAIL")
+                    "M5_FAIL", "M7_FAIL", "M3_INVALID_FIT", "M4_INVALID_FIT",
+                    "M5_INVALID_FIT", "M7_INVALID_FIT", "REPLICATION_FAIL")
 errors <- lapply(seq_along(failure_states), function(i) {
   canonical_result_row(4800L, "M4", 1L, as.integer(i + 1L),
                        as.integer(123L + i), failure_states[[i]], elapsed=1.0)
@@ -41,6 +42,10 @@ for (bad in list(bad_width, bad_order, bad_type, bad_worker)) {
   stopifnot(inherits(result, "try-error"))
 }
 
+# Source-run artifacts predate row_contract.R and serialize a different order.
+legacy_order <- c("rep", "seed", "status", "m3_support", "m3_cfi", "m3_tli",
+                  "m3_rmsea", "m3_srmr", "elapsed", "N", "truth", "shard", "lavaan")
+
 # CSV round-trip must preserve all 13 on-disk columns and their types.
 output <- mixed
 output$lavaan <- "0.7.2"
@@ -52,6 +57,15 @@ stopifnot(identical(names(reloaded), c(expected, "lavaan")))
 stopifnot(identical(vapply(reloaded, typeof, character(1)),
                     c(expected_types, lavaan="character")))
 stopifnot(identical(reloaded$status, mixed$status))
+legacy_file <- tempfile(fileext=".csv")
+write.csv(output[, legacy_order, drop=FALSE], legacy_file, row.names=FALSE)
+legacy_reloaded <- read_canonical_grid_csv(legacy_file)
+unlink(legacy_file)
+stopifnot(identical(names(legacy_reloaded), c(expected, "lavaan")))
+stopifnot(identical(vapply(legacy_reloaded, typeof, character(1)),
+                    c(expected_types, lavaan="character")))
+stopifnot(identical(legacy_reloaded$rep, mixed$rep))
+
 
 
 # P0 evidence: the aggregator must reject duplicate / mislabeled / missing shards.
