@@ -3386,6 +3386,24 @@ jobs:
           [[ "$provider_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::HOLD_PROVIDER_DIGEST_MISSING"; exit 1; }
           echo "PINNED_V1_8_ARTIFACT_ID=$artifact_id" >> "$GITHUB_ENV"
           echo "PINNED_V1_8_ARTIFACT_DIGEST_SHA256=${provider_digest#sha256:}" >> "$GITHUB_ENV"
+      - name: Mandatory separate-run custody preflight before V1.8 replay
+        shell: bash
+        env:
+          ESS_V18_CONTRACT: ${{ vars.ESS_V18_CONTRACT_PATH }}
+          ESS_V18_PROVIDER_METADATA: ${{ vars.ESS_V18_PROVIDER_METADATA_PATH }}
+          ESS_V18_PRODUCER_ARCHIVE: ${{ vars.ESS_V18_PRODUCER_ARCHIVE_PATH }}
+          ESS_V18_PRODUCER_FILES: /tmp/ess-openshell-live-v1/v1_8-source-download
+        run: |
+          set -euo pipefail
+          # No automatic same-run fallback. Fail closed until a separately
+          # authenticated producer archive and contract are provided.
+          test -n "${ESS_V18_CONTRACT:-}" || { echo "::error::HOLD_TWO_RUN_CONTRACT_MISSING"; exit 1; }
+          test -n "${ESS_V18_PROVIDER_METADATA:-}" || { echo "::error::HOLD_PROVIDER_METADATA_MISSING"; exit 1; }
+          test -n "${ESS_V18_PRODUCER_ARCHIVE:-}" || { echo "::error::HOLD_PRODUCER_ARCHIVE_MISSING"; exit 1; }
+          test -f "$GITHUB_WORKSPACE/scripts/ess_v18_consumer_preflight_adapter.py" || { echo "::error::HOLD_ADAPTER_NOT_CHECKED_OUT"; exit 1; }
+          cd "$GITHUB_WORKSPACE"
+          python3 -m scripts.ess_v18_consumer_preflight_adapter
+          python3 -m scripts.ess_v18_zip_payload_custody "$ESS_V18_PRODUCER_ARCHIVE" "$ESS_V18_PRODUCER_FILES" "$(jq -r .provider_digest "$ESS_V18_PROVIDER_METADATA")"
       - name: Cross-run durable registry rehydration and fresh-host append V1.8
         id: v18_consumer
         shell: bash
