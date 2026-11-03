@@ -44,6 +44,9 @@ assert 'r.get("overall")' not in receipt["run"], "HOLD_OLD_RECEIPT_FIELD"
 assert "NO_GLOBAL_BIND" in receipt["run"], "HOLD_GLOBAL_BIND_FENCE"
 assert "NO_EMPIRICAL_3D_VALIDATION" in receipt["run"], "HOLD_EMPIRICAL_CLAIM_FENCE"
 assert "NO_PRODUCTION_ADMISSION" in receipt["run"], "HOLD_PRODUCTION_FENCE"
+sensitivity = exact_step("sensitivity", "Download source sensitivity artifact")
+assert "PASS_SENSITIVITY_MANIFEST_3_OF_3" in sensitivity["run"], "HOLD_SENSITIVITY_MANIFEST_GATE"
+assert "45fb48447e9978c0bbdefb8b2c3e9d3d8b45f73a768d84d8bb8316d8514e4e29" in sensitivity["run"], "HOLD_SENSITIVITY_MANIFEST_PIN"
 exact_step("repair-grid", "Verify row-contract regression")
 
 checked = 0
