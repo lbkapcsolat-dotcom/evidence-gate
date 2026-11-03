@@ -57,7 +57,7 @@ def main():
         require(sum(i.file_size for i in z.infolist())<=100_000_000,"ZIP_TOTAL_SIZE_LIMIT")
         for item in z.infolist():
             mode=(item.external_attr>>16)&0o170000
-            require(not item.is_dir() and item.file_size<=50_000_000 and mode not in (stat.S_IFLNK,stat.S_IFDIR) and "/" not in item.filename and "\\\\" not in item.filename,"ZIP_MEMBER_UNSAFE")
+            require(not item.is_dir() and item.file_size<=50_000_000 and mode not in (stat.S_IFLNK,stat.S_IFDIR) and "/" not in item.filename and chr(92) not in item.filename,"ZIP_MEMBER_UNSAFE")
         for item in z.infolist():
             (payload/item.filename).write_bytes(z.read(item))
     verify_zip_custody(archive,payload,digest)
