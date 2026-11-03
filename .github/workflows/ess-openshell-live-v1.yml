@@ -1786,6 +1786,9 @@ jobs:
               raise SystemExit('V1_8_PHASE1_HOLD')
           PY
 
+          python3 "$WORKDIR/v1_8_consumer.py"
+          test -s "$WORKDIR/v1_8-phase1-replay.json"
+
           # Capture current fresh-host UID set before the new event.
           python3 - <<'PY'
           import json,os
