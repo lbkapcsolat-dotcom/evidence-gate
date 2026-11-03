@@ -1,0 +1,23 @@
+EQ3D_WLSMV_M4_REPAIR_APPROVAL_V1
+Date: 2026-11-03
+Owner command: Go EQ3D_WLSMV_PR67_MERGE_GATE_AND_M4_REPAIR_ACTIVATION_V1
+Scope: 12 missing M4 exact-grid shards only
+N: 4800, 6000, 7200
+shards: 0, 1, 2, 3 for each N
+replications_per_shard: 250
+approved_new_replication_attempts: 3000
+source_run: 41479137566
+source_commit: d138957a9fecb3c0cd191219e0d2518e79c7fa86
+code_merge_commit: 46693b4bf58d2c91b68021cf354aab65c58c9040
+reusable_grid_shards: 36
+source_sensitivity_artifact: 13160762880
+require: PASS_REPAIR_WORKFLOW_YAML_AND_BASH_SYNTAX
+require: PASS_ROW_SCHEMA_ALL_STATES_AND_CSV_TYPES
+require: 48/48 exact shard identities, 250/250 exact seed & rep IDs per shard
+require: source and repaired CSV SHA256 readback before aggregation
+claim_ceiling: CODE_AND_SYNTHETIC_ONLY
+no_global_bind: true
+no_empirical_validation: true
+no_production_admission: true
+no_automatic_merge: true
+NOTE: This file is an explicit GitHub Actions path-filter activation trigger. Its text is an owner audit receipt, not a separately validated authorization protocol.
