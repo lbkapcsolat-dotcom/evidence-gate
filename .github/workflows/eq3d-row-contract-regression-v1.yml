@@ -1,0 +1,27 @@
+name: EQ3D WLSMV Row Contract Regression V1
+
+on:
+  push:
+    branches:
+      - eq3d-row-contract-regression-20261103
+    paths:
+      - ".github/workflows/eq3d-row-contract-regression-v1.yml"
+      - "research/eq3d_wlsmv_1000rep_v1/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typed-row-contract:
+    name: Typed mixed OK/FAIL regression (no Monte Carlo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+      - name: Check typed success/failure rows and CSV round-trip
+        run: Rscript research/eq3d_wlsmv_1000rep_v1/test_row_contract.R
