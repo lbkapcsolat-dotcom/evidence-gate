@@ -77,10 +77,17 @@ class V18Phase1InvocationTests(unittest.TestCase):
         text = WORKFLOW.read_text()
         self.assertIn("if len(candidates)!=1 or len(new_distinct)!=1: raise SystemExit('V1_8_NEW_EVENT_COUNT_HOLD')", text)
 
-    def test_phase2_unverified_policy_pins_fail_closed(self):
+    def test_phase2_policy_pins_use_native_sandbox_evidence(self):
         text = WORKFLOW.read_text()
-        self.assertIn("'POLICY_REVISION_EXACT':False,'POLICY_HASH_EXACT':False", text)
+        self.assertIn("native_revision=sandbox_native.get('current_policy_version')", text)
+        self.assertIn("native_hash=(sandbox_native.get('configuration_admission') or {}).get('policy_hash')", text)
+        self.assertIn("'POLICY_REVISION_EXACT':native_revision==2", text)
+        self.assertIn("'POLICY_HASH_EXACT':bool(native_hash) and native_hash==PH", text)
         self.assertNotIn("'POLICY_REVISION_EXACT':True,'POLICY_HASH_EXACT':True", text)
+
+    def test_phase2_staged_registry_count_matches_commit(self):
+        text = WORKFLOW.read_text()
+        self.assertIn("'registry_count_after':len(existing)+(0 if already else 1)", text)
 
 
 if __name__ == "__main__":
