@@ -1,0 +1,810 @@
+name: ESS OpenShell V1.8 Isolated Native Policy Evidence
+on:
+  push:
+    branches:
+      - audit/ess-openshell-v18-native-policy-20261103
+    paths:
+      - .github/workflows/ess-openshell-v18-native-policy-audit.yml
+permissions:
+  contents: read
+jobs:
+  isolated-native-policy:
+    if: github.ref == 'refs/heads/audit/ess-openshell-v18-native-policy-20261103'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      OPENSHELL_VERSION: v0.1.2
+      OPENSHELL_TAG_COMMIT: 6648bd0c290efbc41ba131ee9831ee45cd431f94
+      PINNED_REAL_NET_OPEN_RUN: "36925799052"
+      PINNED_REAL_NET_OPEN_SOURCE_SHA: 15a5fd7ff71593be3245b84a6fd37a90d3cf6033
+      PINNED_V1_3_RECEIPT_SHA256: 5e4ca31700c344d2fa70a02a71ba8097e9eaa033e6b43073381136b71b733eac
+      PINNED_V1_4_RUN: "36926681621"
+      PINNED_V1_4_RECEIPT_SHA256: 7669b615409830bcdc62b07bc0de1a546989138023747d84230b1a7bc4886ef7
+      PINNED_NATIVE_EVENT_SHA256: 8fabaf77564ba82159fb563e4e519cd87ce33d141cb495aa3d6f27cb7ed73dff
+      PINNED_V1_4_SANDBOX_ID: 898be4f3-675c-4275-8424-71b8f21166ee
+      PINNED_V1_4_SHORTHAND_SHA256: f6783e0409eb8458065059e5ba2e0ec2b0533d1e8d614ac485de2b4f0d513e5a
+      WORKDIR: /tmp/ess-openshell-live-v1
+    steps:
+      - name: Prepare capability probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WORKDIR"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential jq curl ca-certificates util-linux
+
+          cat > "$WORKDIR/landlock_probe.c" <<'EOF'
+          #define _GNU_SOURCE
+          #include <linux/landlock.h>
+          #include <sys/syscall.h>
+          #include <unistd.h>
+          #include <stdio.h>
+          #include <errno.h>
+          #include <string.h>
+          int main(void) {
+              long abi = syscall(SYS_landlock_create_ruleset, NULL, 0, LANDLOCK_CREATE_RULESET_VERSION);
+              if (abi < 0) {
+                  fprintf(stderr, "landlock_create_ruleset failed: %s\n", strerror(errno));
+                  return 1;
+              }
+              printf("LANDLOCK_ABI=%ld\n", abi);
+              return abi >= 3 ? 0 : 2;
+          }
+          EOF
+
+          cat > "$WORKDIR/seccomp_notify_probe.c" <<'EOF'
+          #define _GNU_SOURCE
+          #include <linux/seccomp.h>
+          #include <linux/filter.h>
+          #include <sys/prctl.h>
+          #include <sys/syscall.h>
+          #include <stddef.h>
+          #include <unistd.h>
+          #include <stdio.h>
+          #include <errno.h>
+          #include <string.h>
+          int main(void) {
+              struct sock_filter filter[] = {
+                  BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+                  BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_getpid, 0, 1),
+                  BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+                  BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+              };
+              struct sock_fprog prog = {
+                  .len = (unsigned short)(sizeof(filter)/sizeof(filter[0])),
+                  .filter = filter
+              };
+              if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
+                  fprintf(stderr, "PR_SET_NO_NEW_PRIVS failed: %s\n", strerror(errno));
+                  return 1;
+              }
+              long fd = syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER,
+                                SECCOMP_FILTER_FLAG_NEW_LISTENER, &prog);
+              if (fd < 0) {
+                  fprintf(stderr, "seccomp NEW_LISTENER failed: %s\n", strerror(errno));
+                  return 2;
+              }
+              printf("SECCOMP_USER_NOTIFICATION_LISTENER_FD=%ld\n", fd);
+              close((int)fd);
+              return 0;
+          }
+          EOF
+
+          cat > "$WORKDIR/task_memory_probe.c" <<'EOF'
+          #define _GNU_SOURCE
+          #include <sys/uio.h>
+          #include <sys/types.h>
+          #include <sys/wait.h>
+          #include <unistd.h>
+          #include <stdint.h>
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <signal.h>
+          #include <string.h>
+          #include <errno.h>
+          int main(void) {
+              int p[2];
+              if (pipe(p) != 0) return 1;
+              pid_t child = fork();
+              if (child < 0) return 2;
+              if (child == 0) {
+                  close(p[0]);
+                  volatile int secret = 0x12345678;
+                  uintptr_t addr = (uintptr_t)&secret;
+                  if (write(p[1], &addr, sizeof(addr)) != sizeof(addr)) _exit(3);
+                  sleep(10);
+                  _exit(0);
+              }
+              close(p[1]);
+              uintptr_t addr = 0;
+              if (read(p[0], &addr, sizeof(addr)) != sizeof(addr)) {
+                  kill(child, SIGKILL); waitpid(child, NULL, 0); return 4;
+              }
+              int value = 0;
+              struct iovec local = {.iov_base=&value, .iov_len=sizeof(value)};
+              struct iovec remote = {.iov_base=(void*)addr, .iov_len=sizeof(value)};
+              ssize_t n = process_vm_readv(child, &local, 1, &remote, 1, 0);
+              int saved = errno;
+              kill(child, SIGKILL);
+              waitpid(child, NULL, 0);
+              if (n != sizeof(value)) {
+                  fprintf(stderr, "process_vm_readv failed: %s\n", strerror(saved));
+                  return 5;
+              }
+              printf("TASK_MEMORY_VALUE=0x%x\n", value);
+              return value == 0x12345678 ? 0 : 6;
+          }
+          EOF
+
+          gcc -O2 -Wall -Wextra "$WORKDIR/landlock_probe.c" -o "$WORKDIR/landlock_probe"
+          gcc -O2 -Wall -Wextra "$WORKDIR/seccomp_notify_probe.c" -o "$WORKDIR/seccomp_notify_probe"
+          gcc -O2 -Wall -Wextra "$WORKDIR/task_memory_probe.c" -o "$WORKDIR/task_memory_probe"
+
+      - name: Run fail-closed Linux capability precheck
+        id: precheck
+        shell: bash
+        run: |
+          set +e
+          LANDLOCK=false
+          SECCOMP=false
+          TASKMEM=false
+          USERNS=false
+          CONTAINER=false
+
+          "$WORKDIR/landlock_probe" >"$WORKDIR/landlock.txt" 2>&1
+          [ $? -eq 0 ] && LANDLOCK=true
+
+          "$WORKDIR/seccomp_notify_probe" >"$WORKDIR/seccomp.txt" 2>&1
+          [ $? -eq 0 ] && SECCOMP=true
+
+          "$WORKDIR/task_memory_probe" >"$WORKDIR/taskmem.txt" 2>&1
+          [ $? -eq 0 ] && TASKMEM=true
+
+          unshare --user true >"$WORKDIR/userns.txt" 2>&1
+          [ $? -eq 0 ] && USERNS=true
+
+          USERNS_ROOT_MAP=false
+          unshare --user --map-root-user true >"$WORKDIR/userns-root-map.txt" 2>&1
+          [ $? -eq 0 ] && USERNS_ROOT_MAP=true
+
+          docker info >"$WORKDIR/docker-info.txt" 2>&1 &&
+          docker run --rm docker.io/library/alpine:3.20 true >>"$WORKDIR/docker-info.txt" 2>&1
+          [ $? -eq 0 ] && CONTAINER=true
+
+          PASS=false
+          if $LANDLOCK && $SECCOMP && $TASKMEM && $USERNS && $CONTAINER; then
+            PASS=true
+          fi
+
+          jq -n \
+            --argjson landlock "$LANDLOCK" \
+            --argjson seccomp "$SECCOMP" \
+            --argjson task_memory "$TASKMEM" \
+            --argjson user_namespace "$USERNS" \
+            --argjson user_namespace_root_map "$USERNS_ROOT_MAP" \
+            --argjson container_runtime "$CONTAINER" \
+            --argjson pass "$PASS" \
+            '{
+              LANDLOCK_ABI:$landlock,
+              SECCOMP_USER_NOTIFICATION:$seccomp,
+              TASK_MEMORY_ACCESS:$task_memory,
+              USER_NAMESPACE:$user_namespace,
+              USER_NAMESPACE_ROOT_MAP_DIAGNOSTIC:$user_namespace_root_map,
+              CONTAINER_RUNTIME:$container_runtime,
+              PRECHECK_PASS:$pass
+            }' > "$WORKDIR/precheck.json"
+
+          cat "$WORKDIR/precheck.json"
+          echo "pass=$PASS" >> "$GITHUB_OUTPUT"
+
+      - name: Install pinned official OpenShell v0.1.2 and verify release SHA
+        if: steps.precheck.outputs.pass == 'true'
+        id: install
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WORKDIR/download" "$WORKDIR/bin" "$WORKDIR/tls"
+
+          base="https://github.com/NVIDIA/OpenShell/releases/download/v0.1.2"
+          curl -L --fail --silent --show-error -o "$WORKDIR/download/openshell.tar.gz" \
+            "$base/openshell-x86_64-unknown-linux-musl.tar.gz"
+          curl -L --fail --silent --show-error -o "$WORKDIR/download/gateway.tar.gz" \
+            "$base/openshell-gateway-x86_64-unknown-linux-gnu.tar.gz"
+          curl -L --fail --silent --show-error -o "$WORKDIR/download/supervisor.tar.gz" \
+            "$base/openshell-supervisor-x86_64-unknown-linux-gnu.tar.gz"
+          curl -L --fail --silent --show-error -o "$WORKDIR/download/sandbox.tar.gz" \
+            "$base/openshell-sandbox-x86_64-unknown-linux-musl.tar.gz"
+
+          echo "7eb6917285331a09e3300266a0558616481a5e9927cae2612ea07c4045b6dd6f  $WORKDIR/download/openshell.tar.gz" | sha256sum -c -
+          echo "218d887845b3a020ab7535c9985eb9c666d6938f144044957f8b82b42892aadb  $WORKDIR/download/gateway.tar.gz" | sha256sum -c -
+          echo "801d717f4211b4c24449b08a47ce5571ff623ce993c10d44e133dbe2edc36611  $WORKDIR/download/supervisor.tar.gz" | sha256sum -c -
+          echo "f07ad7177f4c3ff7743f89531eda36bb784c56b45b166f49c5a51fbcfa5274a6  $WORKDIR/download/sandbox.tar.gz" | sha256sum -c -
+
+          tar -xzf "$WORKDIR/download/openshell.tar.gz" -C "$WORKDIR/bin"
+          tar -xzf "$WORKDIR/download/gateway.tar.gz" -C "$WORKDIR/bin"
+          tar -xzf "$WORKDIR/download/supervisor.tar.gz" -C "$WORKDIR/bin"
+          tar -xzf "$WORKDIR/download/sandbox.tar.gz" -C "$WORKDIR/bin"
+          chmod +x "$WORKDIR/bin/"*
+
+          "$WORKDIR/bin/openshell" --version | tee "$WORKDIR/openshell-version.txt"
+          "$WORKDIR/bin/openshell-gateway" --version | tee "$WORKDIR/gateway-version.txt"
+          "$WORKDIR/bin/openshell-supervisor" --version | tee "$WORKDIR/supervisor-version.txt"
+          "$WORKDIR/bin/openshell-sandbox" --version | tee "$WORKDIR/sandbox-version.txt"
+
+          "$WORKDIR/bin/openshell-gateway" generate-certs \
+            --output-dir "$WORKDIR/tls" \
+            --server-san 127.0.0.1 \
+            --server-san localhost
+
+          cat > "$WORKDIR/gateway.toml" <<EOF
+          [openshell]
+          version = 2
+
+          [openshell.gateway]
+          bind_address = "127.0.0.1:17670"
+          log_level = "info"
+          compute_driver = "docker"
+          disable_tls = true
+
+          [openshell.gateway.auth]
+          allow_unauthenticated_users = true
+
+          [openshell.gateway.gateway_jwt]
+          signing_key_path = "$WORKDIR/tls/jwt/signing.pem"
+          public_key_path = "$WORKDIR/tls/jwt/public.pem"
+          kid_path = "$WORKDIR/tls/jwt/kid"
+          gateway_id = "ess-gha-live-v1"
+          ttl_secs = 3600
+
+          [openshell.drivers.docker]
+          default_image = "python:3.12-slim"
+          image_pull_policy = "if_not_present"
+          sandbox_label = "ess-gha-live-v1"
+          EOF
+
+          "$WORKDIR/bin/openshell-gateway" config preflight --path "$WORKDIR/gateway.toml"
+          sha256sum "$WORKDIR/gateway.toml" > "$WORKDIR/gateway-config.sha256"
+
+      - name: Prove pinned OCSF identity and correlation semantics
+        if: steps.precheck.outputs.pass == 'true'
+        id: identity_model
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WORKDIR/ocsf-source-proof"
+
+          raw="https://raw.githubusercontent.com/NVIDIA/OpenShell/v0.1.2"
+          curl -L --fail --silent --show-error             "$raw/crates/openshell-ocsf/tests/event_identity.rs"             -o "$WORKDIR/ocsf-source-proof/event_identity.rs"
+          curl -L --fail --silent --show-error             "$raw/crates/openshell-ocsf/src/objects/metadata.rs"             -o "$WORKDIR/ocsf-source-proof/metadata.rs"
+          curl -L --fail --silent --show-error             "$raw/crates/openshell-ocsf/src/builders/mod.rs"             -o "$WORKDIR/ocsf-source-proof/builders-mod.rs"
+          curl -L --fail --silent --show-error             "$raw/crates/openshell-ocsf/schemas/ocsf/v1.8.0/objects/metadata.json"             -o "$WORKDIR/ocsf-source-proof/metadata-schema.json"
+          curl -L --fail --silent --show-error             "$raw/proto/openshell.proto"             -o "$WORKDIR/ocsf-source-proof/openshell.proto"
+
+          sha256sum "$WORKDIR"/ocsf-source-proof/*             > "$WORKDIR/ocsf-source-proof-sha256.txt"
+
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          root = Path(os.environ["WORKDIR"]) / "ocsf-source-proof"
+          event_tests = (root / "event_identity.rs").read_text()
+          metadata_rs = (root / "metadata.rs").read_text()
+          builders = (root / "builders-mod.rs").read_text()
+          schema = json.loads((root / "metadata-schema.json").read_text())
+          proto = (root / "openshell.proto").read_text()
+
+          attrs = schema.get("attributes", {})
+          uid_schema = attrs.get("uid") or {}
+          corr_schema = attrs.get("correlation_uid") or {}
+
+          event_uid_generated = (
+              'uid: Some(uuid::Uuid::new_v4().to_string())' in builders
+              and "each_event_gets_its_own_metadata_uid" in event_tests
+              and 'json["container"]["uid"]' in event_tests
+          )
+          sandbox_uid_distinct = (
+              "metadata_uid_is_no_longer_the_sandbox_id" in event_tests
+              and "the_sandbox_id_is_carried_by_the_container" in event_tests
+          )
+          correlation_in_schema = bool(corr_schema)
+          correlation_in_runtime_metadata = bool(
+              re.search(r'\bcorrelation_uid\s*:', metadata_rs)
+          )
+
+          # Transport identifiers are distinct schema fields/namespaces from OCSF metadata.uid.
+          stream_cursor_declared = bool(re.search(r'\bstring\s+cursor\s*=\s*\d+\s*;', proto))
+          gateway_channel_declared = bool(re.search(r'\bstring\s+channel_id\s*=\s*\d+\s*;', proto))
+
+          proof = {
+              "gate": "ESS__NVIDIA_OPENSHELL__OCSF_EVENT_IDENTITY_AND_CORRELATION_MODEL_V1_3",
+              "openshell_version": "v0.1.2",
+              "openshell_tag_commit": os.environ["OPENSHELL_TAG_COMMIT"],
+              "event_id_semantics": {
+                  "field": "metadata.uid",
+                  "schema_caption": uid_schema.get("caption"),
+                  "schema_description": uid_schema.get("description"),
+                  "generated_per_event": event_uid_generated,
+              },
+              "sandbox_id_semantics": {
+                  "field": "container.uid",
+                  "distinct_from_event_id": sandbox_uid_distinct,
+              },
+              "transport_identity_semantics": {
+                  "stream_cursor_field_declared": stream_cursor_declared,
+                  "stream_cursor_is_event_id": False,
+                  "gateway_channel_id_field_declared": gateway_channel_declared,
+                  "gateway_channel_id_is_event_id": False,
+                  "note": "Different protocol/schema identifier namespaces; no value substitution is permitted."
+              },
+              "cross_event_correlation": {
+                  "field": "metadata.correlation_uid",
+                  "ocsf_schema_support": correlation_in_schema,
+                  "schema_requirement": corr_schema.get("requirement"),
+                  "schema_description": corr_schema.get("description"),
+                  "runtime_metadata_struct_support": correlation_in_runtime_metadata,
+                  "population_status": (
+                      "SUPPORTED_BY_RUNTIME_MODEL"
+                      if correlation_in_runtime_metadata
+                      else "HOLD_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL"
+                  ),
+              },
+              "proof_bar_reduced": False,
+          }
+
+          required = [
+              event_uid_generated,
+              sandbox_uid_distinct,
+              correlation_in_schema,
+              stream_cursor_declared,
+              gateway_channel_declared,
+          ]
+          proof["source_semantics_pass"] = all(required)
+          (Path(os.environ["WORKDIR"]) / "ocsf-identity-source-proof.json").write_text(
+              json.dumps(proof, indent=2, sort_keys=True)
+          )
+          print(json.dumps(proof, indent=2, sort_keys=True))
+          if not proof["source_semantics_pass"]:
+              raise SystemExit(1)
+          PY
+
+      - name: Start localhost-only gateway and create real minimal sandbox
+        if: steps.precheck.outputs.pass == 'true'
+        id: runtime
+        shell: bash
+        run: |
+          set +e
+          export PATH="$WORKDIR/bin:$PATH"
+          export OPENSHELL_DB_URL="sqlite:$WORKDIR/gateway.db?mode=rwc"
+
+          nohup "$WORKDIR/bin/openshell-gateway" --config "$WORKDIR/gateway.toml" \
+            >"$WORKDIR/gateway.log" 2>&1 &
+          echo $! > "$WORKDIR/gateway.pid"
+
+          GATEWAY_OK=false
+          for i in $(seq 1 30); do
+            openshell gateway add --name ess-gha-live --local http://127.0.0.1:17670 >/dev/null 2>&1 || true
+            openshell gateway select ess-gha-live >/dev/null 2>&1 || true
+            openshell gateway info >"$WORKDIR/gateway-info.txt" 2>&1
+            if [ $? -eq 0 ]; then
+              GATEWAY_OK=true
+              break
+            fi
+            sleep 1
+          done
+
+          ss -ltnp >"$WORKDIR/listeners.txt" 2>&1 || true
+          openshell provider list -o json >"$WORKDIR/providers.json" 2>&1 || true
+
+          SANDBOX_RC=99
+          if $GATEWAY_OK; then
+            openshell sandbox create \
+              --name ess-gha-live-v1 \
+              --from python:3.12-slim \
+              --no-auto-providers \
+              --detach -- sleep 300 \
+              >"$WORKDIR/sandbox-create.txt" 2>&1
+            SANDBOX_RC=$?
+          fi
+
+          openshell sandbox get ess-gha-live-v1 -o json \
+            >"$WORKDIR/sandbox-before-policy.json" 2>"$WORKDIR/sandbox-get.err" || true
+          openshell logs ess-gha-live-v1 -n 300 --source all \
+            >"$WORKDIR/logs-before-policy.txt" 2>&1 || true
+
+          READY=false
+          if jq -e '.conditions[]? | select(.type=="Ready" and .status=="True")' \
+              "$WORKDIR/sandbox-before-policy.json" >/dev/null 2>&1; then
+            READY=true
+          fi
+
+          echo "gateway_ok=$GATEWAY_OK" >> "$GITHUB_OUTPUT"
+          echo "sandbox_ready=$READY" >> "$GITHUB_OUTPUT"
+          echo "sandbox_create_rc=$SANDBOX_RC" >> "$GITHUB_OUTPUT"
+
+          echo "GATEWAY_OK=$GATEWAY_OK"
+          echo "SANDBOX_READY=$READY"
+          cat "$WORKDIR/gateway-info.txt" 2>/dev/null || true
+          cat "$WORKDIR/sandbox-before-policy.json" 2>/dev/null || true
+
+      - name: Run one controlled network policy event and capture real evidence
+        if: steps.precheck.outputs.pass == 'true' && steps.runtime.outputs.sandbox_ready == 'true'
+        id: event
+        shell: bash
+        run: |
+          set +e
+          export PATH="$WORKDIR/bin:$PATH"
+
+          # Enable full provider-native OCSF JSONL so metadata.uid is available.
+          openshell settings set ess-gha-live-v1 --key ocsf_json_enabled --value true \
+            >"$WORKDIR/ocsf-enable.txt" 2>&1
+          OCSF_ENABLE_RC=$?
+          sleep 12
+
+          CALLER_PATH="$(openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
+            sh -c 'readlink -f "$(command -v python3)"' 2>/dev/null | tail -n 1)"
+          printf '%s\n' "$CALLER_PATH" > "$WORKDIR/caller-path.txt"
+
+          openshell policy update ess-gha-live-v1 \
+            --add-endpoint example.com:443:read-only:rest:enforce \
+            --binary "$CALLER_PATH" \
+            --rule-name ess-example-read \
+            --wait --timeout 60 \
+            >"$WORKDIR/policy-update.txt" 2>&1
+          POLICY_RC=$?
+
+          openshell policy get ess-gha-live-v1 --full -o json \
+            >"$WORKDIR/policy.json" 2>"$WORKDIR/policy.err"
+          POLICY_GET_RC=$?
+
+          openshell sandbox get ess-gha-live-v1 -o json \
+            >"$WORKDIR/sandbox-after-policy.json" 2>"$WORKDIR/sandbox-after.err"
+
+          openshell sandbox exec -n ess-gha-live-v1 --no-login-shell -- \
+            "$CALLER_PATH" -c \
+            "import urllib.request; r=urllib.request.urlopen('https://example.com/', timeout=15); print('HTTP_STATUS='+str(r.status))" \
+            >"$WORKDIR/network-exec.txt" 2>&1
+          EXEC_RC=$?
+
+          sleep 2
+          openshell logs ess-gha-live-v1 --since 10m --source all \
+            >"$WORKDIR/security-logs.txt" 2>&1
+          LOG_RC=$?
+
+          MATCH_LINE="$(grep -E 'NET:OPEN.*ALLOWED' "$WORKDIR/security-logs.txt" | grep -F 'example.com:443' | tail -n 1)"
+          printf '%s\n' "$MATCH_LINE" > "$WORKDIR/decision-line.txt"
+
+          # Full OCSF JSONL is written by the official supervisor to /var/log.
+          # The Docker driver places /var/log on a writable tmpfs. docker export
+          # does not preserve tmpfs contents, so read the running supervisor's
+          # own root via /proc/<pid>/root. This is a host-side, read-only capture.
+          SANDBOX_ID="$(jq -r '.id // empty' "$WORKDIR/sandbox-after-policy.json")"
+          docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Labels}}'             >"$WORKDIR/docker-ps.txt" 2>&1 || true
+          SUPERVISOR_CONTAINER="$(docker ps -a             --filter "label=openshell.ai/sandbox-id=$SANDBOX_ID"             --filter "label=openshell.ai/isolation-role=supervisor"             -q | head -n 1)"
+          printf '%s\n' "$SUPERVISOR_CONTAINER" > "$WORKDIR/supervisor-container-id.txt"
+
+          OCSF_READ_RC=44
+          if [ -n "$SUPERVISOR_CONTAINER" ]; then
+            docker inspect "$SUPERVISOR_CONTAINER" >"$WORKDIR/supervisor-inspect.json" 2>&1 || true
+            SUPERVISOR_PID="$(docker inspect -f '{{.State.Pid}}' "$SUPERVISOR_CONTAINER" 2>/dev/null)"
+            printf '%s\n' "$SUPERVISOR_PID" >"$WORKDIR/supervisor-pid.txt"
+
+            if [ -n "$SUPERVISOR_PID" ] && [ "$SUPERVISOR_PID" != "0" ]; then
+              sudo find "/proc/$SUPERVISOR_PID/root/var/log" -maxdepth 1 -type f -printf '%f %s\n'                 >"$WORKDIR/supervisor-var-log-tree.txt" 2>"$WORKDIR/ocsf-read.err" || true
+
+              mapfile -t OCSF_FILES < <(
+                sudo find "/proc/$SUPERVISOR_PID/root/var/log" -maxdepth 1 -type f                   -name 'openshell-ocsf.*.log' -print 2>/dev/null | sort
+              )
+
+              if [ "${#OCSF_FILES[@]}" -gt 0 ]; then
+                sudo cat "${OCSF_FILES[@]}" >"$WORKDIR/ocsf.jsonl" 2>>"$WORKDIR/ocsf-read.err"
+                OCSF_READ_RC=$?
+              else
+                : >"$WORKDIR/ocsf.jsonl"
+                echo "NO_OCSF_JSONL_IN_SUPERVISOR_TMPFS" >>"$WORKDIR/ocsf-read.err"
+                OCSF_READ_RC=45
+              fi
+            else
+              : >"$WORKDIR/ocsf.jsonl"
+              echo "SUPERVISOR_PID_UNAVAILABLE" >"$WORKDIR/ocsf-read.err"
+              OCSF_READ_RC=46
+            fi
+          else
+            : >"$WORKDIR/ocsf.jsonl"
+            echo "SUPERVISOR_CONTAINER_NOT_FOUND" >"$WORKDIR/ocsf-read.err"
+          fi
+
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          root = Path(os.environ["WORKDIR"])
+          net = []
+          for raw in (root / "ocsf.jsonl").read_text(errors="replace").splitlines():
+              try:
+                  e = json.loads(raw)
+              except Exception:
+                  continue
+              if e.get("class_uid") != 4001:
+                  continue
+              dst = e.get("dst_endpoint") or {}
+              fw = e.get("firewall_rule") or {}
+              actor = ((e.get("actor") or {}).get("process") or {})
+              if (
+                  e.get("activity_name") == "Open"
+                  and e.get("action") == "Allowed"
+                  and dst.get("domain") == "example.com"
+                  and dst.get("port") == 443
+                  and fw.get("name") == "ess-example-read"
+                  and actor.get("name") == "/usr/local/bin/python3.12"
+              ):
+                  net.append(e)
+
+          selected = {
+              "network_authorization_event": net[-1] if net else None,
+          }
+          (root / "selected-ocsf-events.json").write_text(
+              json.dumps(selected, indent=2, sort_keys=True)
+          )
+          PY
+
+          echo "policy_rc=$POLICY_RC" >> "$GITHUB_OUTPUT"
+          echo "policy_get_rc=$POLICY_GET_RC" >> "$GITHUB_OUTPUT"
+          echo "exec_rc=$EXEC_RC" >> "$GITHUB_OUTPUT"
+          echo "log_rc=$LOG_RC" >> "$GITHUB_OUTPUT"
+          echo "ocsf_enable_rc=$OCSF_ENABLE_RC" >> "$GITHUB_OUTPUT"
+          echo "ocsf_read_rc=$OCSF_READ_RC" >> "$GITHUB_OUTPUT"
+
+          echo "CALLER_PATH=$CALLER_PATH"
+          echo "POLICY_RC=$POLICY_RC"
+          echo "EXEC_RC=$EXEC_RC"
+          echo "DECISION_LINE=$MATCH_LINE"
+          echo "SELECTED_OCSF_EVENTS:"
+          cat "$WORKDIR/selected-ocsf-events.json" 2>/dev/null || true
+
+      - name: Build live native OCSF UID receipt V1.4
+        if: always()
+        id: receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, re
+          from pathlib import Path
+
+          root = Path(os.environ["WORKDIR"])
+
+          def read_text(name):
+              p = root / name
+              return p.read_text(errors="replace") if p.exists() else ""
+
+          def read_json(name):
+              p = root / name
+              if not p.exists():
+                  return {}
+              try:
+                  return json.loads(p.read_text())
+              except Exception:
+                  return {}
+
+          def sha_text(s):
+              return hashlib.sha256(s.encode()).hexdigest() if s else None
+
+          pre = read_json("precheck.json")
+          source_proof = read_json("ocsf-identity-source-proof.json")
+          sb = read_json("sandbox-after-policy.json") or read_json("sandbox-before-policy.json")
+          policy = read_json("policy.json")
+          selected = read_json("selected-ocsf-events.json")
+          event = selected.get("network_authorization_event") or {}
+          shorthand = read_text("decision-line.txt").strip()
+          security_logs = read_text("security-logs.txt")
+          execution = read_text("network-exec.txt")
+
+          meta = event.get("metadata") or {}
+          container = event.get("container") or {}
+          actor = ((event.get("actor") or {}).get("process") or {})
+          dst = event.get("dst_endpoint") or {}
+          fw = event.get("firewall_rule") or {}
+
+          runtime_sandbox_id = sb.get("id")
+          event_uid = meta.get("uid")
+          event_container_uid = container.get("uid")
+          caller = actor.get("name")
+          destination = (
+              f"{dst.get('domain')}:{dst.get('port')}"
+              if dst.get("domain") and dst.get("port") else None
+          )
+          policy_name = fw.get("name")
+          action = event.get("action")
+
+          policy_revision = sb.get("current_policy_version")
+          policy_hash = (sb.get("configuration_admission") or {}).get("policy_hash")
+
+          # Parse the exact human-readable projection generated from the same OCSF class.
+          shorthand_match = re.search(
+              r'NET:OPEN \[INFO\] ALLOWED ([^\(]+)\([^\)]*\) -> ([^\s]+) '
+              r'\[policy:([^\s\]]+) engine:([^\]]+)\]',
+              shorthand
+          )
+          shorthand_projection = None
+          if shorthand_match:
+              shorthand_projection = {
+                  "event_type": "NET:OPEN",
+                  "action": "Allowed",
+                  "caller": shorthand_match.group(1),
+                  "destination": shorthand_match.group(2),
+                  "policy": shorthand_match.group(3),
+                  "engine": shorthand_match.group(4),
+              }
+
+          native_projection = {
+              "event_type": (
+                  "NET:OPEN"
+                  if event.get("class_uid") == 4001 and event.get("activity_name") == "Open"
+                  else None
+              ),
+              "action": action,
+              "caller": caller,
+              "destination": destination,
+              "policy": policy_name,
+              "engine": fw.get("type"),
+          }
+
+          same_observed_event_projection = (
+              shorthand_projection is not None
+              and native_projection["event_type"] == shorthand_projection["event_type"]
+              and native_projection["action"] == shorthand_projection["action"]
+              and native_projection["caller"] == shorthand_projection["caller"]
+              and native_projection["destination"] == shorthand_projection["destination"]
+              and native_projection["policy"] == shorthand_projection["policy"]
+          )
+
+          requirements = {
+              "PRECHECK_PASS": pre.get("PRECHECK_PASS") is True,
+              "SOURCE_UID_SEMANTICS_PASS": source_proof.get("source_semantics_pass") is True,
+              "FULL_NATIVE_OCSF_RECORD_CAPTURED": bool(event),
+              "METADATA_UID_NONEMPTY": bool(event_uid),
+              "CONTAINER_UID_EQUALS_RUNTIME_SANDBOX_ID": (
+                  bool(event_container_uid)
+                  and event_container_uid == runtime_sandbox_id
+              ),
+              "CALLER_BOUND_FROM_SAME_EVENT": caller == "/usr/local/bin/python3.12",
+              "DESTINATION_BOUND_FROM_SAME_EVENT": destination == "example.com:443",
+              "FIREWALL_RULE_BOUND_FROM_SAME_EVENT": policy_name == "ess-example-read",
+              "ACTION_BOUND_FROM_SAME_EVENT": action == "Allowed",
+              "EXACT_POLICY_REVISION": policy_revision == 2,
+              "EXACT_POLICY_HASH": (
+                  policy_hash
+                  == "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec"
+              ),
+              "EXECUTION_RESULT_SUCCESS": "HTTP_STATUS=200" in execution,
+              "ESS_LOG_REFERENCE_SAME_OBSERVED_EVENT": same_observed_event_projection,
+          }
+
+          first_missing = next((k for k,v in requirements.items() if not v), "NONE")
+          single_verdict = (
+              "PASS_LIVE_NATIVE_OCSF_UID_SINGLE_EVENT_BIND"
+              if first_missing == "NONE"
+              else "HOLD_LIVE_NATIVE_OCSF_UID_SINGLE_EVENT_BIND"
+          )
+
+          # V0.1.2 typed Metadata has no correlation_uid field. Keep the cross-event
+          # claim explicitly outside this gate and on HOLD.
+          cross_event = {
+              "required_for_v1_4": False,
+              "correlation_field": "metadata.correlation_uid",
+              "verdict": "HOLD_NATIVE_CORRELATION_UID_NOT_POPULATABLE_BY_V0_1_2_TYPED_METADATA_MODEL",
+              "synthetic_correlation_uid_created": False,
+          }
+
+          body = {
+              "schema": "ESS_OPENSHELL_LIVE_NATIVE_OCSF_UID_RECEIPT_V1_4",
+              "gate": "ESS__NVIDIA_OPENSHELL__LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4",
+              "openshell_version": "v0.1.2",
+              "openshell_tag_commit": os.environ["OPENSHELL_TAG_COMMIT"],
+              "pins": {
+                  "v1_3_run": os.environ["PINNED_REAL_NET_OPEN_RUN"],
+                  "v1_3_source_sha": os.environ["PINNED_REAL_NET_OPEN_SOURCE_SHA"],
+                  "v1_3_receipt_sha256": os.environ["PINNED_V1_3_RECEIPT_SHA256"],
+              },
+              "run": {
+                  "repo": os.environ.get("GITHUB_REPOSITORY"),
+                  "ref": os.environ.get("GITHUB_REF"),
+                  "source_sha": os.environ.get("GITHUB_SHA"),
+                  "run_id": os.environ.get("GITHUB_RUN_ID"),
+                  "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+              },
+              "native_event": {
+                  "metadata_uid": event_uid,
+                  "container_uid": event_container_uid,
+                  "runtime_sandbox_id": runtime_sandbox_id,
+                  "actor_process": actor,
+                  "destination": dst,
+                  "firewall_rule": fw,
+                  "action": action,
+                  "class_uid": event.get("class_uid"),
+                  "activity_name": event.get("activity_name"),
+                  "time": event.get("time"),
+                  "raw_event_sha256": sha_text(
+                      json.dumps(event, sort_keys=True, separators=(",",":"))
+                  ) if event else None,
+              },
+              "exact_policy": {
+                  "revision": policy_revision,
+                  "hash": policy_hash,
+                  "raw_policy_sha256": sha_text(
+                      json.dumps(policy, sort_keys=True, separators=(",",":"))
+                  ) if policy else None,
+              },
+              "ess_log_reference": {
+                  "exact_shorthand_line_sha256": sha_text(shorthand),
+                  "shorthand_projection": shorthand_projection,
+                  "native_projection": native_projection,
+                  "same_observed_event_projection": same_observed_event_projection,
+              },
+              "requirements": requirements,
+              "single_event_verdict": single_verdict,
+              "strict_cross_event_claim": cross_event,
+              "provider_native_uid": event_uid,
+              "provider_native_uid_synthesized": False,
+              "correlation_uid_synthesized": False,
+              "first_missing_proof": first_missing,
+              "proof_bar_reduced": False,
+              "claim_ceiling": (
+                  "ONE_EXACT_LIVE_PROVIDER_NATIVE_NET_OPEN_EVENT"
+                  "__METADATA_UID_CALLER_DESTINATION_POLICY_ACTION_BOUND"
+                  "__EXACT_POLICY_REVISION_AND_HASH_BOUND"
+                  "__ESS_SHORTHAND_REFERENCE_PROJECTION_BOUND"
+                  "__STRICT_CROSS_EVENT_CORRELATION_REMAINS_HOLD"
+                  "__NO_GENERAL_SECURITY_CLAIM"
+              ),
+              "verdict": (
+                  "PASS_LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4__HOLD_STRICT_CROSS_EVENT_CORRELATION"
+                  if single_verdict.startswith("PASS_")
+                  else "HOLD_LIVE_NATIVE_OCSF_UID_CAPTURE_V1_4"
+              ),
+          }
+
+          canonical = json.dumps(body, sort_keys=True, separators=(",",":")).encode()
+          body["receipt_sha256"] = hashlib.sha256(canonical).hexdigest()
+          (root / "real-receipt.json").write_text(json.dumps(body, indent=2, sort_keys=True))
+
+          print("ESS_RECEIPT_JSON_BEGIN")
+          print(json.dumps(body, indent=2, sort_keys=True))
+          print("ESS_RECEIPT_JSON_END")
+          PY
+
+          verdict="$(jq -r '.verdict' "$WORKDIR/real-receipt.json")"
+          first_missing="$(jq -r '.first_missing_proof' "$WORKDIR/real-receipt.json")"
+          receipt_sha="$(jq -r '.receipt_sha256' "$WORKDIR/real-receipt.json")"
+          native_uid="$(jq -r '.provider_native_uid // empty' "$WORKDIR/real-receipt.json")"
+
+          echo "VERDICT=$verdict"
+          echo "FIRST_MISSING_PROOF=$first_missing"
+          echo "PROVIDER_NATIVE_UID=$native_uid"
+          echo "RECEIPT_SHA256=$receipt_sha"
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          echo "receipt_sha=$receipt_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Verify exact native policy evidence fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$WORKDIR/real-receipt.json"
+          jq -e '.requirements.POLICY_HASH_EXACT == true and .requirements.POLICY_REVISION_EXACT == true and .provider_native_uid != null and .provider_native_uid != "" and .provider_native_uid_synthesized == false and .single_event_verdict == "PASS_LIVE_NATIVE_OCSF_UID_SINGLE_EVENT_BIND"' "$WORKDIR/real-receipt.json"
+          jq -e '.exact_policy.revision == 2 and .exact_policy.hash == "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec"' "$WORKDIR/real-receipt.json"
+          sha256sum "$WORKDIR/real-receipt.json" "$WORKDIR/selected-ocsf-events.json" "$WORKDIR/sandbox-after-policy.json" > "$WORKDIR/native-evidence-sha256.txt"
+          cat "$WORKDIR/native-evidence-sha256.txt"
+          echo "NATIVE_POLICY_AUDIT_PASS source_commit=a79b3cfb39b13ae413edfbc49cb2f99baba3f94d run=$GITHUB_RUN_ID"
+      - name: Retain native receipt and raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-openshell-v18-native-policy-evidence
+          path: |
+            /tmp/ess-openshell-live-v1/real-receipt.json
+            /tmp/ess-openshell-live-v1/selected-ocsf-events.json
+            /tmp/ess-openshell-live-v1/sandbox-after-policy.json
+            /tmp/ess-openshell-live-v1/native-evidence-sha256.txt
+            /tmp/ess-openshell-live-v1/precheck.json
+          if-no-files-found: warn
+          retention-days: 30
