@@ -23,7 +23,8 @@ def main():
     require(str(consumer["run_attempt"]) == os.environ["GITHUB_RUN_ATTEMPT"], "CONSUMER_ATTEMPT")
     require(str(contract["producer"]["run_id"]) != os.environ["GITHUB_RUN_ID"], "NOT_TWO_RUNS")
     manifest = json.loads((source_dir / "export-manifest.json").read_text())
-    archive_path = Path(os.environ["ESS_V18_PRODUCER_ARCHIVE"])\n    result = verify(contract, manifest, artifact, source_dir, archive_path)
+    archive_path = Path(os.environ["ESS_V18_PRODUCER_ARCHIVE"])
+    result = verify(contract, manifest, artifact, source_dir, archive_path)
     print(json.dumps(result, sort_keys=True))
 
 if __name__ == "__main__":
