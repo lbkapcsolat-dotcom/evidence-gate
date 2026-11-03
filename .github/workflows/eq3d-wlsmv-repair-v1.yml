@@ -1,8 +1,7 @@
 name: EQ3D WLSMV Grid Repair and Merge Readiness V1
 
 on:
-  # A PR merge does not touch this exact activation path; no surprise 12-shard run.
-  # A deliberate owner-created push of this file on the research branch starts repair.
+  # Only explicitly committing an approval trigger on the research branch starts repair.
   push:
     branches:
       - eq3d-wlsmv-1000rep-grid-v1
@@ -195,134 +194,18 @@ jobs:
           test "$count" -eq 48
           test -s artifacts/sensitivity/sensitivity_summary.json
 
-      - name: Verify the CSV SHA256 manifest in every reused and repaired shard
+      - name: Verify every grid.csv against the corresponding SHA256.txt
         shell: bash
         run: |
           set -euo pipefail
           count=0
           for manifest in artifacts/grid-*/SHA256.txt; do
             test -s "$manifest"
-            match="$(grep -E '^[0-9a-f]{64}[[:space:]]+grid.csv
-          mkdir -p final
-          Rscript research/eq3d_wlsmv_1000rep_v1/aggregate.R artifacts final | tee final/AGGREGATION_STDOUT.txt
-          python3 - <<'PY'
-          import csv,glob
-          rows=[]
-          for p in glob.glob("artifacts/**/grid.csv",recursive=True):
-              with open(p,newline="",encoding="utf-8") as f:
-                  rows.extend(csv.DictReader(f))
-          versions={r.get("lavaan") for r in rows}
-          if versions != {"0.7.2"}:
-              raise SystemExit(f"HOLD_LAVAAN_VERSION_SET={versions}")
-          if len(rows) != 12000:
-              raise SystemExit(f"HOLD_EXACT_ROWS={len(rows)}")
-          print("PASS_EXACT_ROWS=12000")
-          print("PASS_LAVAAN_VERSION=0.7.2")
-          PY
-          sha256sum research/eq3d_wlsmv_1000rep_v1/grid.R \
-                    research/eq3d_wlsmv_1000rep_v1/aggregate.R \
-                    research/eq3d_wlsmv_1000rep_v1/row_contract.R \
-                    final/* > final/FINAL_MANIFEST.sha256
-
-      - name: Emit merge-readiness fence
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json
-          p="final/FINAL_RECEIPT.json"
-          r=json.load(open(p))
-          merge = (
-              r.get("final_verdict") == "PASS_FINAL_RECRUITMENT_LOCK"
-              and r.get("grid",{}).get("complete") is True
-              and r.get("sensitivity",{}).get("esem",{}).get("verdict") == "PASS_ESEM_CROSSLOADING_SENSITIVITY"
-          )
-          out={
-              "gate":"EQ3D_WLSMV_GRID_CLOSEOUT_AND_MERGE_READINESS_V1",
-              "source_run":41479137566,
-              "repair_commit":"${{ github.sha }}",
-              "exact_grid_receipt":r,
-              "merge_readiness":"ALLOW_MERGE" if merge else "HOLD_MERGE",
-              "fences":[
-                  "NO_GLOBAL_BIND",
-                  "NO_PRODUCTION_ADMISSION",
-                  "NO_EMPIRICAL_3D_VALIDATION"
-              ]
-          }
-          json.dump(out,open("final/MERGE_READINESS_RECEIPT.json","w"),indent=2,sort_keys=True)
-          print(json.dumps(out,indent=2,sort_keys=True))
-          if not merge:
-              raise SystemExit("HOLD_MERGE")
-          PY
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: EQ3D-WLSMV-GRID-CLOSEOUT-MERGE-READINESS
-          path: final/
-          if-no-files-found: error
-          retention-days: 30
- "$manifest")"
-            test "$(printf '%s\n' "$match" | grep -c 'grid.csv
-          mkdir -p final
-          Rscript research/eq3d_wlsmv_1000rep_v1/aggregate.R artifacts final | tee final/AGGREGATION_STDOUT.txt
-          python3 - <<'PY'
-          import csv,glob
-          rows=[]
-          for p in glob.glob("artifacts/**/grid.csv",recursive=True):
-              with open(p,newline="",encoding="utf-8") as f:
-                  rows.extend(csv.DictReader(f))
-          versions={r.get("lavaan") for r in rows}
-          if versions != {"0.7.2"}:
-              raise SystemExit(f"HOLD_LAVAAN_VERSION_SET={versions}")
-          if len(rows) != 12000:
-              raise SystemExit(f"HOLD_EXACT_ROWS={len(rows)}")
-          print("PASS_EXACT_ROWS=12000")
-          print("PASS_LAVAAN_VERSION=0.7.2")
-          PY
-          sha256sum research/eq3d_wlsmv_1000rep_v1/grid.R \
-                    research/eq3d_wlsmv_1000rep_v1/aggregate.R \
-                    research/eq3d_wlsmv_1000rep_v1/row_contract.R \
-                    final/* > final/FINAL_MANIFEST.sha256
-
-      - name: Emit merge-readiness fence
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json
-          p="final/FINAL_RECEIPT.json"
-          r=json.load(open(p))
-          merge = (
-              r.get("final_verdict") == "PASS_FINAL_RECRUITMENT_LOCK"
-              and r.get("grid",{}).get("complete") is True
-              and r.get("sensitivity",{}).get("esem",{}).get("verdict") == "PASS_ESEM_CROSSLOADING_SENSITIVITY"
-          )
-          out={
-              "gate":"EQ3D_WLSMV_GRID_CLOSEOUT_AND_MERGE_READINESS_V1",
-              "source_run":41479137566,
-              "repair_commit":"${{ github.sha }}",
-              "exact_grid_receipt":r,
-              "merge_readiness":"ALLOW_MERGE" if merge else "HOLD_MERGE",
-              "fences":[
-                  "NO_GLOBAL_BIND",
-                  "NO_PRODUCTION_ADMISSION",
-                  "NO_EMPIRICAL_3D_VALIDATION"
-              ]
-          }
-          json.dump(out,open("final/MERGE_READINESS_RECEIPT.json","w"),indent=2,sort_keys=True)
-          print(json.dumps(out,indent=2,sort_keys=True))
-          if not merge:
-              raise SystemExit("HOLD_MERGE")
-          PY
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: EQ3D-WLSMV-GRID-CLOSEOUT-MERGE-READINESS
-          path: final/
-          if-no-files-found: error
-          retention-days: 30
-)" -eq 1
-            (cd "$(dirname "$manifest")" && printf '%s\n' "$match" | sha256sum --check --status)
+            entry="$(awk '$2 == "grid.csv" {print $1}' "$manifest")"
+            test "${#entry}" -eq 64
+            printf '%s\n' "$entry" | grep -Eq '^[0-9a-f]{64}$'
+            actual="$(sha256sum "$(dirname "$manifest")/grid.csv" | cut -d ' ' -f1)"
+            test "$actual" = "$entry"
             count=$((count+1))
           done
           test "$count" -eq 48
