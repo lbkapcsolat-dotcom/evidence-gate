@@ -790,7 +790,7 @@ jobs:
         run: |
           set -euo pipefail
           test -s "$WORKDIR/real-receipt.json"
-          jq -e '.requirements.POLICY_HASH_EXACT == true and .requirements.POLICY_REVISION_EXACT == true and .provider_native_uid != null and .provider_native_uid != "" and .provider_native_uid_synthesized == false and .single_event_verdict == "PASS_LIVE_NATIVE_OCSF_UID_SINGLE_EVENT_BIND"' "$WORKDIR/real-receipt.json"
+          jq -e '.requirements.EXACT_POLICY_HASH == true and .requirements.EXACT_POLICY_REVISION == true and .provider_native_uid != null and .provider_native_uid != "" and .provider_native_uid_synthesized == false and .single_event_verdict == "PASS_LIVE_NATIVE_OCSF_UID_SINGLE_EVENT_BIND"' "$WORKDIR/real-receipt.json"
           jq -e '.exact_policy.revision == 2 and .exact_policy.hash == "518bc9dcbf26319461546e590005d6e7ed7dfadfc22a79ba074a1dc131f2c8ec"' "$WORKDIR/real-receipt.json"
           sha256sum "$WORKDIR/real-receipt.json" "$WORKDIR/selected-ocsf-events.json" "$WORKDIR/sandbox-after-policy.json" > "$WORKDIR/native-evidence-sha256.txt"
           cat "$WORKDIR/native-evidence-sha256.txt"
