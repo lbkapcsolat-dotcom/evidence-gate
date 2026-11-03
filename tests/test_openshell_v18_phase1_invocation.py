@@ -42,5 +42,23 @@ class V18Phase1InvocationTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
 
 
+    def test_phase2_fail_closed_after_receipt_write(self):
+        text = WORKFLOW.read_text()
+        start = text.index("body['receipt_sha256']=sh(body)", text.index("V1_8_NEW_EVENT_COUNT_HOLD"))
+        end = text.index("\\n          PY", start)
+        region = text[start:end]
+        self.assertIn("raise SystemExit('V1_8_PHASE2_HOLD:'+missing)", region)
+        self.assertLess(region.index("v1_8-final-receipt.json"), region.index("raise SystemExit('V1_8_PHASE2_HOLD:'+missing)"))
+
+    def test_producer_artifact_retention_is_30_days(self):
+        text = WORKFLOW.read_text()
+        start = text.index("- name: Persist V1.8 producer bundle as immutable run artifact")
+        end = text.index("- name: Emit raw readback bundle to job log", start)
+        region = text[start:end]
+        self.assertIn("retention-days: 30", region)
+        self.assertIn("overwrite: false", region)
+        self.assertIn("if-no-files-found: error", region)
+
+
 if __name__ == "__main__":
     unittest.main()
