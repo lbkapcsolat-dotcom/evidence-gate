@@ -3386,6 +3386,15 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           python3 -m scripts.ess_v18_consumer_preflight_adapter
           python3 -m scripts.ess_v18_zip_payload_custody "$ESS_V18_PRODUCER_ARCHIVE" "$ESS_V18_PRODUCER_FILES" "$(jq -r .provider_digest "$ESS_V18_PROVIDER_METADATA")"
+      - name: Rehydrate verified producer payload into legacy replay directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ESS_V18_PRODUCER_FILES:-}" || exit 1
+          test -n "${PINNED_V1_8_SOURCE_RUN:-}" || exit 1
+          test -n "${PINNED_V1_8_SOURCE_SHA:-}" || exit 1
+          mkdir -p "$WORKDIR/v1_8-source-download"
+          cp -- "$ESS_V18_PRODUCER_FILES/canonical-registry.json" "$ESS_V18_PRODUCER_FILES/pinned-event-set.jsonl" "$ESS_V18_PRODUCER_FILES/v1_7-final-receipt.json" "$ESS_V18_PRODUCER_FILES/export-manifest.json" "$WORKDIR/v1_8-source-download/"
       - name: Cross-run durable registry rehydration and fresh-host append V1.8
         id: v18_consumer
         shell: bash
