@@ -225,7 +225,7 @@ jobs:
           p="final/FINAL_RECEIPT.json"
           r=json.load(open(p))
           merge = (
-              r.get("overall") == "PASS_FINAL_RECRUITMENT_LOCK"
+              r.get("final_verdict") == "PASS_FINAL_RECRUITMENT_LOCK"
               and r.get("grid",{}).get("complete") is True
               and r.get("sensitivity",{}).get("esem",{}).get("verdict") == "PASS_ESEM_CROSSLOADING_SENSITIVITY"
           )
