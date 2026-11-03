@@ -1848,6 +1848,8 @@ jobs:
           body['receipt_sha256']=sh(body)
           registry_path.write_text(json.dumps(registry,indent=2,sort_keys=True)); (root/'v1_8-final-receipt.json').write_text(json.dumps(body,indent=2,sort_keys=True))
           print('ESS_V1_8_RECEIPT_BEGIN');print(json.dumps(body,indent=2,sort_keys=True));print('ESS_V1_8_RECEIPT_END')
+          if missing != 'NONE':
+              raise SystemExit('V1_8_PHASE2_HOLD:'+missing)
           PY
 
           verdict="$(jq -r '.verdict' "$WORKDIR/v1_8-final-receipt.json")"
@@ -1915,7 +1917,7 @@ jobs:
           path: /tmp/ess-openshell-live-v1/v1_8-export
           if-no-files-found: error
           overwrite: false
-          retention-days: 1
+          retention-days: 30
       - name: Emit raw readback bundle to job log
         if: always()
         shell: bash
