@@ -1,11 +1,7 @@
 name: EQ3D WLSMV Grid Repair and Merge Readiness V1
 
 on:
-  push:
-    branches:
-      - eq3d-wlsmv-1000rep-grid-v1
-    paths:
-      - ".github/workflows/eq3d-wlsmv-repair-v1.yml"
+  # No automatic expensive rerun on merge; require an explicit owner dispatch.
   workflow_dispatch:
 
 permissions:
