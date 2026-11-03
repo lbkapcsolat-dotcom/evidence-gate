@@ -7,6 +7,7 @@ on:
       - eq3d-wlsmv-1000rep-grid-v1
     paths:
       - ".github/workflows/eq3d-row-contract-regression-v1.yml"
+      - ".github/workflows/eq3d-wlsmv-repair-v1.yml"
       - "research/eq3d_wlsmv_1000rep_v1/**"
   pull_request:
     branches:
