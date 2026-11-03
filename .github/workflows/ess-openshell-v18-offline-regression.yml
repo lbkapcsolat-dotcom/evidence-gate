@@ -35,3 +35,12 @@ jobs:
           grep -Eq '^Ran 9 tests in ' offline-regression.log
           grep -qx 'OK' offline-regression.log
           printf 'ESS_V18_OFFLINE_REGRESSION_PASS commit=%s run=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
+      - name: Preserve exact offline test log as evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-openshell-v18-offline-regression-log
+          path: offline-regression.log
+          if-no-files-found: warn
+          retention-days: 30
+          overwrite: false
