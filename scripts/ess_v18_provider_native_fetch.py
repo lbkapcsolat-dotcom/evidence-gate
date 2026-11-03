@@ -3,7 +3,7 @@
 import hashlib, json, os, re, sys, urllib.request, urllib.error
 from pathlib import Path
 from scripts.ess_v18_two_run_contract import require
-from scripts.ess_v18_zip_payload_custody import verify_zip_custody
+from scripts.ess_v18_zip_payload_custody import verify_zip_custody, ARCHIVE_REQUIRED
 import zipfile
 
 def fetch(url, token, accept="application/vnd.github+json"):
@@ -53,7 +53,7 @@ def main():
         # Never extract untrusted ZIP members before validation.
         from scripts.ess_v18_two_run_contract import REQUIRED
         names=[i.filename for i in z.infolist()]
-        require(len(names)==len(set(names)) and set(names)==set(REQUIRED),"ZIP_MEMBER_SET")
+        require(len(names)==len(set(names)) and set(names)==set(ARCHIVE_REQUIRED),"ZIP_MEMBER_SET")
         for item in z.infolist():
             require(not item.is_dir() and item.file_size<=50_000_000,"ZIP_MEMBER_UNSAFE")
             (payload/item.filename).write_bytes(z.read(item))
