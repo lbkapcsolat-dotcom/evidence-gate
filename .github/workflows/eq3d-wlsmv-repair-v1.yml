@@ -1,7 +1,13 @@
 name: EQ3D WLSMV Grid Repair and Merge Readiness V1
 
 on:
-  # No automatic expensive rerun on merge; require an explicit owner dispatch.
+  # A PR merge does not touch this exact activation path; no surprise 12-shard run.
+  # A deliberate owner-created push of this file on the research branch starts repair.
+  push:
+    branches:
+      - eq3d-wlsmv-1000rep-grid-v1
+    paths:
+      - ".github/eq3d/RUN_M4_REPAIR_APPROVED.txt"
   workflow_dispatch:
 
 permissions:
