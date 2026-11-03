@@ -28,5 +28,7 @@ jobs:
         with:
           r-version: '4.5.3'
           use-public-rspm: true
+      - name: Lint repair workflow YAML, embedded Bash and activation gate
+        run: python3 research/eq3d_wlsmv_1000rep_v1/test_repair_workflow.py
       - name: Check typed success/failure rows and CSV round-trip
         run: Rscript research/eq3d_wlsmv_1000rep_v1/test_row_contract.R
