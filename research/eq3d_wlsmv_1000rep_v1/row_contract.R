@@ -74,6 +74,13 @@ validate_grid_shard <- function(x, N, truth, shard, reps=250L) {
                           length.out=as.integer(reps))
   if (!identical(sort(x$rep), ids_expected))
     stop("HOLD_SHARD_REPLICATION_IDS")
+  exact_seed <- as.integer(
+    260611020L + as.integer(N) * 10000L +
+    match(truth, c("M3", "M4", "M5", "M7")) * 1000000L +
+    as.integer(shard) * 1000L + x$rep
+  )
+  if (!identical(x$seed, exact_seed))
+    stop("HOLD_SHARD_SEED_LINEAGE")
   invisible(TRUE)
 }
 
