@@ -12,7 +12,7 @@ def require(condition, code):
     if not condition:
         raise ValueError("HOLD_" + code)
 
-def verify(contract, manifest, artifact, payload_dir):
+def verify(contract, manifest, artifact, payload_dir, archive_path=None):
     p, c = contract["producer"], contract["consumer"]
     require(str(p["run_id"]).isdigit() and str(c["run_id"]).isdigit(), "RUN_ID")
     require(str(p["run_id"]) != str(c["run_id"]), "NOT_TWO_RUNS")
@@ -40,18 +40,21 @@ def verify(contract, manifest, artifact, payload_dir):
     require(files["v1_7-final-receipt.json"] == manifest["v1_7_final_receipt_file_sha256"], "V17_SHA256")
     require(json.loads((payload_dir / "export-manifest.json").read_text()) == manifest, "MANIFEST_BYTES")
     require(manifest["synthetic_uid"] is False, "SYNTHETIC_UID")
-    # GitHub's ZIP digest is metadata, NOT proven by the extracted file hashes.
-    require(contract["provider_archive_digest_independently_verified"] is True, "ARCHIVE_DIGEST_READBACK")
-    require(contract["provider_archive_sha256"] == artifact["provider_digest"][7:], "ARCHIVE_DIGEST_MISMATCH")
+    # Independently hash the downloaded archive bytes, never trust a boolean.
+    require(archive_path is not None, "ARCHIVE_BYTES_MISSING")
+    archive = Path(archive_path)
+    require(archive.is_file() and not archive.is_symlink(), "ARCHIVE_BYTES_MISSING")
+    archive_hash = hashlib.sha256(archive.read_bytes()).hexdigest()
+    require(archive_hash == artifact["provider_digest"][7:], "ARCHIVE_DIGEST_MISMATCH")
     return {"verdict": "PASS_TWO_RUN_IDENTITY_AND_SOURCE_BYTES", "producer_run": p["run_id"], "consumer_run": c["run_id"], "files_sha256": files, "strict_cross_event": "NOT_EVALUATED"}
 
 def main():
-    require(len(sys.argv) == 4, "USAGE")
+    require(len(sys.argv) == 5, "USAGE")
     contract = json.loads(Path(sys.argv[1]).read_text())
     artifact = json.loads(Path(sys.argv[2]).read_text())
     root = Path(sys.argv[3])
     manifest = json.loads((root / "export-manifest.json").read_text())
-    print(json.dumps(verify(contract, manifest, artifact, root), sort_keys=True))
+    print(json.dumps(verify(contract, manifest, artifact, root, Path(sys.argv[4])), sort_keys=True))
 
 if __name__ == "__main__":
     try: main()
