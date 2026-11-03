@@ -45,7 +45,7 @@ class V18Phase1InvocationTests(unittest.TestCase):
     def test_phase2_fail_closed_after_receipt_write(self):
         text = WORKFLOW.read_text()
         start = text.index("body['receipt_sha256']=sh(body)", text.index("V1_8_NEW_EVENT_COUNT_HOLD"))
-        end = text.index("\\n          PY", start)
+        end = text.index("\n          PY", start)
         region = text[start:end]
         self.assertIn("raise SystemExit('V1_8_PHASE2_HOLD:'+missing)", region)
         self.assertLess(region.index("v1_8-final-receipt.json"), region.index("raise SystemExit('V1_8_PHASE2_HOLD:'+missing)"))
