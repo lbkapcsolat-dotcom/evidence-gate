@@ -15,7 +15,9 @@ def make_archive():
     payload={name:name.encode() for name in REQUIRED}
     payload["export-manifest.json"]=json.dumps({"source_run_id":PRODUCER,"source_sha":SHA,
         "canonical_registry_file_sha256":hashlib.sha256(payload[REQUIRED[0]]).hexdigest(),
-        "pinned_event_set_file_sha256":hashlib.sha256(payload[REQUIRED[1]]).hexdigest()}).encode()
+        "pinned_event_set_file_sha256":hashlib.sha256(payload[REQUIRED[1]]).hexdigest(),
+        "v1_7_final_receipt_file_sha256":hashlib.sha256(payload[REQUIRED[2]]).hexdigest(),
+        "synthetic_uid":False}).encode()
     payload["producer-sha256.txt"]="".join(hashlib.sha256(payload[n]).hexdigest()+"  "+n+"\n" for n in REQUIRED).encode()
     b=io.BytesIO()
     with zipfile.ZipFile(b,"w") as z:
@@ -43,7 +45,7 @@ class MockNativeFetchTests(unittest.TestCase):
         if url.endswith("/zip"):return self.archive
         raise AssertionError(url)
     def invoke(self):
-        with patch.dict(os.environ,self.env,clear=True),patch.object(native,"fetch",side_effect=self.fake_fetch),patch.object(native,"verify_zip_custody",return_value={"verdict":"PASS"}):
+        with patch.dict(os.environ,self.env,clear=True),patch.object(native,"fetch",side_effect=self.fake_fetch):
             native.main()
     def reject(self,code):
         with self.assertRaisesRegex(ValueError,"HOLD_"+code):self.invoke()
@@ -84,8 +86,7 @@ class MockNativeFetchTests(unittest.TestCase):
         self.artifact["digest"]="sha256:"+hashlib.sha256(self.archive).hexdigest()
         self.reject("ZIP_MEMBER_SET")
     def test_manifest_source_mismatch(self):
-        self.archive=make_archive().replace(b"nonexistent-marker",b"other")
-        # A manifest mismatch requires rebuilding the ZIP; exercise a wrong run ID via a ZIP rewrite.
+        # Rebuild the archive and SHA256 manifest consistently; isolate source identity rejection.
         b=io.BytesIO()
         with zipfile.ZipFile(b,"w") as z:
             with zipfile.ZipFile(io.BytesIO(self.archive)) as old:
@@ -94,6 +95,14 @@ class MockNativeFetchTests(unittest.TestCase):
                     if item.filename=="export-manifest.json":data=data.replace(PRODUCER.encode(),b"111111")
                     z.writestr(item.filename,data)
         self.archive=b.getvalue()
+        # Update the producer SHA256 manifest to match the intentionally changed export manifest.
+        rebuilt=io.BytesIO()
+        with zipfile.ZipFile(rebuilt,"w") as z:
+            with zipfile.ZipFile(io.BytesIO(self.archive)) as old:
+                contents={item.filename:old.read(item) for item in old.infolist()}
+                contents["producer-sha256.txt"]="".join(hashlib.sha256(contents[n]).hexdigest()+"  "+n+"\\n" for n in REQUIRED).encode()
+                for name,data in contents.items():z.writestr(name,data)
+        self.archive=rebuilt.getvalue()
         self.artifact["digest"]="sha256:"+hashlib.sha256(self.archive).hexdigest()
         self.reject("MANIFEST_PRODUCER")
 
