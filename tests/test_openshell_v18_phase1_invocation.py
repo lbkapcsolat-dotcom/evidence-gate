@@ -60,5 +60,18 @@ class V18Phase1InvocationTests(unittest.TestCase):
         self.assertIn("if-no-files-found: error", region)
 
 
+    def test_phase2_registry_commit_only_after_hold_gate(self):
+        text = WORKFLOW.read_text()
+        start = text.index("new_distinct={", text.index("V1_8_NEW_EVENT_COUNT_HOLD") - 200)
+        end = text.index("\n          PY", start)
+        region = text[start:end]
+        hold = region.index("raise SystemExit('V1_8_PHASE2_HOLD:'+missing)")
+        commit = region.index("existing[uid]=receipt")
+        write = region.index("registry_path.write_text(")
+        self.assertLess(hold, commit)
+        self.assertLess(commit, write)
+        self.assertNotIn("if not already: existing[uid]=receipt", region)
+
+
 if __name__ == "__main__":
     unittest.main()
