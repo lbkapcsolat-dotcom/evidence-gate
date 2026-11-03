@@ -3354,21 +3354,27 @@ jobs:
           echo "verdict=$verdict" >>"$GITHUB_OUTPUT"
           echo "receipt_sha=$receipt_sha" >>"$GITHUB_OUTPUT"
 
-      - name: Separate-run producer evidence authentication boundary
+      - name: Fetch and authenticate separate producer run via GitHub API
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ESS_V18_PRODUCER_RUN_ID: ${{ vars.ESS_V18_PRODUCER_RUN_ID }}
+          ESS_V18_EXPECTED_PRODUCER_SHA: ${{ vars.ESS_V18_EXPECTED_PRODUCER_SHA }}
+          ESS_V18_EXPECTED_PRODUCER_WORKFLOW: ${{ vars.ESS_V18_EXPECTED_PRODUCER_WORKFLOW }}
         run: |
           set -euo pipefail
-          # Never treat the consumer run as its own producer.
-          # Provider-native artifact/run authentication is not wired yet.
-          echo "::error::HOLD_TWO_RUN_PROVIDER_AUTHENTICATION_NOT_WIRED"
-          exit 1
+          test -n "${ESS_V18_PRODUCER_RUN_ID:-}" || { echo "::error::HOLD_PRODUCER_RUN_ID"; exit 1; }
+          test -n "${ESS_V18_EXPECTED_PRODUCER_SHA:-}" || { echo "::error::HOLD_PRODUCER_SHA"; exit 1; }
+          test -n "${ESS_V18_EXPECTED_PRODUCER_WORKFLOW:-}" || { echo "::error::HOLD_PRODUCER_WORKFLOW"; exit 1; }
+          cd "$GITHUB_WORKSPACE"
+          python3 -m scripts.ess_v18_provider_native_fetch
       - name: Mandatory separate-run custody preflight before V1.8 replay
         shell: bash
         env:
-          ESS_V18_CONTRACT: ${{ vars.ESS_V18_CONTRACT_PATH }}
-          ESS_V18_PROVIDER_METADATA: ${{ vars.ESS_V18_PROVIDER_METADATA_PATH }}
-          ESS_V18_PRODUCER_ARCHIVE: ${{ vars.ESS_V18_PRODUCER_ARCHIVE_PATH }}
-          ESS_V18_PRODUCER_FILES: /tmp/ess-openshell-live-v1/v1_8-source-download
+          ESS_V18_CONTRACT: ${{ env.ESS_V18_CONTRACT }}
+          ESS_V18_PROVIDER_METADATA: ${{ env.ESS_V18_PROVIDER_METADATA }}
+          ESS_V18_PRODUCER_ARCHIVE: ${{ env.ESS_V18_PRODUCER_ARCHIVE }}
+          ESS_V18_PRODUCER_FILES: ${{ env.ESS_V18_PRODUCER_FILES }}
         run: |
           set -euo pipefail
           # No automatic same-run fallback. Fail closed until a separately
