@@ -27,11 +27,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Run eight committed offline regression tests
+      - name: Run nine committed offline regression tests
         shell: bash
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_openshell_v18_phase1_invocation.py' -v 2>&1 | tee offline-regression.log
-          grep -Eq '^Ran 8 tests in ' offline-regression.log
+          grep -Eq '^Ran 9 tests in ' offline-regression.log
           grep -qx 'OK' offline-regression.log
           printf 'ESS_V18_OFFLINE_REGRESSION_PASS commit=%s run=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID"
