@@ -30,7 +30,7 @@ jobs:
         with:
           name: EQ3D-M4-M5-BOUNDED-PAIRED-FIT-V1
           run-id: 41983775160
-          github-token: \${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           path: saved
       - name: Verify original saved artifact manifest before inspection
         shell: bash
