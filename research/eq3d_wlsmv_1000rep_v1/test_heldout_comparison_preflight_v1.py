@@ -47,7 +47,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertFalse(heldout_preflight(**{**READY,"locked_analysis_plan":False}))
     def test_wilson_valid(self):
         lo,hi=wilson_interval(0,250)
-        self.assertEqual(lo,0)
+        self.assertAlmostEqual(lo,0.0,places=14)
         self.assertGreater(hi,0)
         self.assertLess(hi,0.02)
     def test_wilson_invalid_counts_hold(self):
