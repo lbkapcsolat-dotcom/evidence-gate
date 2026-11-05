@@ -1,0 +1,42 @@
+name: EQ3D prospective seed-lock static verification V1
+
+on:
+  push:
+    branches:
+      - eq3d-prospective-seed-lock-review-gate-v1
+
+permissions:
+  contents: read
+
+jobs:
+  seed-pre-registration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure preregistered canonical protocol and seed uniqueness
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile research/eq3d_wlsmv_1000rep_v1/preregister_seed_schedule_v1.py
+          python3 research/eq3d_wlsmv_1000rep_v1/preregister_seed_schedule_v1.py prereg-out
+          test -s prereg-out/HELDOUT_SEED_SCHEDULE_V1.csv
+          test -s prereg-out/SEED_LOCK_MANIFEST_V1.json
+          python3 -m unittest discover -v -s research/eq3d_wlsmv_1000rep_v1 -p test_heldout_comparison_preflight_v1.py
+          python3 -m unittest discover -v -s research/eq3d_wlsmv_1000rep_v1 -p test_admissibility_spec_v1.py
+      - name: Independently verify already committed seed lock (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 research/eq3d_wlsmv_1000rep_v1/verify_locked_seed_schedule_v1.py
+          cmp prereg-out/HELDOUT_SEED_SCHEDULE_V1.csv research/eq3d_wlsmv_1000rep_v1/preregistered_v1/HELDOUT_SEED_SCHEDULE_V1.csv
+          cmp prereg-out/SEED_LOCK_MANIFEST_V1.json research/eq3d_wlsmv_1000rep_v1/preregistered_v1/SEED_LOCK_MANIFEST_V1.json
+          echo "PASS_SEED_LOCK_READ_ONLY_GITHUB_COMMIT_MATCH"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EQ3D-PROSPECTIVE-SEED-SCHEDULE-CANDIDATE-V1
+          path: prereg-out/
+          if-no-files-found: error
+          retention-days: 30
