@@ -6,7 +6,7 @@ on:
       - eq3d-prospective-seed-lock-review-gate-v1
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   seed-pre-registration:
@@ -24,28 +24,14 @@ jobs:
           test -s prereg-out/SEED_LOCK_MANIFEST_V1.json
           python3 -m unittest discover -v -s research/eq3d_wlsmv_1000rep_v1 -p test_heldout_comparison_preflight_v1.py
           python3 -m unittest discover -v -s research/eq3d_wlsmv_1000rep_v1 -p test_admissibility_spec_v1.py
-      - name: Freeze checked seed schedule in dedicated PR branch
+      - name: Independently verify already committed seed lock (read only)
         shell: bash
         run: |
           set -euo pipefail
-          expected_protocol="3238787440744c55020c6350df252cfcb7842c1f02642bf657cbf113295fe5cd"
-          expected_schedule="5acd606a4030825ff69af56be8f377e67ed4b50184c6068b8becc011cf0d8b19"
-          echo "$expected_schedule  prereg-out/HELDOUT_SEED_SCHEDULE_V1.csv" | sha256sum --check --status
-          python3 -c 'import json; m=json.load(open("prereg-out/SEED_LOCK_MANIFEST_V1.json")); assert m["protocol_sha256"]=="3238787440744c55020c6350df252cfcb7842c1f02642bf657cbf113295fe5cd"; assert m["seed_schedule_sha256"]=="5acd606a4030825ff69af56be8f377e67ed4b50184c6068b8becc011cf0d8b19"; assert m["runtime_authorization"]=="MISSING"; assert m["independent_statistical_review"]=="MISSING"'
-          target="research/eq3d_wlsmv_1000rep_v1/preregistered_v1"
-          mkdir -p "$target"
-          test ! -f "$target/HELDOUT_SEED_SCHEDULE_V1.csv" || cmp "$target/HELDOUT_SEED_SCHEDULE_V1.csv" prereg-out/HELDOUT_SEED_SCHEDULE_V1.csv
-          cp prereg-out/HELDOUT_SEED_SCHEDULE_V1.csv "$target/"
-          cp prereg-out/SEED_LOCK_MANIFEST_V1.json "$target/"
           python3 research/eq3d_wlsmv_1000rep_v1/verify_locked_seed_schedule_v1.py
-          git config user.name "EQ3D Evidence Gate"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$target/HELDOUT_SEED_SCHEDULE_V1.csv" "$target/SEED_LOCK_MANIFEST_V1.json"
-          if ! git diff --cached --quiet; then
-            git commit -m "evidence(eq3d): freeze 1000 prospective seeds with exact SHA256, review HOLD"
-            git push origin "HEAD:refs/heads/eq3d-prospective-seed-lock-review-gate-v1"
-          fi
-          echo "PASS_PREREG_SEED_LOCK_COMMIT_CHECK"
+          cmp prereg-out/HELDOUT_SEED_SCHEDULE_V1.csv research/eq3d_wlsmv_1000rep_v1/preregistered_v1/HELDOUT_SEED_SCHEDULE_V1.csv
+          cmp prereg-out/SEED_LOCK_MANIFEST_V1.json research/eq3d_wlsmv_1000rep_v1/preregistered_v1/SEED_LOCK_MANIFEST_V1.json
+          echo "PASS_SEED_LOCK_READ_ONLY_GITHUB_COMMIT_MATCH"
 
       - uses: actions/upload-artifact@v4
         if: always()
