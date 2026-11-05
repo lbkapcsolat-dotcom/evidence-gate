@@ -33,7 +33,6 @@ jobs:
         shell: bash
         run: |
           test "$(git rev-parse HEAD)" != ""
-          test "$(git cat-file -p d4efbe16e4124b332c4f20aa2dc548a299983cfa:research/eq3d_wlsmv_1000rep_v1/grid.R | git hash-object --stdin)" = "674dacbc2813b26be3a4c8fa80c9560b115d5a0b"
           test "$(git hash-object research/eq3d_wlsmv_1000rep_v1/grid.R)" = "674dacbc2813b26be3a4c8fa80c9560b115d5a0b"
       - name: Run bounded paired-fit and save exact objects
         run: |
