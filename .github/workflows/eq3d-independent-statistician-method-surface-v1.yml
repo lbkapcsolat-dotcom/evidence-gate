@@ -1,0 +1,50 @@
+name: EQ3D Independent Statistics Method Surface V1
+
+on:
+  push:
+    branches:
+      - eq3d-v1-independent-statistician-wlsmv-method-gate
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-versioned-method:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+      - name: Install exact lavaan 0.7-2 and JSON serialization
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript -e 'install.packages(c("remotes","jsonlite"), repos="https://cloud.r-project.org"); remotes::install_version("lavaan",version="0.7-2",repos="https://cloud.r-project.org",upgrade="never")'
+          Rscript -e 'stopifnot(as.character(packageVersion("lavaan"))=="0.7.2")'
+      - name: Inspect installed lavTestLRT function only, no fits
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p method-out
+          Rscript research/eq3d_wlsmv_1000rep_v1/inspect_lavaan_0_7_2_method_api_v1.R method-out
+          python3 - <<'PY'
+          import json
+          x=json.load(open('method-out/VERSIONED_LAVAAN_METHOD_SURFACE.json'))
+          assert x['version']=='0.7.2'
+          assert x['a_method_arg_supported'] is True
+          assert x['scaled_shifted_arg_supported'] is True
+          assert x['allowed_to_claim_valid_difference_test'] is False
+          assert x['actual_difference_test_executed'] is False
+          print("PASS_VERSIONED_METHOD_API_WITH_HOLD_SCIENTIFIC_ADMISSION")
+          PY
+          sha256sum method-out/*.json > method-out/METHOD_MANIFEST.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EQ3D-EXACT-LAVAAN-0-7-2-METHOD-SURFACE-V1
+          path: method-out/
+          if-no-files-found: warn
+          retention-days: 30
