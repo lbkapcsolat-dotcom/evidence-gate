@@ -1,0 +1,60 @@
+name: EQ3D Saved RDS Gradient CovLV Identification Audit V1
+
+on:
+  push:
+    branches:
+      - eq3d-rds-identification-audit-v1
+    paths:
+      - ".github/workflows/eq3d-saved-rds-identification-audit-v1.yml"
+      - "research/eq3d_wlsmv_1000rep_v1/audit_saved_rds_v1.R"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect-saved-rds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+      - name: Install pinned read-only RDS analysis dependencies
+        run: |
+          Rscript -e 'install.packages(c("remotes","jsonlite"), repos="https://cloud.r-project.org"); remotes::install_version("lavaan", version="0.7-2", repos="https://cloud.r-project.org", upgrade="never")'
+          Rscript -e 'stopifnot(as.character(packageVersion("lavaan"))=="0.7.2")'
+      - uses: actions/download-artifact@v4
+        with:
+          name: EQ3D-M4-M5-BOUNDED-PAIRED-FIT-V1
+          run-id: 41983775160
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: saved
+      - name: Verify original saved artifact manifest before inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s saved/FIXTURE_MANIFEST.sha256
+          count="$(grep -c '  fixture/' saved/FIXTURE_MANIFEST.sha256)"
+          test "$count" -eq 20
+          awk '$2 ~ /^fixture\// {sub(/^fixture\//,"",$2); print $1 "  saved/" $2}' saved/FIXTURE_MANIFEST.sha256 | sha256sum --check --status
+          test "$(find saved -maxdepth 1 -name 'fit_*.rds' | wc -l)" -eq 8
+          echo PASS_SAVED_INPUT_MANIFEST_20_OF_20
+      - name: Inspect RDS objects without fitting models
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit
+          Rscript research/eq3d_wlsmv_1000rep_v1/audit_saved_rds_v1.R saved audit
+          test -s audit/RDS_AUDIT_RECEIPT.json
+          test -s audit/RDS_NUMERICAL_DIAGNOSTICS.csv
+          sha256sum audit/* > audit/AUDIT_MANIFEST.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EQ3D-SAVED-RDS-IDENTIFICATION-AUDIT-V1
+          path: audit/
+          if-no-files-found: warn
+          retention-days: 30
