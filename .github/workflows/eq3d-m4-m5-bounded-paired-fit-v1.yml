@@ -1,0 +1,52 @@
+name: EQ3D M4-M5 Bounded Paired Fit Diagnostics V1
+
+on:
+  push:
+    branches:
+      - eq3d-m4-m5-bounded-fit-fixture-v1
+    paths:
+      - "research/eq3d_wlsmv_1000rep_v1/bounded_paired_fit_v1.R"
+      - ".github/workflows/eq3d-m4-m5-bounded-paired-fit-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eight-fit-fixture:
+    name: Two deterministic synthetic datasets x four lavaan fits
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.3'
+          use-public-rspm: true
+      - name: Install exact pinned model dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript -e 'install.packages(c("remotes","mvtnorm","jsonlite"), repos="https://cloud.r-project.org", Ncpus=2); remotes::install_version("lavaan", version="0.7-2", repos="https://cloud.r-project.org", upgrade="never")'
+          Rscript -e 'stopifnot(as.character(packageVersion("lavaan")) == "0.7.2")'
+      - name: Pin canonical model source
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" != ""
+          test "$(git hash-object research/eq3d_wlsmv_1000rep_v1/grid.R)" = "674dacbc2813b26be3a4c8fa80c9560b115d5a0b"
+      - name: Run bounded paired-fit and save exact objects
+        run: |
+          mkdir -p fixture
+          Rscript research/eq3d_wlsmv_1000rep_v1/bounded_paired_fit_v1.R fixture
+          test -s fixture/FIXTURE_RECEIPT.json
+          test -s fixture/PAIRED_FIT_DIAGNOSTIC.csv
+          test "$(find fixture -name 'fit_*.rds' | wc -l)" -eq 8
+          test "$(find fixture -name 'data_*.csv' | wc -l)" -eq 2
+          sha256sum research/eq3d_wlsmv_1000rep_v1/grid.R research/eq3d_wlsmv_1000rep_v1/bounded_paired_fit_v1.R fixture/* > fixture/FIXTURE_MANIFEST.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EQ3D-M4-M5-BOUNDED-PAIRED-FIT-V1
+          path: fixture/
+          if-no-files-found: error
+          retention-days: 30
