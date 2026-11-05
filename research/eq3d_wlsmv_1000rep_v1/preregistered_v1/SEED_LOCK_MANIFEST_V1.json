@@ -1,0 +1,31 @@
+{
+  "attempts_per_truth": 250,
+  "claim_ceiling": [
+    "NO_EMPIRICAL_VALIDATION",
+    "NO_GLOBAL_BIND",
+    "NO_PRODUCTION_ADMISSION",
+    "NO_HELDOUT_EXECUTION"
+  ],
+  "collision_count": 0,
+  "comparison_method_admission": "HOLD",
+  "gate": "EQ3D_PROSPECTIVE_V1_PRE_REGISTRATION_SEED_LOCK_AND_INDEPENDENT_METHOD_REVIEW_GATE",
+  "grid_blob_sha1": "674dacbc2813b26be3a4c8fa80c9560b115d5a0b",
+  "grid_sha256": "eda14848607b60fd53bee529039fda9fc879237e89ae26ff013811f67cc9a8d9",
+  "historic_seed_exclusion_count": 12002,
+  "independent_statistical_review": "MISSING",
+  "lavaan_0_7_2_versioned_difference_method_review": "MISSING",
+  "prior_fixture_run": 41983775160,
+  "prior_grid_source_run": 41586168086,
+  "protocol_sha256": "3238787440744c55020c6350df252cfcb7842c1f02642bf657cbf113295fe5cd",
+  "runtime_authorization": "MISSING",
+  "seed_algorithm": "SHA256('EQ3D_HELDOUT_V1|truth|rep|protocol_sha256'), first four bytes, bit-and 0x7fffffff, zero/collision => HOLD",
+  "seed_schedule_sha256": "5acd606a4030825ff69af56be8f377e67ed4b50184c6068b8becc011cf0d8b19",
+  "seeds": 1000,
+  "status": "PROPOSED_FROZEN_SEEDS_NOT_EXECUTION_AUTHORITY",
+  "truths": [
+    "M3",
+    "M4",
+    "M5",
+    "M7"
+  ]
+}
