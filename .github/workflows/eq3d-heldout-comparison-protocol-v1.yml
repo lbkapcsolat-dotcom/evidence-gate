@@ -1,0 +1,24 @@
+name: EQ3D Prospective Heldout WLSMV Protocol V1 Static Gate
+
+on:
+  push:
+    branches:
+      - eq3d-prospective-heldout-wlsmv-protocol-v1
+  pull_request:
+    branches:
+      - eq3d-admissibility-negative-control-spec-v1
+
+permissions:
+  contents: read
+
+jobs:
+  prereg-static-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test preregistration and comparison HOLD rules only
+        run: |
+          cd research/eq3d_wlsmv_1000rep_v1
+          python3 -m unittest -v test_heldout_comparison_preflight_v1.py
+          python3 -m unittest -v test_admissibility_spec_v1.py
