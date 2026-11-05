@@ -11,7 +11,7 @@ ROOT.mkdir(exist_ok=True, parents=True)
 sha = lambda b: hashlib.sha256(b).hexdigest()
 protocol_digest = sha(PROTOCOL.read_bytes())
 grid_bytes=GRID.read_bytes()
-blob_sha1=hashlib.sha1(b"blob "+str(len(grid_bytes)).encode("ascii")+b"\\0"+grid_bytes).hexdigest()
+blob_sha1=hashlib.sha1(b"blob "+str(len(grid_bytes)).encode("ascii")+bytes([0])+grid_bytes).hexdigest()
 assert blob_sha1 == "674dacbc2813b26be3a4c8fa80c9560b115d5a0b", "HOLD_SOURCE_GRID_BLOB_ID"
 # Historical seeds: all 3 Ns × 4 truths × all 1000 reps, plus prior 2 × 1 bounded fixtures.
 original=set()
@@ -43,7 +43,8 @@ manifest={
     "gate":"EQ3D_PROSPECTIVE_V1_PRE_REGISTRATION_SEED_LOCK_AND_INDEPENDENT_METHOD_REVIEW_GATE",
     "status":"PROPOSED_FROZEN_SEEDS_NOT_EXECUTION_AUTHORITY",
     "protocol_sha256":protocol_digest,
-    "grid_blob_sha1":blob_sha1,\n    "grid_sha256":sha(grid_bytes),
+    "grid_blob_sha1":blob_sha1,
+    "grid_sha256":sha(grid_bytes),
     "seed_schedule_sha256":sha(csvpath.read_bytes()),
     "seeds":1000,
     "truths":list(TRUTHS),
