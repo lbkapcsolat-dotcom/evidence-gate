@@ -1,0 +1,23 @@
+name: EQ3D Admissibility Negative Control SPEC V1
+
+on:
+  push:
+    branches:
+      - eq3d-admissibility-negative-control-spec-v1
+  pull_request:
+    branches:
+      - eq3d-wlsmv-1000rep-grid-v1
+
+permissions:
+  contents: read
+
+jobs:
+  spec-negative-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run 11 deterministic fail-closed unit tests, no Monte Carlo
+        run: |
+          cd research/eq3d_wlsmv_1000rep_v1
+          python3 -m unittest -v test_admissibility_spec_v1.py
