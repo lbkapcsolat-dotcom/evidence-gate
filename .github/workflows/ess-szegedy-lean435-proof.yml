@@ -29,11 +29,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FILE=ESS_SZEGEDY_EXACT_LEAN_THEOREM_AND_EXTERNAL_SEMANTIC_WITNESS_V1__IMPORT_ORDER_PATCH_V1.lean
+          FILE=ESS_SZEGEDY_EXACT_LEAN_THEOREM_AND_EXTERNAL_SEMANTIC_WITNESS_V1__DECIDABLE_EXPANSION_PATCH_V2.lean
           test "$(cat lean-toolchain)" = "leanprover/lean4:v4.35.0"
           printf 'Source identity:\n' | tee SOURCE_RECEIPT.txt
           sha256sum "$FILE" | tee -a SOURCE_RECEIPT.txt
-          test "$(sha256sum "$FILE" | cut -d' ' -f1)" = "24a9bfe60b720071c5c9116ae443cb37c0cc5438e92cf186be762993b805fc2b"
+          test "$(sha256sum "$FILE" | cut -d' ' -f1)" = "5374d8b0d9cacb17ca1c76a6b5a9ce32e39eee93185cca1823270ee52e1eb7d0"
           lean --version | tee LEAN_VERSION.txt
           grep -q '4.35.0' LEAN_VERSION.txt
           printf 'Proof and axioms:\n'
