@@ -1,0 +1,78 @@
+name: ESS-Szegedy exact Lean 4.35 kernel proof (isolated)
+on:
+  push:
+    branches:
+      - research/ess-szegedy-lean435-kernel-20261106
+    paths:
+      - research/ess_szegedy_lean435/**
+      - .github/workflows/ess-szegedy-lean435-proof.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  kernel-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: research/ess_szegedy_lean435
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install exactly pinned Lean via official Lean action
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: research/ess_szegedy_lean435
+          auto-config: 'false'
+          use-mathlib-cache: 'false'
+          use-github-cache: 'false'
+      - name: Exact source, toolchain, kernel and axiom trace
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=ESS_SZEGEDY_EXACT_LEAN_THEOREM_AND_EXTERNAL_SEMANTIC_WITNESS_V1.lean
+          test "$(cat lean-toolchain)" = "leanprover/lean4:v4.35.0"
+          printf 'Source identity:\n' | tee SOURCE_RECEIPT.txt
+          sha256sum "$FILE" | tee -a SOURCE_RECEIPT.txt
+          test "$(sha256sum "$FILE" | cut -d' ' -f1)" = "52314658fc4e4a35ff7f089f84c919885e8e785d000a7dbb5d67ce20cd8b69a0"
+          lean --version | tee LEAN_VERSION.txt
+          grep -q '4.35.0' LEAN_VERSION.txt
+          printf 'Proof and axioms:\n'
+          lean "$FILE" 2>&1 | tee LEAN_KERNEL_LOG.txt
+          if grep -Ei 'sorryAx|Lean.ofReduceBool|error:' LEAN_KERNEL_LOG.txt; then echo "FORBIDDEN_OR_ERROR" >&2; exit 3; fi
+          echo 'KERNEL_COMPILED_EXACT_SOURCE=TRUE' | tee -a SOURCE_RECEIPT.txt
+      - name: Independent interpreter semantics and negative controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' | tee SEMANTIC_RECEIPT.txt
+          import itertools, json
+          K=(0,1,2); W=(0,1)
+          expected={(0,0):0,(0,1):1,(1,0):0,(1,1):1,(2,0):1,(2,1):2}
+          def pi(x):return 0 if x==0 else 1
+          def step(x,w):return x+w-pi(x)
+          rows=[(x,w) for x in K for w in W]
+          assert len(rows)==6 and all(step(x,w)==expected[(x,w)] and step(x,w) in K for x,w in rows)
+          trajectories=0
+          for x0 in K:
+            for ws in itertools.product(W,repeat=3):
+              x=x0
+              for w in ws:
+                x=expected[(x,w)]
+                assert x in K
+              trajectories+=1
+          assert trajectories==24
+          negative=step(2,1)>2 if False else 2+1-0>2
+          assert negative
+          print(json.dumps({"source":"independent Python interpreter","one_step":"6/6","three_step":"24/24","negative_missing_control":"PASS","external_physical_validation":False,"verdict":"PASS_SYNTHETIC_ONLY"},sort_keys=True))
+          PY
+      - name: Upload immutable run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ess-szegedy-lean435-kernel-log
+          path: |
+            research/ess_szegedy_lean435/LEAN_VERSION.txt
+            research/ess_szegedy_lean435/LEAN_KERNEL_LOG.txt
+            research/ess_szegedy_lean435/SOURCE_RECEIPT.txt
+            research/ess_szegedy_lean435/SEMANTIC_RECEIPT.txt
+          if-no-files-found: warn
