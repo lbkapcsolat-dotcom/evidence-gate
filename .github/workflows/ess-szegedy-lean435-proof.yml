@@ -33,7 +33,7 @@ jobs:
           test "$(cat lean-toolchain)" = "leanprover/lean4:v4.35.0"
           printf 'Source identity:\n' | tee SOURCE_RECEIPT.txt
           sha256sum "$FILE" | tee -a SOURCE_RECEIPT.txt
-          test "$(sha256sum "$FILE" | cut -d' ' -f1)" = "15f68ba537ee4b6a9b3c0c0821ba16f574dde7416cdc9f9fa456e9409e720646"
+          test "$(sha256sum "$FILE" | cut -d' ' -f1)" = "24a9bfe60b720071c5c9116ae443cb37c0cc5438e92cf186be762993b805fc2b"
           lean --version | tee LEAN_VERSION.txt
           grep -q '4.35.0' LEAN_VERSION.txt
           printf 'Proof and axioms:\n'
