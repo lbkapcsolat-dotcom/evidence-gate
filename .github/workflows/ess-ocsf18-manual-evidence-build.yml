@@ -1,0 +1,56 @@
+name: ESS OCSF 1.8.0 manual evidence build
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ess-ocsf18-manual
+  cancel-in-progress: false
+jobs:
+  compile:
+    if: github.repository == 'lbkapcsolat-dotcom/evidence-gate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Setup Python 3.14
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14'
+          check-latest: false
+      - name: Verify exact upstream source commits and compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          SCHEMA_COMMIT=6fa6499a0f8c9f449d342816e90e5f687c224b0a
+          COMPILER_COMMIT=b7847fc2a1972311cd621f292402ddab6db5749c
+          python -c 'import sys; assert sys.version_info >= (3,14)'
+          mkdir -p out
+          git -c protocol.version=2 clone --no-checkout https://github.com/ocsf/ocsf-schema.git schema
+          git -c protocol.version=2 clone --no-checkout https://github.com/ocsf/ocsf-schema-compiler.git compiler
+          test "$(git -C schema rev-parse 'refs/tags/1.8.0^{commit}')" = "$SCHEMA_COMMIT"
+          test "$(git -C compiler rev-parse 'refs/tags/v1.0.1^{commit}')" = "$COMPILER_COMMIT"
+          git -C schema checkout --detach "$SCHEMA_COMMIT"
+          git -C compiler checkout --detach "$COMPILER_COMMIT"
+          test "$(git -C schema rev-parse HEAD)" = "$SCHEMA_COMMIT"
+          test "$(git -C compiler rev-parse HEAD)" = "$COMPILER_COMMIT"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          assert json.loads(Path('schema/version.json').read_text())['version'] == '1.8.0'
+          PY
+          PYTHONPATH="$PWD/compiler/src" python -m ocsf_schema_compiler "$PWD/schema" > out/schema.json
+          python -m json.tool out/schema.json > /dev/null
+          printf '%s\n' "$SCHEMA_COMMIT" > out/schema.commit
+          printf '%s\n' "$COMPILER_COMMIT" > out/compiler.commit
+          python --version > out/python.version
+          (cd out && sha256sum schema.json schema.commit compiler.commit python.version > MANIFEST.sha256)
+          (cd out && sha256sum --check MANIFEST.sha256)
+      - name: Upload evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ess-ocsf18-build-evidence
+          path: out/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
